@@ -1,4 +1,5 @@
 import type { CardStyle } from '../../types/ai';
+import { CardEyebrow, CardFrame } from './CardFrame';
 
 interface InsightCardProps {
   title: string;
@@ -8,37 +9,15 @@ interface InsightCardProps {
 
 export function InsightCard({ title, content, style }: InsightCardProps) {
   return (
-    <div style={frameStyle(style)}>
-      <div style={eyebrowStyle(style.primaryColor)}>INSIGHT</div>
+    <CardFrame cardStyle={style}>
+      <CardEyebrow accentColor={style.primaryColor} marginBottom={16}>
+        INSIGHT
+      </CardEyebrow>
       <div style={quoteStyle(style.primaryColor)}>"</div>
       <div style={bodyStyle}>{content}</div>
       <div style={authorStyle}>{title}</div>
-    </div>
+    </CardFrame>
   );
-}
-
-function frameStyle(style: CardStyle) {
-  return {
-    width: 1_920,
-    height: 1_080,
-    background: style.backgroundColor,
-    color: '#e2e8f0',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 120,
-    boxSizing: 'border-box' as const,
-  };
-}
-
-function eyebrowStyle(color: string) {
-  return {
-    color,
-    fontSize: 20,
-    letterSpacing: 6,
-    marginBottom: 16,
-  };
 }
 
 function quoteStyle(color: string) {

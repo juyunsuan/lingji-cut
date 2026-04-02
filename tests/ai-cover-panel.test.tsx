@@ -16,13 +16,17 @@ describe('AICoverPanel', () => {
           },
         ]}
         isGenerating={false}
+        selectedCandidateId="cover-1"
         onGenerateCovers={() => undefined}
         onSelectCover={() => undefined}
+        onAddToTimeline={() => undefined}
       />,
     );
 
     expect(html).toContain('提示词');
     expect(html).toContain('一张科技感播客封面');
     expect(html).toContain('候选封面');
+    expect(html).toContain('设为整期背景');
+    expect(html).toContain('draggable="true"');
   });
 });

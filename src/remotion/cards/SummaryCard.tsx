@@ -1,4 +1,5 @@
 import type { CardStyle } from '../../types/ai';
+import { CardEyebrow, CardFrame } from './CardFrame';
 
 interface SummaryCardProps {
   title: string;
@@ -8,36 +9,12 @@ interface SummaryCardProps {
 
 export function SummaryCard({ title, content, style }: SummaryCardProps) {
   return (
-    <div style={frameStyle(style)}>
-      <div style={eyebrowStyle(style.primaryColor)}>SUMMARY</div>
+    <CardFrame cardStyle={style}>
+      <CardEyebrow accentColor={style.primaryColor}>SUMMARY</CardEyebrow>
       <div style={titleStyle(style.fontSize)}>{title}</div>
       <div style={bodyStyle}>{content}</div>
-    </div>
+    </CardFrame>
   );
-}
-
-function frameStyle(style: CardStyle) {
-  return {
-    width: 1_920,
-    height: 1_080,
-    background: style.backgroundColor,
-    color: '#e2e8f0',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 120,
-    boxSizing: 'border-box' as const,
-  };
-}
-
-function eyebrowStyle(color: string) {
-  return {
-    color,
-    fontSize: 20,
-    letterSpacing: 6,
-    marginBottom: 24,
-  };
 }
 
 function titleStyle(fontSize: number) {

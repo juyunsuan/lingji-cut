@@ -105,6 +105,13 @@ export function getRenderableOverlays(timeline: TimelineData): OverlayItem[] {
   );
 
   return [...timeline.overlays].sort((left, right) => {
+    const leftIsBackground = left.overlayRole === 'default-background';
+    const rightIsBackground = right.overlayRole === 'default-background';
+
+    if (leftIsBackground !== rightIsBackground) {
+      return leftIsBackground ? -1 : 1;
+    }
+
     const leftOrder = trackOrderMap.get(left.trackId) ?? 0;
     const rightOrder = trackOrderMap.get(right.trackId) ?? 0;
 

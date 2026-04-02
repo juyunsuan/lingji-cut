@@ -79,6 +79,13 @@ export interface AICardOverlayData {
   sourceEndMs?: number;
 }
 
+export interface AICardTimelineDraft {
+  sourceCardId: string;
+  startMs: number;
+  durationMs: number;
+  aiCardData: AICardOverlayData;
+}
+
 export const DEFAULT_CARD_STYLE: Record<AICardType, CardStyle> = {
   summary: { primaryColor: '#6366f1', backgroundColor: '#0f172a', fontSize: 48 },
   data: { primaryColor: '#10b981', backgroundColor: '#0f172a', fontSize: 48 },
@@ -107,4 +114,30 @@ export function isDataContent(value: unknown): value is DataContent {
   }
 
   return Array.isArray(value.items);
+}
+
+export function buildAICardOverlayData(card: AICard): AICardOverlayData {
+  return {
+    sourceCardId: card.id,
+    cardType: card.type,
+    title: card.title,
+    content: card.content,
+    template: card.template,
+    displayMode: card.displayMode,
+    style: card.style,
+    renderMode: card.renderMode ?? 'legacy',
+    cardPrompt: card.cardPrompt,
+    webCard: card.webCard,
+    sourceStartMs: card.startMs,
+    sourceEndMs: card.endMs,
+  };
+}
+
+export function buildAICardTimelineDraft(card: AICard): AICardTimelineDraft {
+  return {
+    sourceCardId: card.id,
+    startMs: card.startMs,
+    durationMs: card.displayDurationMs,
+    aiCardData: buildAICardOverlayData(card),
+  };
 }

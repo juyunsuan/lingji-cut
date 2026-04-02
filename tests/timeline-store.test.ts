@@ -66,6 +66,7 @@ describe('useTimelineStore', () => {
 
   it('updates and removes overlays', () => {
     const store = useTimelineStore.getState();
+    const newTrackId = store.addTrack();
     const overlayId = store.addOverlay({
       type: 'image',
       assetPath: '/tmp/cover.png',
@@ -75,11 +76,12 @@ describe('useTimelineStore', () => {
       position: { x: 10, y: 20, width: 300, height: 200 },
     });
 
-    store.updateOverlay(overlayId, { startMs: 2000, durationMs: 7000 });
+    store.updateOverlay(overlayId, { startMs: 2000, durationMs: 7000, trackId: newTrackId });
     expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
       id: overlayId,
       startMs: 2000,
       durationMs: 7000,
+      trackId: newTrackId,
     });
 
     store.removeOverlay(overlayId);
@@ -284,6 +286,56 @@ describe('useTimelineStore', () => {
       startMs: 8_000,
       durationMs: 5_000,
       overlayType: 'ai-card',
+    });
+  });
+
+  it('stores the selected cover as a full-duration default background', () => {
+    const store = useTimelineStore.getState();
+    store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 12_000);
+
+    store.setGlobalBackground('/tmp/cover.png');
+
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 12_000,
+      overlayRole: 'default-background',
+      position: { x: 0, y: 0, width: 1920, height: 1080 },
+    });
+    expect(useTimelineStore.getState().assets.map((asset) => asset.path)).toContain('/tmp/cover.png');
+  });
+
+  it('reuses the existing default background overlay when changing covers', () => {
+    const store = useTimelineStore.getState();
+    store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 12_000);
+
+    store.setGlobalBackground('/tmp/cover-a.png');
+    const initialOverlayId = useTimelineStore.getState().timeline.overlays[0]?.id;
+
+    store.setGlobalBackground('/tmp/cover-b.png');
+
+    expect(useTimelineStore.getState().timeline.overlays).toHaveLength(1);
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      id: initialOverlayId,
+      assetPath: '/tmp/cover-b.png',
+      durationMs: 12_000,
+      overlayRole: 'default-background',
+    });
+  });
+
+  it('keeps the default background stretched to the latest podcast duration', () => {
+    const store = useTimelineStore.getState();
+    store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 12_000);
+    store.setGlobalBackground('/tmp/cover.png');
+
+    store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 18_000);
+
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      startMs: 0,
+      durationMs: 18_000,
+      overlayRole: 'default-background',
     });
   });
 });

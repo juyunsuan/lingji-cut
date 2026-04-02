@@ -8,7 +8,13 @@ import {
 import { getAISettingsIssue } from '../lib/ai-settings';
 import { useAIStore, loadAISettings, saveAISettings } from '../store/ai';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
-import type { AIAnalysisResult, AICard, AISettings, CoverCandidate } from '../types/ai';
+import {
+  buildAICardTimelineDraft,
+  type AIAnalysisResult,
+  type AICard,
+  type AISettings,
+  type CoverCandidate,
+} from '../types/ai';
 import { AICardEditModal } from './AICardEditModal';
 import { AICardList, type AICardPlacement } from './AICardList';
 import { AppIcon, type AppIconName } from './AppIcon';
@@ -27,7 +33,7 @@ const TAB_META: Record<'cards' | 'cover', { label: string; shortLabel: string; i
 };
 
 export function AIPanel({ compact, railHeight }: AIPanelProps) {
-  const { srtEntries, timeline, addAICardsToTimeline } = useTimelineStore();
+  const { srtEntries, timeline, addAICardsToTimeline, setGlobalBackground } = useTimelineStore();
   const {
     analysisResult,
     isAnalyzing,
@@ -51,6 +57,8 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
   const [globalPromptDraft, setGlobalPromptDraft] = useState('');
   const editingCard = analysisResult?.cards.find((card) => card.id === editingCardId) ?? null;
   const enabledCount = analysisResult?.cards.filter((card) => card.enabled).length ?? 0;
+  const selectedCoverCandidate =
+    coverCandidates.find((candidate) => candidate.selected) ?? coverCandidates[0] ?? null;
   const cardPlacements = (timeline.overlays ?? []).reduce<Record<string, AICardPlacement>>(
     (placements, overlay) => {
       if (overlay.overlayType !== 'ai-card') {
@@ -118,27 +126,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
       updateCard(cardId, updates);
       const updatedCard = nextResult.cards.find((card) => card.id === cardId);
       if (updatedCard && cardPlacements[cardId]) {
-        addAICardsToTimeline([
-          {
-            sourceCardId: updatedCard.id,
-            startMs: updatedCard.startMs,
-            durationMs: updatedCard.displayDurationMs,
-            aiCardData: {
-              sourceCardId: updatedCard.id,
-              cardType: updatedCard.type,
-              title: updatedCard.title,
-              content: updatedCard.content,
-              template: updatedCard.template,
-              displayMode: updatedCard.displayMode,
-              style: updatedCard.style,
-              renderMode: updatedCard.renderMode ?? 'legacy',
-              cardPrompt: updatedCard.cardPrompt,
-              webCard: updatedCard.webCard,
-              sourceStartMs: updatedCard.startMs,
-              sourceEndMs: updatedCard.endMs,
-            },
-          },
-        ]);
+        addAICardsToTimeline([buildAICardTimelineDraft(updatedCard)]);
       }
       void persistAIState(nextResult, coverCandidates);
     },
@@ -160,6 +148,18 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
       await persistAIState(analysisResult, candidates);
     },
     [analysisResult, persistAIState, setCoverCandidates],
+  );
+
+  const handleAddCoverToTimeline = useCallback(
+    (candidateId: string) => {
+      const candidate = coverCandidates.find((item) => item.id === candidateId);
+      if (!candidate?.imageUrl) {
+        return;
+      }
+
+      setGlobalBackground(candidate.imageUrl);
+    },
+    [coverCandidates, setGlobalBackground],
   );
 
   const handleAnalyze = useCallback(async () => {
@@ -219,25 +219,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
     addAICardsToTimeline(
       analysisResult.cards
         .filter((card) => card.enabled)
-        .map((card) => ({
-          sourceCardId: card.id,
-          startMs: card.startMs,
-          durationMs: card.displayDurationMs,
-          aiCardData: {
-            sourceCardId: card.id,
-            cardType: card.type,
-            title: card.title,
-            content: card.content,
-            template: card.template,
-            displayMode: card.displayMode,
-            style: card.style,
-            renderMode: card.renderMode ?? 'legacy',
-            cardPrompt: card.cardPrompt,
-            webCard: card.webCard,
-            sourceStartMs: card.startMs,
-            sourceEndMs: card.endMs,
-          },
-        })),
+        .map(buildAICardTimelineDraft),
     );
   }, [addAICardsToTimeline, analysisResult]);
 
@@ -314,27 +296,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
         ...regeneratedCard,
       });
       if (cardPlacements[editingCard.id]) {
-        addAICardsToTimeline([
-          {
-            sourceCardId: editingCard.id,
-            startMs: regeneratedCard.startMs,
-            durationMs: regeneratedCard.displayDurationMs,
-            aiCardData: {
-              sourceCardId: editingCard.id,
-              cardType: regeneratedCard.type,
-              title: regeneratedCard.title,
-              content: regeneratedCard.content,
-              template: regeneratedCard.template,
-              displayMode: regeneratedCard.displayMode,
-              style: regeneratedCard.style,
-              renderMode: regeneratedCard.renderMode ?? 'legacy',
-              cardPrompt: regeneratedCard.cardPrompt,
-              webCard: regeneratedCard.webCard,
-              sourceStartMs: regeneratedCard.startMs,
-              sourceEndMs: regeneratedCard.endMs,
-            },
-          },
-        ]);
+        addAICardsToTimeline([buildAICardTimelineDraft(regeneratedCard)]);
       }
       await persistAIState(nextResult, coverCandidates);
     } catch (error) {
@@ -595,8 +557,10 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
             coverPrompts={analysisResult?.coverPrompts ?? []}
             candidates={coverCandidates}
             isGenerating={isGeneratingCovers}
+            selectedCandidateId={selectedCoverCandidate?.id}
             onGenerateCovers={handleGenerateCovers}
             onSelectCover={handleSelectCover}
+            onAddToTimeline={handleAddCoverToTimeline}
           />
         )}
       </div>

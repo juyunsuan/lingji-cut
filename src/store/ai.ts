@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import {
+  selectCoverCandidate,
+  toggleCardEnabledInResult,
+  updateCardInResult,
+} from '../lib/ai-persistence';
 import type { AIAnalysisResult, AICard, AISettings, CoverCandidate } from '../types/ai';
 
 const AI_SETTINGS_KEY = 'podcast-editor-ai-settings';
@@ -24,20 +29,6 @@ export interface AIStore {
   clearAnalysis: () => void;
 }
 
-function updateCards(
-  result: AIAnalysisResult | null,
-  updater: (card: AICard) => AICard,
-): AIAnalysisResult | null {
-  if (!result) {
-    return null;
-  }
-
-  return {
-    ...result,
-    cards: result.cards.map(updater),
-  };
-}
-
 export const useAIStore = create<AIStore>((set) => ({
   analysisResult: null,
   isAnalyzing: false,
@@ -50,23 +41,16 @@ export const useAIStore = create<AIStore>((set) => ({
   setAnalysisError: (error) => set({ analysisError: error, isAnalyzing: false }),
   toggleCardEnabled: (cardId) =>
     set((state) => ({
-      analysisResult: updateCards(state.analysisResult, (card) =>
-        card.id === cardId ? { ...card, enabled: !card.enabled } : card,
-      ),
+      analysisResult: toggleCardEnabledInResult(state.analysisResult, cardId),
     })),
   updateCard: (cardId, updates) =>
     set((state) => ({
-      analysisResult: updateCards(state.analysisResult, (card) =>
-        card.id === cardId ? { ...card, ...updates, id: cardId } : card,
-      ),
+      analysisResult: updateCardInResult(state.analysisResult, cardId, updates),
     })),
   setCoverCandidates: (candidates) => set({ coverCandidates: candidates }),
   selectCover: (candidateId) =>
     set((state) => ({
-      coverCandidates: state.coverCandidates.map((candidate) => ({
-        ...candidate,
-        selected: candidate.id === candidateId,
-      })),
+      coverCandidates: selectCoverCandidate(state.coverCandidates, candidateId),
     })),
   setGeneratingCovers: (generating) => set({ isGeneratingCovers: generating }),
   setActiveTab: (tab) => set({ activeTab: tab }),

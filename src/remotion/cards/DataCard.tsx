@@ -1,4 +1,5 @@
 import type { CardStyle, DataContent } from '../../types/ai';
+import { CardEyebrow, CardFrame } from './CardFrame';
 
 interface DataCardProps {
   title: string;
@@ -13,8 +14,8 @@ export function DataCard({ title, content, style }: DataCardProps) {
   const maxValue = Math.max(...numericValues, 1);
 
   return (
-    <div style={frameStyle(style)}>
-      <div style={eyebrowStyle(style.primaryColor)}>DATA</div>
+    <CardFrame cardStyle={style}>
+      <CardEyebrow accentColor={style.primaryColor}>DATA</CardEyebrow>
       <div style={titleStyle(style.fontSize - 4)}>{title}</div>
       <div style={barsStyle}>
         {content.items.map((item) => {
@@ -36,32 +37,8 @@ export function DataCard({ title, content, style }: DataCardProps) {
           );
         })}
       </div>
-    </div>
+    </CardFrame>
   );
-}
-
-function frameStyle(style: CardStyle) {
-  return {
-    width: 1_920,
-    height: 1_080,
-    background: style.backgroundColor,
-    color: '#e2e8f0',
-    display: 'flex',
-    flexDirection: 'column' as const,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 120,
-    boxSizing: 'border-box' as const,
-  };
-}
-
-function eyebrowStyle(color: string) {
-  return {
-    color,
-    fontSize: 20,
-    letterSpacing: 6,
-    marginBottom: 24,
-  };
 }
 
 function titleStyle(fontSize: number) {

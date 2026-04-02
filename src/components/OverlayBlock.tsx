@@ -1,4 +1,5 @@
-import type { MouseEvent } from 'react';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import { getOverlayMoveDraft, type TrackDragZone } from '../lib/overlay-drag';
 import type { OverlayItem } from '../types';
 import { clamp, getFileNameFromPath } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
@@ -8,18 +9,31 @@ interface OverlayBlockProps {
   overlay: OverlayItem;
   pxPerMs: number;
   trackHeight?: number;
+  getTrackDragZones?: () => TrackDragZone[];
+  onTrackHoverChange?: (trackId: string | null) => void;
 }
 
-export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBlockProps) {
+export function OverlayBlock({
+  overlay,
+  pxPerMs,
+  trackHeight = 48,
+  getTrackDragZones,
+  onTrackHoverChange,
+}: OverlayBlockProps) {
   const { assets, removeOverlay, timeline, updateOverlay } = useTimelineStore();
   const asset = assets.find((item) => item.path === overlay.assetPath);
   const isAICard = overlay.overlayType === 'ai-card';
-  const color = isAICard
+  const isDefaultBackground = overlay.overlayRole === 'default-background';
+  const color = isDefaultBackground
+    ? '#7bd5ff'
+    : isAICard
     ? overlay.aiCardData?.style.primaryColor ?? '#8b5cf6'
     : overlay.type === 'video'
       ? '#3ea6ff'
       : '#d6864a';
-  const colorGlow = isAICard
+  const colorGlow = isDefaultBackground
+    ? 'rgba(123,213,255,0.22)'
+    : isAICard
     ? 'rgba(139,92,246,0.24)'
     : overlay.type === 'video'
       ? 'rgba(62,166,255,0.25)'
@@ -33,10 +47,18 @@ export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBloc
   const projectDuration = timeline.podcast.durationMs || overlay.durationMs;
   const maxDurationForAsset =
     overlay.type === 'video' ? asset?.durationMs ?? overlay.durationMs : Number.POSITIVE_INFINITY;
-  const label = isAICard ? overlay.aiCardData?.title ?? 'AI 卡片' : getFileNameFromPath(overlay.assetPath);
-  const badge = isAICard ? 'AI' : overlay.type === 'video' ? 'VID' : 'IMG';
+  const label = isDefaultBackground
+    ? `默认背景 · ${getFileNameFromPath(overlay.assetPath)}`
+    : isAICard
+      ? overlay.aiCardData?.title ?? 'AI 卡片'
+      : getFileNameFromPath(overlay.assetPath);
+  const badge = isDefaultBackground ? 'BG' : isAICard ? 'AI' : overlay.type === 'video' ? 'VID' : 'IMG';
 
-  const handleMoveMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+  const handleMoveMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (isDefaultBackground) {
+      return;
+    }
+
     if ((event.target as HTMLElement).dataset.resize === 'true') {
       return;
     }
@@ -44,18 +66,30 @@ export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBloc
     event.preventDefault();
     const startX = event.clientX;
     const startMs = overlay.startMs;
+    let currentTrackId = overlay.trackId;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaMs = (moveEvent.clientX - startX) / pxPerMs;
-      const nextStartMs = clamp(
-        Math.round(startMs + deltaMs),
-        0,
-        Math.max(0, projectDuration - overlay.durationMs),
-      );
-      updateOverlay(overlay.id, { startMs: nextStartMs });
+    onTrackHoverChange?.(overlay.trackId);
+
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
+      const nextMoveDraft = getOverlayMoveDraft({
+        startMs,
+        startClientX: startX,
+        currentClientX: moveEvent.clientX,
+        pxPerMs,
+        projectDurationMs: projectDuration,
+        overlayDurationMs: overlay.durationMs,
+        fallbackTrackId: currentTrackId,
+        clientY: moveEvent.clientY,
+        trackZones: getTrackDragZones?.() ?? [],
+      });
+
+      currentTrackId = nextMoveDraft.trackId;
+      onTrackHoverChange?.(nextMoveDraft.trackId);
+      updateOverlay(overlay.id, nextMoveDraft);
     };
 
     const handleMouseUp = () => {
+      onTrackHoverChange?.(null);
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
@@ -64,13 +98,17 @@ export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBloc
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleResizeMouseDown = (event: MouseEvent<HTMLDivElement>) => {
+  const handleResizeMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (isDefaultBackground) {
+      return;
+    }
+
     event.stopPropagation();
     event.preventDefault();
     const startX = event.clientX;
     const startDuration = overlay.durationMs;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
+    const handleMouseMove = (moveEvent: globalThis.MouseEvent) => {
       const deltaMs = (moveEvent.clientX - startX) / pxPerMs;
       const maxByTimeline = Math.max(500, projectDuration - overlay.startMs);
       const nextDuration = clamp(
@@ -110,7 +148,7 @@ export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBloc
         display: 'flex',
         alignItems: 'center',
         overflow: 'hidden',
-        cursor: 'grab',
+        cursor: isDefaultBackground ? 'default' : 'grab',
       }}
     >
       <div
@@ -155,18 +193,20 @@ export function OverlayBlock({ overlay, pxPerMs, trackHeight = 48 }: OverlayBloc
         {label}
       </div>
 
-      <div
-        data-resize="true"
-        onMouseDown={handleResizeMouseDown}
-        style={{
-          marginLeft: 'auto',
-          width: 8,
-          alignSelf: 'stretch',
-          cursor: 'ew-resize',
-          background:
-            'repeating-linear-gradient(180deg, rgba(255,255,255,0.3) 0 2px, transparent 2px 4px)',
-        }}
-      />
+      {isDefaultBackground ? null : (
+        <div
+          data-resize="true"
+          onMouseDown={handleResizeMouseDown}
+          style={{
+            marginLeft: 'auto',
+            width: 8,
+            alignSelf: 'stretch',
+            cursor: 'ew-resize',
+            background:
+              'repeating-linear-gradient(180deg, rgba(255,255,255,0.3) 0 2px, transparent 2px 4px)',
+          }}
+        />
+      )}
     </div>
   );
 }

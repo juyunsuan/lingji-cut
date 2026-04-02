@@ -1,5 +1,6 @@
 import type { CSSProperties, DragEvent, MouseEvent, ReactNode, WheelEvent } from 'react';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { TrackDragZone } from '../lib/overlay-drag';
 import { getRenderableVisualTracks, getVisualTracks } from '../lib/timeline-tracks';
 import { formatTime, getFileNameFromPath } from '../lib/utils';
 import {
@@ -23,6 +24,7 @@ interface AssetLike {
   path: string;
   type: 'video' | 'image';
   durationMs: number;
+  overlayRole?: 'default-background';
 }
 
 const iconBadgeStyle: CSSProperties = {
@@ -53,10 +55,11 @@ const timeActionButtonStyle: CSSProperties = {
 export function Timeline({ currentTimeMs, onSeek, compact }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pendingScrollLeftRef = useRef<number | null>(null);
+  const trackLaneRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [hoverTrackId, setHoverTrackId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
-  const { addOverlay, addTrack, timeline } = useTimelineStore();
+  const { addOverlay, addTrack, setGlobalBackground, timeline } = useTimelineStore();
   const durationMs = Math.max(1000, timeline.podcast.durationMs);
   const outerPadding = compact ? 10 : 12;
   const sidebarWidth = compact ? 92 : 108;
@@ -228,6 +231,11 @@ export function Timeline({ currentTimeMs, onSeek, compact }: TimelineProps) {
   };
 
   const placeAssetOnTrack = (trackId: string, asset: AssetLike, clientX: number) => {
+    if (asset.overlayRole === 'default-background') {
+      setGlobalBackground(asset.path);
+      return;
+    }
+
     const offsetX = resolveTimelineOffset(clientX);
     if (offsetX === null) {
       return;
@@ -261,6 +269,24 @@ export function Timeline({ currentTimeMs, onSeek, compact }: TimelineProps) {
 
       placeAssetOnTrack(trackId, JSON.parse(raw) as AssetLike, event.clientX);
     };
+
+  const getTrackDragZones = (): TrackDragZone[] => {
+    return visualTracks.flatMap((track) => {
+      const trackLane = trackLaneRefs.current[track.id];
+      if (!trackLane) {
+        return [];
+      }
+
+      const rect = trackLane.getBoundingClientRect();
+      return [
+        {
+          trackId: track.id,
+          top: rect.top,
+          bottom: rect.bottom,
+        },
+      ];
+    });
+  };
 
   const renderTrackControls = (track: TimelineTrack, options: {
     tone: string;
@@ -653,6 +679,9 @@ export function Timeline({ currentTimeMs, onSeek, compact }: TimelineProps) {
                     subtitle: isTopLayer ? `最上层 · L${track.order}` : `覆盖级 L${track.order}`,
                   })}
                   <div
+                    ref={(node) => {
+                      trackLaneRefs.current[track.id] = node;
+                    }}
                     onDragOver={(event) => {
                       event.preventDefault();
                       event.dataTransfer.dropEffect = 'copy';
@@ -681,6 +710,8 @@ export function Timeline({ currentTimeMs, onSeek, compact }: TimelineProps) {
                         overlay={overlay}
                         pxPerMs={pxPerMs}
                         trackHeight={overlayTrackHeight}
+                        getTrackDragZones={getTrackDragZones}
+                        onTrackHoverChange={setHoverTrackId}
                       />
                     ))}
 

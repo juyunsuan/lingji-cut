@@ -14,6 +14,8 @@ export interface OverlayPosition {
   height: number;
 }
 
+export type OverlayRole = 'default-background';
+
 export type TimelineTrackKind = 'audio' | 'subtitle' | 'visual';
 
 export interface TimelineTrack {
@@ -33,6 +35,7 @@ export interface OverlayItem {
   durationMs: number;
   position: OverlayPosition;
   overlayType?: 'media' | 'ai-card';
+  overlayRole?: OverlayRole;
   aiCardData?: AICardOverlayData;
 }
 

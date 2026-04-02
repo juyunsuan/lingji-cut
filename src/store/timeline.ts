@@ -2,12 +2,13 @@ import { create } from 'zustand';
 import { v4 as uuid } from 'uuid';
 import type { AssetItem, AssetType, OverlayItem, SrtEntry, TimelineData } from '../types';
 import { DEFAULT_VISUAL_TRACK_ID, createDefaultTimeline } from '../types';
-import type { AICardOverlayData } from '../types/ai';
+import type { AICardTimelineDraft } from '../types/ai';
 import { getFileNameFromPath } from '../lib/utils';
 import { getNextVisualTrack, normalizeTimelineData } from '../lib/timeline-tracks';
 
 type OverlayDraft = Omit<OverlayItem, 'id'>;
 type TimelineSnapshot = TimelineData;
+type TimelineCommitState = Pick<TimelineStore, 'timeline' | 'assets' | 'historyPast'>;
 
 export interface RecentProject {
   path: string;
@@ -26,16 +27,12 @@ export interface TimelineStore {
   setTimeline: (timeline: TimelineData) => void;
   setSrtEntries: (entries: SrtEntry[]) => void;
   setPodcast: (audioPath: string, srtPath: string, durationMs: number) => void;
+  setGlobalBackground: (path: string) => void;
   addAsset: (path: string, type: 'video' | 'image', durationMs?: number) => void;
   removeAsset: (path: string) => void;
   addTrack: () => string;
   addOverlay: (overlay: OverlayDraft) => string;
-  addAICardsToTimeline: (cards: Array<{
-    sourceCardId: string;
-    startMs: number;
-    durationMs: number;
-    aiCardData: AICardOverlayData;
-  }>) => void;
+  addAICardsToTimeline: (cards: AICardTimelineDraft[]) => void;
   updateOverlay: (id: string, updates: Partial<OverlayItem>) => void;
   removeOverlay: (id: string) => void;
   undo: () => void;
@@ -75,6 +72,64 @@ const dedupeAssets = (assets: AssetItem[]): AssetItem[] => {
 
 function isMediaOverlay(overlay: OverlayItem): boolean {
   return overlay.overlayType !== 'ai-card' && Boolean(overlay.assetPath);
+}
+
+function getDefaultBackgroundDuration(timeline: TimelineData): number {
+  return Math.max(1_000, timeline.podcast.durationMs || 5_000);
+}
+
+function getDefaultBackgroundTrackId(timeline: TimelineData): string {
+  const tracks = Array.isArray(timeline.tracks) ? timeline.tracks : [];
+  const visualTracks = tracks.filter((track) => track.kind === 'visual');
+
+  if (visualTracks.length === 0) {
+    return DEFAULT_VISUAL_TRACK_ID;
+  }
+
+  return [...visualTracks]
+    .sort((left, right) => {
+      if (left.order !== right.order) {
+        return left.order - right.order;
+      }
+
+      return left.id.localeCompare(right.id);
+    })[0]
+    .id;
+}
+
+function normalizeDefaultBackgroundOverlays(timeline: TimelineData): TimelineData {
+  const overlays = Array.isArray(timeline.overlays) ? timeline.overlays : [];
+  const hasDefaultBackground = overlays.some(
+    (overlay) => overlay.overlayRole === 'default-background',
+  );
+
+  if (!hasDefaultBackground) {
+    return timeline;
+  }
+
+  const trackId = getDefaultBackgroundTrackId(timeline);
+  const durationMs = getDefaultBackgroundDuration(timeline);
+
+  return {
+    ...timeline,
+    overlays: overlays.map((overlay) =>
+      overlay.overlayRole === 'default-background'
+        ? {
+            ...overlay,
+            type: 'image',
+            trackId,
+            startMs: 0,
+            durationMs,
+            position: {
+              x: 0,
+              y: 0,
+              width: timeline.width,
+              height: timeline.height,
+            },
+          }
+        : overlay,
+    ),
+  };
 }
 
 const buildPodcastAssets = (timeline: TimelineData): AssetItem[] => {
@@ -118,12 +173,31 @@ const cloneTimeline = (timeline: TimelineData): TimelineData =>
   JSON.parse(JSON.stringify(timeline)) as TimelineData;
 
 const normalizeTimeline = (timeline: TimelineData): TimelineData =>
-  normalizeTimelineData(cloneTimeline(timeline));
+  normalizeTimelineData(cloneTimeline(normalizeDefaultBackgroundOverlays(timeline)));
 
 const pushHistorySnapshot = (
   past: TimelineSnapshot[],
   timeline: TimelineData,
 ): TimelineSnapshot[] => [...past.slice(-(MAX_TIMELINE_HISTORY - 1)), cloneTimeline(timeline)];
+
+function buildCommittedTimelineState(
+  state: TimelineCommitState,
+  nextTimeline: TimelineData,
+  options?: {
+    assetSource?: AssetItem[];
+  },
+) {
+  const assetSource = options?.assetSource ?? state.assets;
+
+  return {
+    historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
+    historyFuture: [],
+    canUndo: true,
+    canRedo: false,
+    timeline: nextTimeline,
+    assets: syncAssetsWithTimeline(assetSource, nextTimeline),
+  };
+}
 
 function emitSaveStatus(status: SaveStatus): void {
   currentSaveStatus = status;
@@ -205,14 +279,39 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         },
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
+      return buildCommittedTimelineState(state, nextTimeline);
+    }),
+  setGlobalBackground: (path) =>
+    set((state) => {
+      const existingOverlay = state.timeline.overlays.find(
+        (overlay) => overlay.overlayRole === 'default-background',
+      );
+      const backgroundOverlay: OverlayItem = {
+        id: existingOverlay?.id ?? `background-${uuid()}`,
+        type: 'image',
+        assetPath: path,
+        trackId: existingOverlay?.trackId ?? DEFAULT_VISUAL_TRACK_ID,
+        startMs: 0,
+        durationMs: getDefaultBackgroundDuration(state.timeline),
+        position: {
+          x: 0,
+          y: 0,
+          width: state.timeline.width,
+          height: state.timeline.height,
+        },
+        overlayRole: 'default-background',
       };
+      const overlays = existingOverlay
+        ? state.timeline.overlays.map((overlay) =>
+            overlay.overlayRole === 'default-background' ? backgroundOverlay : overlay,
+          )
+        : [backgroundOverlay, ...state.timeline.overlays];
+      const nextTimeline = normalizeTimeline({
+        ...state.timeline,
+        overlays,
+      });
+
+      return buildCommittedTimelineState(state, nextTimeline);
     }),
   addAsset: (path, type, durationMs) =>
     set((state) => ({
@@ -230,17 +329,9 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         overlays: state.timeline.overlays.filter((overlay) => overlay.assetPath !== path),
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(
-          state.assets.filter((asset) => asset.path !== path),
-          nextTimeline,
-        ),
-      };
+      return buildCommittedTimelineState(state, nextTimeline, {
+        assetSource: state.assets.filter((asset) => asset.path !== path),
+      });
     }),
   addTrack: () => {
     const track = getNextVisualTrack(useTimelineStore.getState().timeline.tracks);
@@ -251,14 +342,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         tracks: [...state.timeline.tracks, track],
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
-      };
+      return buildCommittedTimelineState(state, nextTimeline);
     });
 
     return track.id;
@@ -271,14 +355,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         overlays: [...state.timeline.overlays, { ...overlay, id }],
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
-      };
+      return buildCommittedTimelineState(state, nextTimeline);
     });
 
     return id;
@@ -338,14 +415,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         overlays,
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
-      };
+      return buildCommittedTimelineState(state, nextTimeline);
     }),
   updateOverlay: (id, updates) =>
     set((state) => {
@@ -356,14 +426,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         ),
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
-      };
+      return buildCommittedTimelineState(state, nextTimeline);
     }),
   removeOverlay: (id) =>
     set((state) => {
@@ -372,14 +435,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         overlays: state.timeline.overlays.filter((overlay) => overlay.id !== id),
       });
 
-      return {
-        historyPast: pushHistorySnapshot(state.historyPast, state.timeline),
-        historyFuture: [],
-        canUndo: true,
-        canRedo: false,
-        timeline: nextTimeline,
-        assets: syncAssetsWithTimeline(state.assets, nextTimeline),
-      };
+      return buildCommittedTimelineState(state, nextTimeline);
     }),
   undo: () =>
     set((state) => {

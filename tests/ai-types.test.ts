@@ -5,6 +5,7 @@ import type {
   AISettings,
   DataContent,
 } from '../src/types/ai';
+import { buildAICardOverlayData, buildAICardTimelineDraft } from '../src/types/ai';
 import type { OverlayItem } from '../src/types';
 
 describe('AI type definitions', () => {
@@ -119,5 +120,51 @@ describe('AI type definitions', () => {
     };
 
     expect(settings.jimengSessionId).toBe('session-test');
+  });
+
+  it('builds reusable timeline draft data from an AI card', () => {
+    const card: AICard = {
+      id: 'card-helper',
+      type: 'insight',
+      title: '关键判断',
+      content: '现金流比增速更重要',
+      startMs: 12_000,
+      endMs: 28_000,
+      displayDurationMs: 4_000,
+      displayMode: 'pip',
+      template: 'insight-default',
+      enabled: true,
+      style: {
+        primaryColor: '#f59e0b',
+        backgroundColor: '#0f172a',
+        fontSize: 48,
+      },
+    };
+
+    expect(buildAICardOverlayData(card)).toEqual({
+      sourceCardId: 'card-helper',
+      cardType: 'insight',
+      title: '关键判断',
+      content: '现金流比增速更重要',
+      template: 'insight-default',
+      displayMode: 'pip',
+      style: {
+        primaryColor: '#f59e0b',
+        backgroundColor: '#0f172a',
+        fontSize: 48,
+      },
+      renderMode: 'legacy',
+      cardPrompt: undefined,
+      webCard: undefined,
+      sourceStartMs: 12_000,
+      sourceEndMs: 28_000,
+    });
+
+    expect(buildAICardTimelineDraft(card)).toEqual({
+      sourceCardId: 'card-helper',
+      startMs: 12_000,
+      durationMs: 4_000,
+      aiCardData: buildAICardOverlayData(card),
+    });
   });
 });

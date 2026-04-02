@@ -7,19 +7,27 @@ interface AICoverPanelProps {
   coverPrompts: string[];
   candidates: CoverCandidate[];
   isGenerating: boolean;
+  selectedCandidateId?: string;
   onGenerateCovers: (prompts: string[]) => void;
   onSelectCover: (candidateId: string) => void;
+  onAddToTimeline: (candidateId: string) => void;
 }
 
 export function AICoverPanel({
   coverPrompts,
   candidates,
   isGenerating,
+  selectedCandidateId,
   onGenerateCovers,
   onSelectCover,
+  onAddToTimeline,
 }: AICoverPanelProps) {
   const [editablePrompts, setEditablePrompts] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const selectedCandidate =
+    candidates.find((candidate) => candidate.id === selectedCandidateId) ??
+    candidates.find((candidate) => candidate.selected) ??
+    null;
 
   useEffect(() => {
     if (!isEditing) {
@@ -100,16 +108,36 @@ export function AICoverPanel({
       {candidates.length > 0 ? (
         <>
           <div style={{ ...sectionTitleStyle, marginTop: 8 }}>候选封面</div>
+          <div style={hintTextStyle}>可直接拖到时间轴，也可以一键设为整期背景。</div>
           <div style={gridStyle}>
             {candidates.map((candidate) => (
               <div
                 key={candidate.id}
+                draggable={Boolean(candidate.imageUrl)}
                 onClick={() => onSelectCover(candidate.id)}
+                onDragStart={(event) => {
+                  if (!candidate.imageUrl) {
+                    event.preventDefault();
+                    return;
+                  }
+
+                  event.dataTransfer.effectAllowed = 'copy';
+                  event.dataTransfer.setData(
+                    'application/json',
+                    JSON.stringify({
+                      path: candidate.imageUrl,
+                      type: 'image',
+                      durationMs: 0,
+                      overlayRole: 'default-background',
+                    }),
+                  );
+                }}
                 style={{
                   ...candidateStyle,
                   border: candidate.selected
                     ? '2px solid #6366f1'
                     : '1px solid rgba(255,255,255,0.08)',
+                  cursor: candidate.imageUrl ? 'grab' : 'pointer',
                 }}
               >
                 {candidate.imageUrl ? (
@@ -124,6 +152,18 @@ export function AICoverPanel({
               </div>
             ))}
           </div>
+          {selectedCandidate?.imageUrl ? (
+            <button
+              type="button"
+              onClick={() => onAddToTimeline(selectedCandidate.id)}
+              style={secondaryButtonStyle}
+            >
+              <span style={buttonContentStyle}>
+                <AppIcon name="send-horizontal" size={14} />
+                设为整期背景
+              </span>
+            </button>
+          ) : null}
         </>
       ) : null}
     </div>
@@ -159,6 +199,13 @@ const sectionTitleStyle = {
   fontSize: 11,
   color: '#91a2bc',
   letterSpacing: '0.1em',
+};
+
+const hintTextStyle = {
+  marginTop: -2,
+  color: '#71839a',
+  fontSize: 11,
+  lineHeight: 1.5,
 };
 
 const promptItemStyle = {
@@ -215,6 +262,18 @@ const primaryButtonStyle = {
   color: '#241200',
   fontSize: 11,
   fontWeight: 700,
+};
+
+const secondaryButtonStyle = {
+  width: '100%',
+  height: 32,
+  borderRadius: 8,
+  border: '1px solid rgba(99,102,241,0.36)',
+  background: 'rgba(99,102,241,0.12)',
+  color: '#e8edff',
+  fontSize: 11,
+  fontWeight: 700,
+  cursor: 'pointer',
 };
 
 const buttonContentStyle = {
