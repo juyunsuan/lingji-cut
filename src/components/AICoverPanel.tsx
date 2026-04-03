@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react';
 import type { CoverCandidate } from '../types/ai';
 import { toFileSrc } from '../lib/utils';
 import { AppIcon } from './AppIcon';
+import { LoadingSpinner } from './LoadingSpinner';
 
 interface AICoverPanelProps {
   coverPrompts: string[];
   candidates: CoverCandidate[];
   isGenerating: boolean;
+  isRegeneratingPrompt: boolean;
   selectedCandidateId?: string;
   onGenerateCovers: (prompts: string[]) => void;
+  onRegeneratePrompt: () => void;
   onSelectCover: (candidateId: string) => void;
   onAddToTimeline: (candidateId: string) => void;
 }
@@ -17,12 +20,14 @@ export function AICoverPanel({
   coverPrompts,
   candidates,
   isGenerating,
+  isRegeneratingPrompt,
   selectedCandidateId,
   onGenerateCovers,
+  onRegeneratePrompt,
   onSelectCover,
   onAddToTimeline,
 }: AICoverPanelProps) {
-  const [editablePrompts, setEditablePrompts] = useState<string[]>([]);
+  const [editablePrompt, setEditablePrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const selectedCandidate =
     candidates.find((candidate) => candidate.id === selectedCandidateId) ??
@@ -31,7 +36,7 @@ export function AICoverPanel({
 
   useEffect(() => {
     if (!isEditing) {
-      setEditablePrompts(coverPrompts);
+      setEditablePrompt(coverPrompts[0] ?? '');
     }
   }, [coverPrompts, isEditing]);
 
@@ -43,7 +48,8 @@ export function AICoverPanel({
     );
   }
 
-  const prompts = isEditing ? editablePrompts : coverPrompts;
+  const prompt = isEditing ? editablePrompt : (coverPrompts[0] ?? '');
+  const prompts = prompt.trim() ? [prompt.trim()] : [];
 
   return (
     <div style={containerStyle}>
@@ -63,26 +69,38 @@ export function AICoverPanel({
           ) : null}
         </div>
       </div>
-      {prompts.map((prompt, index) => (
-        <div key={`${index}-${prompt.slice(0, 12)}`} style={promptItemStyle}>
-          {isEditing ? (
-            <textarea
-              value={editablePrompts[index] ?? ''}
-              onChange={(event) =>
-                setEditablePrompts((current) =>
-                  current.map((item, itemIndex) =>
-                    itemIndex === index ? event.target.value : item,
-                  ),
-                )
-              }
-              rows={3}
-              style={textareaStyle}
-            />
-          ) : (
+      <div style={promptItemStyle}>
+        {isEditing ? (
+          <textarea
+            value={editablePrompt}
+            onChange={(event) => setEditablePrompt(event.target.value)}
+            rows={3}
+            style={textareaStyle}
+          />
+        ) : (
+          <>
             <div style={promptTextStyle}>{prompt}</div>
-          )}
-        </div>
-      ))}
+            <button
+              type="button"
+              onClick={onRegeneratePrompt}
+              disabled={isRegeneratingPrompt || isGenerating}
+              style={{
+                ...promptRegenerateButtonStyle,
+                opacity: isRegeneratingPrompt || isGenerating ? 0.6 : 1,
+                cursor: isRegeneratingPrompt || isGenerating ? 'wait' : 'pointer',
+              }}
+              title="AI 重新生成提示词"
+              aria-label="AI 重新生成提示词"
+            >
+              {isRegeneratingPrompt ? (
+                <LoadingSpinner size={12} color="#f8fafc" />
+              ) : (
+                <AppIcon name="sparkles" size={14} />
+              )}
+            </button>
+          </>
+        )}
+      </div>
 
       <div style={buttonRowStyle}>
         <button
@@ -213,7 +231,7 @@ const promptItemStyle = {
 };
 
 const promptTextStyle = {
-  padding: 8,
+  padding: '8px 40px 8px 8px',
   borderRadius: 8,
   background: 'rgba(255,255,255,0.03)',
   color: '#94a3b8',
@@ -223,7 +241,7 @@ const promptTextStyle = {
 
 const textareaStyle = {
   width: '100%',
-  padding: 8,
+  padding: '8px 40px 8px 8px',
   borderRadius: 8,
   border: '1px solid rgba(255,255,255,0.08)',
   background: 'rgba(255,255,255,0.04)',
@@ -233,6 +251,21 @@ const textareaStyle = {
   outline: 'none',
   resize: 'none' as const,
   lineHeight: 1.5,
+};
+
+const promptRegenerateButtonStyle = {
+  position: 'absolute' as const,
+  right: 8,
+  bottom: 8,
+  width: 24,
+  height: 24,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 7,
+  border: '1px solid rgba(255,255,255,0.1)',
+  background: 'rgba(99,102,241,0.16)',
+  color: '#eef2ff',
 };
 
 const buttonRowStyle = {

@@ -3,11 +3,13 @@ import {
   analyzeSrt,
   buildCardRegenerationPrompt,
   buildAnalysisPrompt,
+  buildCoverPromptRegenerationPrompt,
   buildSrtText,
   chunkSrtEntries,
   getCardContextEntries,
   mergeAnalysisResults,
   regenerateAICard,
+  regenerateCoverPrompt,
 } from '../src/lib/ai-analysis';
 import type { SrtEntry } from '../src/types';
 import type { AIAnalysisResult, AISettings } from '../src/types/ai';
@@ -75,11 +77,27 @@ describe('buildAnalysisPrompt', () => {
     expect(prompt).toContain('JSON');
     expect(prompt).toContain('cards');
     expect(prompt).toContain('coverPrompts');
+    expect(prompt).toContain('数组中只能有 1 条');
     expect(prompt).toContain('webCard');
     expect(prompt).toContain('整体偏商业分析风');
+    expect(prompt).toContain('必须使用简体中文');
     expect(prompt).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
     expect(prompt).toContain('summary: #6366f1');
     expect(prompt).toContain('禁止输出任何“数据来源”');
+  });
+});
+
+describe('buildCoverPromptRegenerationPrompt', () => {
+  it('requests a single simplified Chinese cover prompt', () => {
+    const prompt = buildCoverPromptRegenerationPrompt({
+      globalPrompt: '整体偏财经媒体封面',
+      currentPrompt: '旧提示词',
+    });
+
+    expect(prompt).toContain('只返回 1 条封面提示词');
+    expect(prompt).toContain('必须使用简体中文');
+    expect(prompt).toContain('旧提示词');
+    expect(prompt).toContain('整体偏财经媒体封面');
   });
 });
 
@@ -296,6 +314,34 @@ describe('analyzeSrt', () => {
     expect(result.cards[0]?.webCard?.srcDoc).toContain('网页卡片');
     expect(result.globalPrompt).toBe('整体偏商业分析风');
     expect(modelCaller.mock.calls[0]?.[1]).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
+  });
+});
+
+describe('regenerateCoverPrompt', () => {
+  it('regenerates exactly one cover prompt and trims extra prompts', async () => {
+    const modelCaller = vi.fn().mockResolvedValue(
+      JSON.stringify({
+        coverPrompts: ['新的封面提示词', '不应保留的第二条'],
+      }),
+    );
+
+    const result = await regenerateCoverPrompt(
+      [
+        makeSrtEntry(1, 0, 2_000, '第一句'),
+        makeSrtEntry(2, 2_000, 4_000, '第二句'),
+      ],
+      settings,
+      {
+        callModel: modelCaller,
+        globalPrompt: '整体偏商业媒体封面',
+        currentPrompt: '旧提示词',
+      },
+    );
+
+    expect(result).toEqual(['新的封面提示词']);
+    expect(modelCaller).toHaveBeenCalledTimes(1);
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('必须使用简体中文');
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('旧提示词');
   });
 });
 

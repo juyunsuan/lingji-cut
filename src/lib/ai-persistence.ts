@@ -6,6 +6,22 @@ export interface PersistedAIState {
   coverCandidates: CoverCandidate[];
 }
 
+function normalizeCoverPrompts(prompts: string[]): string[] {
+  const prompt = prompts.find((item) => item.trim().length > 0);
+  return prompt ? [prompt.trim()] : [];
+}
+
+function normalizeAnalysisResult(result: AIAnalysisResult | null): AIAnalysisResult | null {
+  if (!result) {
+    return null;
+  }
+
+  return {
+    ...result,
+    coverPrompts: normalizeCoverPrompts(result.coverPrompts),
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -98,7 +114,7 @@ export function createPersistedAIState(
 ): PersistedAIState {
   return {
     version: 1,
-    analysisResult,
+    analysisResult: normalizeAnalysisResult(analysisResult),
     coverCandidates,
   };
 }
@@ -120,7 +136,7 @@ export function parsePersistedAIState(value: unknown): PersistedAIState | null {
     return null;
   }
 
-  return createPersistedAIState(value.analysisResult, value.coverCandidates);
+  return createPersistedAIState(normalizeAnalysisResult(value.analysisResult), value.coverCandidates);
 }
 
 export function toggleCardEnabledInResult(

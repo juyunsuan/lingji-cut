@@ -65,13 +65,13 @@ describe('AI type definitions', () => {
   it('creates a valid AI analysis result', () => {
     const result: AIAnalysisResult = {
       cards: [],
-      coverPrompts: ['prompt 1', 'prompt 2'],
+      coverPrompts: ['prompt 1'],
       summary: '本期讨论了 AI 编程',
       keywords: ['AI', '编程'],
       globalPrompt: '整体偏商业分析风',
     };
 
-    expect(result.coverPrompts).toHaveLength(2);
+    expect(result.coverPrompts).toHaveLength(1);
     expect(result.keywords).toContain('AI');
     expect(result.globalPrompt).toContain('商业分析');
   });

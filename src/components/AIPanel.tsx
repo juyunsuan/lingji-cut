@@ -93,6 +93,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [isRegeneratingCard, setIsRegeneratingCard] = useState(false);
+  const [isRegeneratingCoverPrompt, setIsRegeneratingCoverPrompt] = useState(false);
   const [globalPromptDraft, setGlobalPromptDraft] = useState('');
   const editingCard = analysisResult?.cards.find((card) => card.id === editingCardId) ?? null;
   const enabledCount = analysisResult?.cards.filter((card) => card.enabled).length ?? 0;
@@ -319,6 +320,58 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
     },
     [handlePersistedCovers, setGeneratingCovers],
   );
+
+  const handleRegenerateCoverPrompt = useCallback(async () => {
+    if (!analysisResult) {
+      return;
+    }
+
+    const settings = loadAISettings();
+    const settingsIssue = getAISettingsIssue(settings);
+    if (settingsIssue) {
+      setAnalysisError(settingsIssue);
+      setIsSettingsOpen(true);
+      return;
+    }
+
+    if (srtEntries.length === 0) {
+      setAnalysisError('当前没有可用于生成封面提示词的字幕内容');
+      return;
+    }
+
+    setIsRegeneratingCoverPrompt(true);
+    setAnalysisError(null);
+
+    try {
+      const prompts = await window.electronAPI.regenerateCoverPrompt({
+        entries: srtEntries,
+        settings,
+        globalPrompt: analysisResult.globalPrompt,
+        currentPrompt: analysisResult.coverPrompts[0],
+      });
+      const nextResult = {
+        ...analysisResult,
+        coverPrompts: prompts,
+      };
+      setAnalysisResult(nextResult);
+      const persistedState = await persistAIState(nextResult, []);
+      setAnalysisResult(persistedState.analysisResult ?? nextResult);
+      setCoverCandidates([]);
+    } catch (error) {
+      console.error('封面提示词重生成失败:', error);
+      setAnalysisError(error instanceof Error ? error.message : '封面提示词重生成失败');
+    } finally {
+      setIsRegeneratingCoverPrompt(false);
+    }
+  }, [
+    analysisResult,
+    persistAIState,
+    setAnalysisError,
+    setAnalysisResult,
+    setCoverCandidates,
+    srtEntries,
+  ]);
+
   const handleRegenerateCard = useCallback(async (draftUpdates: Partial<AICard>) => {
     if (!editingCard || !analysisResult) {
       return null;
@@ -756,8 +809,10 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
             coverPrompts={analysisResult?.coverPrompts ?? []}
             candidates={coverCandidates}
             isGenerating={isGeneratingCovers}
+            isRegeneratingPrompt={isRegeneratingCoverPrompt}
             selectedCandidateId={selectedCoverCandidate?.id}
             onGenerateCovers={handleGenerateCovers}
+            onRegeneratePrompt={handleRegenerateCoverPrompt}
             onSelectCover={handleSelectCover}
             onAddToTimeline={handleAddCoverToTimeline}
           />

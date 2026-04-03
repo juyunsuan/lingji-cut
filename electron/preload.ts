@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     globalPrompt?: string;
     cardPrompt?: string;
   }) => ipcRenderer.invoke('regenerate-ai-card', args),
+  regenerateCoverPrompt: (args: {
+    entries: SrtEntry[];
+    settings: AISettings;
+    globalPrompt?: string;
+    currentPrompt?: string;
+  }) => ipcRenderer.invoke('regenerate-cover-prompt', args),
   generateCoverImages: (args: { prompts: string[]; settings: AISettings; projectDir: string }) =>
     ipcRenderer.invoke('generate-cover-images', args),
   saveTimeline: (projectDir: string, data: string) =>

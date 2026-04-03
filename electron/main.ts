@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { MenuAction } from '../src/lib/electron-api';
 import { addAppLog, getAppLogFilePath, getAppLogs } from './app-logger';
-import { analyzeSrt, regenerateAICard } from '../src/lib/ai-analysis';
+import { analyzeSrt, regenerateAICard, regenerateCoverPrompt } from '../src/lib/ai-analysis';
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/jimeng-client';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';
@@ -207,6 +207,41 @@ ipcMain.handle(
         'error',
         'ai-analysis',
         '单卡重生成失败',
+        error instanceof Error ? error.stack ?? error.message : String(error),
+      );
+      throw error;
+    }
+  },
+);
+
+ipcMain.handle(
+  'regenerate-cover-prompt',
+  async (
+    _event,
+    args: {
+      entries: SrtEntry[];
+      settings: AISettings;
+      globalPrompt?: string;
+      currentPrompt?: string;
+    },
+  ) => {
+    writeAppLog(
+      'info',
+      'ai-analysis',
+      '收到封面提示词重生成请求',
+      `entries=${args.entries.length}, hasCurrentPrompt=${Boolean(args.currentPrompt)}`,
+    );
+
+    try {
+      return await regenerateCoverPrompt(args.entries, args.settings, {
+        globalPrompt: args.globalPrompt,
+        currentPrompt: args.currentPrompt,
+      });
+    } catch (error) {
+      writeAppLog(
+        'error',
+        'ai-analysis',
+        '封面提示词重生成失败',
         error instanceof Error ? error.stack ?? error.message : String(error),
       );
       throw error;

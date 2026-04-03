@@ -26,6 +26,12 @@ interface RegenerateCardOptions {
   contextPaddingMs?: number;
 }
 
+interface RegenerateCoverPromptOptions {
+  callModel?: typeof callLLM;
+  globalPrompt?: string;
+  currentPrompt?: string;
+}
+
 function msToTimestamp(ms: number): string {
   const totalSeconds = Math.floor(ms / 1_000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -151,6 +157,30 @@ function buildUnifiedVisualPromptSection(): string {
 - quote: #ec4899`;
 }
 
+function normalizeCoverPrompts(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const prompt = value.find(
+    (item): item is string => typeof item === 'string' && item.trim().length > 0,
+  );
+  return prompt ? [prompt.trim()] : [];
+}
+
+function parseCoverPromptResult(value: unknown): string[] {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+
+  const candidate = value as Record<string, unknown>;
+  if (typeof candidate.coverPrompt === 'string' && candidate.coverPrompt.trim()) {
+    return [candidate.coverPrompt.trim()];
+  }
+
+  return normalizeCoverPrompts(candidate.coverPrompts);
+}
+
 function parsePartialResult(value: unknown): AIAnalysisResult | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -163,9 +193,7 @@ function parsePartialResult(value: unknown): AIAnalysisResult | null {
 
   return {
     cards,
-    coverPrompts: Array.isArray(candidate.coverPrompts)
-      ? candidate.coverPrompts.filter((item): item is string => typeof item === 'string')
-      : [],
+    coverPrompts: normalizeCoverPrompts(candidate.coverPrompts),
     summary: typeof candidate.summary === 'string' ? candidate.summary : '',
     keywords: Array.isArray(candidate.keywords)
       ? candidate.keywords.filter((item): item is string => typeof item === 'string')
@@ -226,7 +254,7 @@ export function buildAnalysisPrompt(globalPrompt?: string): string {
 
 输出结构必须包含：
 - cards: 3-8 张卡片，类型只能是 summary、data、insight、chapter、quote
-- coverPrompts: 2-4 组封面提示词
+- coverPrompts: 1 组封面提示词，数组中只能有 1 条
 - summary: 一句话总结
 - keywords: 关键词数组
 - globalPrompt: 沿用输入的整期创作提示词，没有则返回空字符串
@@ -263,7 +291,39 @@ srcDoc 要求：
 - 必须是完整 HTML 文档
 - 允许 HTML/CSS/JS
 - 允许外部图片、脚本、字体和样式
+- coverPrompts 必须使用简体中文撰写，适合直接用于封面图生成
+- coverPrompts 避免英文，除非品牌名、专有名词或必要缩写
 ${visualPrompt}
+
+请只返回 JSON，不要附加解释。`;
+}
+
+export function buildCoverPromptRegenerationPrompt(
+  options: {
+    globalPrompt?: string;
+    currentPrompt?: string;
+  } = {},
+): string {
+  const globalPrompt = options.globalPrompt?.trim();
+  const currentPrompt = options.currentPrompt?.trim();
+
+  return `你是一个播客封面创意助手。请结合字幕内容，为这一期播客输出严格 JSON，且只返回 1 条封面提示词。
+
+已有整期创作提示词：
+${globalPrompt || '无'}
+
+当前封面提示词（仅用于参考，可改写）：
+${currentPrompt || '无'}
+
+输出结构必须包含：
+- coverPrompts: 数组，但只能包含 1 条字符串
+
+要求：
+- 必须使用简体中文
+- 适合直接用于 AI 生成 16:9 播客封面
+- 画面感强，信息聚焦，避免空泛形容词堆砌
+- 尽量体现节目核心主题、关键人物或冲突感
+- 除品牌名、专有名词或必要缩写外，不要使用英文
 
 请只返回 JSON，不要附加解释。`;
 }
@@ -355,7 +415,7 @@ export function mergeAnalysisResults(results: AIAnalysisResult[]): AIAnalysisRes
     }
 
     if (result.coverPrompts.length > 0) {
-      coverPrompts = result.coverPrompts;
+      coverPrompts = normalizeCoverPrompts(result.coverPrompts);
     }
 
     if (result.summary) {
@@ -458,4 +518,32 @@ export async function regenerateAICard(
     enabled: card.enabled,
     cardPrompt: cardPrompt?.trim() || undefined,
   };
+}
+
+export async function regenerateCoverPrompt(
+  entries: SrtEntry[],
+  settings: AISettings,
+  options: RegenerateCoverPromptOptions = {},
+): Promise<string[]> {
+  const { callModel = callLLM, globalPrompt, currentPrompt } = options;
+
+  if (entries.length === 0) {
+    throw new Error('没有可用于生成封面提示词的字幕内容');
+  }
+
+  const rawResult = await callModel(
+    settings,
+    buildCoverPromptRegenerationPrompt({
+      globalPrompt,
+      currentPrompt,
+    }),
+    buildSrtText(entries),
+  );
+  const prompts = parseCoverPromptResult(parseLLMJsonResponse(rawResult));
+
+  if (prompts.length === 0) {
+    throw new Error('LLM 未返回有效的封面提示词');
+  }
+
+  return prompts;
 }

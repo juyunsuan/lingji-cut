@@ -49,6 +49,12 @@ export interface ElectronAPI {
     globalPrompt?: string;
     cardPrompt?: string;
   }) => Promise<AICard>;
+  regenerateCoverPrompt: (args: {
+    entries: SrtEntry[];
+    settings: AISettings;
+    globalPrompt?: string;
+    currentPrompt?: string;
+  }) => Promise<string[]>;
   generateCoverImages: (args: {
     prompts: string[];
     settings: AISettings;
