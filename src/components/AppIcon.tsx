@@ -4,6 +4,7 @@ export type AppIconName =
   | 'sparkles'
   | 'settings-2'
   | 'refresh-cw'
+  | 'alert-circle'
   | 'send-horizontal'
   | 'layout-template'
   | 'image'
@@ -68,6 +69,13 @@ function renderIconPath(name: AppIconName) {
           <path fill="currentColor" d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8" />
           <path fill="currentColor" d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16" />
           <path fill="currentColor" d="M8 16H3v5" />
+        </>
+      );
+    case 'alert-circle':
+      return (
+        <>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M12 8v4m0 4h.01" />
         </>
       );
     case 'send-horizontal':

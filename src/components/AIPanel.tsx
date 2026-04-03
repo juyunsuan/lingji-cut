@@ -24,6 +24,8 @@ import { AppIcon, type AppIconName } from './AppIcon';
 import { AICoverPanel } from './AICoverPanel';
 import { AISettingsModal } from './AISettingsModal';
 import { LoadingSpinner } from './LoadingSpinner';
+import { Badge, Button, Field, IconButton, Textarea } from '../ui/primitives';
+import { ActionBar, PanelHeader, TabBar } from '../ui/patterns';
 
 interface AIPanelProps {
   compact: boolean;
@@ -565,88 +567,72 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
         boxSizing: 'border-box',
       }}
     >
-      <div style={{ ...headerStyle, gap: compact ? 6 : 8 }}>
-        <div style={{ ...headerInfoStyle, gap: compact ? 6 : 8 }}>
-          <div style={{ ...headerTitleWrapStyle, gap: compact ? 6 : 8 }}>
-            <HoverHint label="AI 分析与生成助手">
-              <span
-                style={{
-                  ...headerIconWrapStyle,
-                  width: compact ? 20 : 22,
-                  height: compact ? 20 : 22,
-                }}
-                title="AI 分析与生成助手"
-                aria-label="AI 分析与生成助手"
-              >
-                <AppIcon name="sparkles" size={14} />
-              </span>
-            </HoverHint>
-            <div style={headerTitleStyle}>AI 助手</div>
-          </div>
-          {hasGeneratedCards && !compact ? (
-            <div style={summaryChipStyle}>
-              已选 {enabledCount}/{analysisResult.cards.length}
-            </div>
-          ) : null}
-        </div>
-        <div style={headerActionsStyle}>
-          {analysisResult ? (
-            <HoverHint label={isAnalyzing ? 'AI 正在重新分析内容卡片' : '根据当前字幕和提示词重新生成内容卡片'}>
-              <button
-                type="button"
-                onClick={handleAnalyze}
-                disabled={isAnalyzing}
-                style={{
-                  ...iconButtonStyle,
-                  width: headerButtonSize,
-                  height: headerButtonSize,
-                  opacity: isAnalyzing ? 0.7 : 1,
-                  cursor: isAnalyzing ? 'wait' : 'pointer',
-                }}
-                title={isAnalyzing ? '分析中' : '重新分析'}
-                aria-label={isAnalyzing ? '分析中' : '重新分析'}
-              >
-                {isAnalyzing ? <LoadingSpinner size={14} color="#c7d2fe" /> : <AppIcon name="refresh-cw" size={14} />}
-              </button>
-            </HoverHint>
-          ) : null}
-          <HoverHint label="打开 AI 全局设置">
-            <button
-              type="button"
-              onClick={() => setIsSettingsOpen(true)}
-              style={{ ...iconButtonStyle, width: headerButtonSize, height: headerButtonSize }}
-              title="打开 AI 全局设置"
-              aria-label="打开 AI 全局设置"
+      <PanelHeader
+        title="AI 助手"
+        leading={
+          <HoverHint label="AI 分析与生成助手">
+            <span
+              style={{
+                ...headerIconWrapStyle,
+                width: compact ? 20 : 22,
+                height: compact ? 20 : 22,
+              }}
+              title="AI 分析与生成助手"
+              aria-label="AI 分析与生成助手"
             >
-              <AppIcon name="settings-2" size={14} />
-            </button>
+              <AppIcon name="sparkles" size={14} />
+            </span>
           </HoverHint>
-        </div>
-      </div>
+        }
+        meta={
+          hasGeneratedCards && !compact ? (
+            <Badge variant="brand">已选 {enabledCount}/{analysisResult.cards.length}</Badge>
+          ) : null
+        }
+        actions={
+          <>
+            {analysisResult ? (
+              <HoverHint label={isAnalyzing ? 'AI 正在重新分析内容卡片' : '根据当前字幕和提示词重新生成内容卡片'}>
+                <IconButton
+                  onClick={() => void handleAnalyze()}
+                  disabled={isAnalyzing}
+                  variant="subtle"
+                  size={compact ? 'sm' : 'md'}
+                  title={isAnalyzing ? '分析中' : '重新分析'}
+                  aria-label={isAnalyzing ? '分析中' : '重新分析'}
+                >
+                  {isAnalyzing ? <LoadingSpinner size={14} color="#c7d2fe" /> : <AppIcon name="refresh-cw" size={14} />}
+                </IconButton>
+              </HoverHint>
+            ) : null}
+            <HoverHint label="打开 AI 全局设置">
+              <IconButton
+                onClick={() => setIsSettingsOpen(true)}
+                variant="subtle"
+                size={compact ? 'sm' : 'md'}
+                title="打开 AI 全局设置"
+                aria-label="打开 AI 全局设置"
+              >
+                <AppIcon name="settings-2" size={14} />
+              </IconButton>
+            </HoverHint>
+          </>
+        }
+      />
 
-      <div style={tabBarStyle}>
-        {(['cards', 'cover'] as const).map((tab) => (
-          <button
-            key={tab}
-            type="button"
-            onClick={() => setActiveTab(tab)}
-            style={{
-              ...tabButtonStyle,
-              padding: compact ? '6px 0' : '8px 0',
-              borderBottom:
-                activeTab === tab ? '2px solid #6366f1' : '2px solid transparent',
-              color: activeTab === tab ? '#6366f1' : '#64748b',
-              fontWeight: activeTab === tab ? 700 : 500,
-            }}
-            title={TAB_META[tab].label}
-          >
+      <TabBar
+        items={(['cards', 'cover'] as const).map((tab) => ({
+          value: tab,
+          label: (
             <span style={tabContentStyle}>
               <AppIcon name={TAB_META[tab].icon} size={14} />
               {compact ? TAB_META[tab].shortLabel : TAB_META[tab].label}
             </span>
-          </button>
-        ))}
-      </div>
+          ),
+        }))}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
 
       <div style={bodyStyle}>
         {activeTab === 'cards' ? (
@@ -658,15 +644,16 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
                 transition: 'opacity 180ms ease',
               }}
             >
-              <div style={fieldLabelStyle}>整体创作提示词</div>
-              <textarea
-                value={globalPromptDraft}
-                onChange={(event) => setGlobalPromptDraft(event.target.value)}
-                onBlur={handleGlobalPromptBlur}
-                placeholder="例如：整体做成财经研报感，少字强结论，版式更像商业媒体封面"
-                rows={3}
-                style={promptTextareaStyle}
-              />
+              <Field label="整体创作提示词">
+                <Textarea
+                  value={globalPromptDraft}
+                  onChange={(event) => setGlobalPromptDraft(event.target.value)}
+                  onBlur={handleGlobalPromptBlur}
+                  placeholder="例如：整体做成财经研报感，少字强结论，版式更像商业媒体封面"
+                  rows={3}
+                  style={promptTextareaStyle}
+                />
+              </Field>
             </div>
 
             {showCardGenerationState ? (
@@ -677,25 +664,18 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
                 }}
                 aria-busy={isAnalyzing}
               >
-                <div style={emptyStateBadgeStyle}>
+                <Badge variant="brand">
                   {isAnalyzing ? <LoadingSpinner size={14} color="#c7d2fe" /> : <AppIcon name="sparkles" size={14} />}
                   {generationStateBadgeLabel}
-                </div>
+                </Badge>
                 <div style={emptyStateTextStyle}>{generationStateText}</div>
                 {aiSettingsIssue ? <div style={hintTextStyle}>{aiSettingsIssue}</div> : null}
-                <button
-                  type="button"
+                <Button
                   onClick={handleAnalyze}
                   disabled={analyzeButtonDisabled}
-                  style={{
-                    ...analyzeButtonStyle,
-                    height: compact ? 34 : 36,
-                    opacity: analyzeButtonOpacity,
-                    cursor: analyzeButtonCursor,
-                    boxShadow: isAnalyzing
-                      ? '0 16px 36px rgba(99,102,241,0.28)'
-                      : '0 12px 30px rgba(99,102,241,0.2)',
-                  }}
+                  variant="primary"
+                  size="md"
+                  style={{ opacity: analyzeButtonOpacity, cursor: analyzeButtonCursor }}
                 >
                   <span style={primaryActionContentStyle}>
                     {isAnalyzing ? (
@@ -705,7 +685,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
                     )}
                     {analyzeButtonLabel}
                   </span>
-                </button>
+                </Button>
 
                 {isAnalyzing ? (
                   <div style={analysisNoticeStyle} role="status" aria-live="polite">
@@ -748,31 +728,28 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
                     transition: 'opacity 180ms ease',
                   }}
                 >
-                  <div style={bulkActionBarStyle}>
-                    <button
-                      type="button"
-                      onClick={handleSelectAllCards}
-                      style={selectionActionButtonStyle}
-                    >
-                      {allCardsSelected ? '取消全选' : '全选'}
-                    </button>
-                    <div style={selectionSummaryStyle}>
-                      已选 {selectedCount}/{analysisResult?.cards.length ?? 0}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteCards(enabledCardIds)}
-                      disabled={selectedCount === 0 || isAnalyzing}
-                      style={{
-                        ...deleteSelectionButtonStyle,
-                        opacity: selectedCount === 0 || isAnalyzing ? 0.5 : 1,
-                        cursor:
-                          selectedCount === 0 || isAnalyzing ? 'not-allowed' : 'pointer',
-                      }}
-                    >
-                      删除已选
-                    </button>
-                  </div>
+                  <ActionBar
+                    start={
+                      <Button onClick={handleSelectAllCards} variant="secondary" size="sm">
+                        {allCardsSelected ? '取消全选' : '全选'}
+                      </Button>
+                    }
+                    center={
+                      <div style={selectionSummaryStyle}>
+                        已选 {selectedCount}/{analysisResult?.cards.length ?? 0}
+                      </div>
+                    }
+                    end={
+                      <Button
+                        onClick={() => handleDeleteCards(enabledCardIds)}
+                        disabled={selectedCount === 0 || isAnalyzing}
+                        variant="danger"
+                        size="sm"
+                      >
+                        删除已选
+                      </Button>
+                    }
+                  />
                   <AICardList
                     cards={analysisResult?.cards ?? []}
                     placements={cardPlacements}
@@ -821,24 +798,20 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
 
       {activeTab === 'cards' && hasGeneratedCards ? (
         <div style={footerStyle}>
-          <button
-            type="button"
+          <Button
             onClick={handleApplyToTimeline}
             disabled={enabledCount === 0 || isAnalyzing}
-            style={{
-              ...applyButtonStyle,
-              minHeight: primaryButtonHeight,
-              height: primaryButtonHeight,
-              opacity: enabledCount === 0 || isAnalyzing ? 0.55 : 1,
-              cursor: enabledCount === 0 || isAnalyzing ? 'not-allowed' : 'pointer',
-            }}
+            variant="primary"
+            size={compact ? 'sm' : 'md'}
+            fullWidth
+            style={{ minHeight: primaryButtonHeight, height: primaryButtonHeight }}
           >
             <span style={primaryActionContentStyle}>
               {isAnalyzing ? <LoadingSpinner size={14} color="#ffffff" /> : <AppIcon name="send-horizontal" size={14} />}
               {isAnalyzing ? '分析中...' : '应用到时间线'}
               <span style={countBadgeStyle}>{enabledCount}</span>
             </span>
-          </button>
+          </Button>
         </div>
       ) : null}
 

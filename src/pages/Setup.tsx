@@ -4,6 +4,7 @@ import { useViewportSize } from '../hooks/useViewportSize';
 import { getDroppedFilePath, getImportFileError, type ImportKind } from '../lib/import-files';
 import { getSetupLayoutMode } from '../lib/layout';
 import { getFileNameFromPath } from '../lib/utils';
+import { Badge, Button } from '../ui/primitives';
 
 interface SetupProps {
   busy: boolean;
@@ -88,22 +89,18 @@ function DropCard({
         {value ? getFileNameFromPath(value) : '把文件从 Finder 直接拖到这里'}
       </div>
 
-      <button
+      <Button
         type="button"
         onClick={onPickFile}
+        variant="secondary"
         style={{
           height: 42,
-          borderRadius: 14,
-          border: `1px solid ${accentColor}55`,
+          borderColor: `${accentColor}55`,
           background: `${accentColor}18`,
-          color: '#f5f7fb',
-          cursor: 'pointer',
-          fontSize: 14,
-          fontWeight: 700,
         }}
       >
         {selectLabel}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -272,7 +269,7 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
           }}
         >
           <div>
-            <div style={{ fontSize: 12, letterSpacing: '0.18em', color: '#91a2bc' }}>STEP 1</div>
+            <Badge variant="neutral">STEP 1</Badge>
             <h2 style={{ margin: '10px 0 8px', fontSize: layout.compactHero ? 24 : 28 }}>
               把素材丢进来
             </h2>
@@ -332,29 +329,19 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
             </div>
           ) : null}
 
-          <button
+          <Button
             disabled={!canStart}
             onClick={() => {
               if (audioPath && srtPath) {
                 void onComplete(audioPath, srtPath);
               }
             }}
-            style={{
-              marginTop: 'auto',
-              minHeight: 50,
-              borderRadius: 16,
-              border: 'none',
-              background: canStart
-                ? 'linear-gradient(90deg, #7bd5ff 0%, #5fa4ff 100%)'
-                : 'rgba(255,255,255,0.08)',
-              color: canStart ? '#07111f' : '#7b8ca6',
-              fontSize: 16,
-              fontWeight: 700,
-              cursor: canStart ? 'pointer' : 'not-allowed',
-            }}
+            variant={canStart ? 'tint' : 'secondary'}
+            size="lg"
+            style={{ marginTop: 'auto', minHeight: 50, borderRadius: 16, fontSize: 16 }}
           >
             {busy ? '正在初始化工程...' : '开始编辑'}
-          </button>
+          </Button>
         </div>
       </div>
 

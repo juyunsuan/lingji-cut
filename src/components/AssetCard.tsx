@@ -1,6 +1,7 @@
 import type { DragEventHandler } from 'react';
 import { formatTime } from '../lib/utils';
 import type { AssetItem, AssetType } from '../types';
+import { Badge, IconButton } from '../ui/primitives';
 import { AssetThumbnail } from './AssetThumbnail';
 
 interface AssetCardProps {
@@ -149,22 +150,15 @@ export function AssetCard({ asset, compact, usageCount, onDragStart, onRemove }:
             gap: 8,
           }}
         >
-          <span
+          <Badge
+            variant="neutral"
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              padding: '2px 8px',
-              borderRadius: 999,
               background: theme.background,
               color: theme.accent,
-              fontSize: 10,
-              fontWeight: 700,
-              whiteSpace: 'nowrap',
             }}
           >
             {theme.label}
-          </span>
+          </Badge>
           {asset.locked ? (
             <span
               style={{
@@ -176,24 +170,15 @@ export function AssetCard({ asset, compact, usageCount, onDragStart, onRemove }:
               锁定
             </span>
           ) : (
-            <button
-              type="button"
+            <IconButton
               aria-label={`删除 ${asset.name}`}
               onClick={() => onRemove(asset.path)}
-              style={{
-                width: 22,
-                height: 22,
-                border: 'none',
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.08)',
-                color: '#9fb0c7',
-                cursor: 'pointer',
-                lineHeight: 1,
-                flex: '0 0 auto',
-              }}
+              variant="subtle"
+              size="sm"
+              style={{ lineHeight: 1, flex: '0 0 auto' }}
             >
               ×
-            </button>
+            </IconButton>
           )}
         </div>
         <div

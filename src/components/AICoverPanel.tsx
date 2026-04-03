@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CoverCandidate } from '../types/ai';
 import { toFileSrc } from '../lib/utils';
 import { AppIcon } from './AppIcon';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Button, EmptyState, Field, IconButton, Textarea } from '../ui/primitives';
 
 interface AICoverPanelProps {
   coverPrompts: string[];
@@ -42,9 +42,10 @@ export function AICoverPanel({
 
   if (coverPrompts.length === 0 && candidates.length === 0) {
     return (
-      <div style={emptyStateStyle}>
-        先在「内容卡片」tab 中分析 SRT，AI 会自动生成封面提示词。
-      </div>
+      <EmptyState
+        title="还没有封面提示词"
+        description="先在「内容卡片」tab 中分析 SRT，AI 会自动生成封面提示词。"
+      />
     );
   }
 
@@ -57,70 +58,63 @@ export function AICoverPanel({
         <div style={sectionTitleRowStyle}>
           <div style={sectionTitleStyle}>提示词</div>
           {!isEditing ? (
-            <button
-              type="button"
+            <IconButton
               onClick={() => setIsEditing(true)}
-              style={iconButtonStyle}
+              variant="ghost"
+              size="sm"
               title="编辑提示词"
               aria-label="编辑提示词"
             >
               <AppIcon name="pencil-line" size={14} />
-            </button>
+            </IconButton>
           ) : null}
         </div>
       </div>
       <div style={promptItemStyle}>
         {isEditing ? (
-          <textarea
-            value={editablePrompt}
-            onChange={(event) => setEditablePrompt(event.target.value)}
-            rows={3}
-            style={textareaStyle}
-          />
+          <Field label="封面提示词">
+            <Textarea
+              value={editablePrompt}
+              onChange={(event) => setEditablePrompt(event.target.value)}
+              rows={3}
+            />
+          </Field>
         ) : (
           <>
             <div style={promptTextStyle}>{prompt}</div>
-            <button
-              type="button"
+            <IconButton
               onClick={onRegeneratePrompt}
               disabled={isRegeneratingPrompt || isGenerating}
-              style={{
-                ...promptRegenerateButtonStyle,
-                opacity: isRegeneratingPrompt || isGenerating ? 0.6 : 1,
-                cursor: isRegeneratingPrompt || isGenerating ? 'wait' : 'pointer',
-              }}
+              loading={isRegeneratingPrompt}
+              variant="brand"
+              size="sm"
+              style={promptRegenerateButtonStyle}
               title="AI 重新生成提示词"
               aria-label="AI 重新生成提示词"
             >
-              {isRegeneratingPrompt ? (
-                <LoadingSpinner size={12} color="#f8fafc" />
-              ) : (
-                <AppIcon name="sparkles" size={14} />
-              )}
-            </button>
+              <AppIcon name="sparkles" size={14} />
+            </IconButton>
           </>
         )}
       </div>
 
       <div style={buttonRowStyle}>
-        <button
-          type="button"
+        <Button
           onClick={() => {
             onGenerateCovers(prompts);
             setIsEditing(false);
           }}
           disabled={isGenerating}
-          style={{
-            ...primaryButtonStyle,
-            opacity: isGenerating ? 0.6 : 1,
-            cursor: isGenerating ? 'wait' : 'pointer',
-          }}
+          loading={isGenerating}
+          variant="primary"
+          size="sm"
+          fullWidth
         >
           <span style={buttonContentStyle}>
             <AppIcon name="image" size={14} />
             {isGenerating ? '生成中...' : candidates.length > 0 ? '重新生成' : '生成封面'}
           </span>
-        </button>
+        </Button>
       </div>
 
       {candidates.length > 0 ? (
@@ -171,16 +165,17 @@ export function AICoverPanel({
             ))}
           </div>
           {selectedCandidate?.imageUrl ? (
-            <button
-              type="button"
+            <Button
               onClick={() => onAddToTimeline(selectedCandidate.id)}
-              style={secondaryButtonStyle}
+              variant="tint"
+              size="sm"
+              fullWidth
             >
               <span style={buttonContentStyle}>
                 <AppIcon name="send-horizontal" size={14} />
                 设为整期背景
               </span>
-            </button>
+            </Button>
           ) : null}
         </>
       ) : null}
@@ -192,13 +187,6 @@ const containerStyle = {
   display: 'flex',
   flexDirection: 'column' as const,
   gap: 10,
-};
-
-const emptyStateStyle = {
-  padding: 16,
-  color: '#64748b',
-  fontSize: 12,
-  textAlign: 'center' as const,
 };
 
 const sectionHeaderStyle = {
@@ -239,20 +227,6 @@ const promptTextStyle = {
   lineHeight: 1.5,
 };
 
-const textareaStyle = {
-  width: '100%',
-  padding: '8px 40px 8px 8px',
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background: 'rgba(255,255,255,0.04)',
-  color: '#e2e8f0',
-  fontSize: 11,
-  boxSizing: 'border-box' as const,
-  outline: 'none',
-  resize: 'none' as const,
-  lineHeight: 1.5,
-};
-
 const promptRegenerateButtonStyle = {
   position: 'absolute' as const,
   right: 8,
@@ -271,42 +245,6 @@ const promptRegenerateButtonStyle = {
 const buttonRowStyle = {
   display: 'flex',
   gap: 8,
-};
-
-const iconButtonStyle = {
-  width: 28,
-  height: 28,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background: 'transparent',
-  color: '#94a3b8',
-  cursor: 'pointer',
-};
-
-const primaryButtonStyle = {
-  width: '100%',
-  height: 32,
-  borderRadius: 8,
-  border: 'none',
-  background: 'linear-gradient(90deg, #f59e0b, #f97316)',
-  color: '#241200',
-  fontSize: 11,
-  fontWeight: 700,
-};
-
-const secondaryButtonStyle = {
-  width: '100%',
-  height: 32,
-  borderRadius: 8,
-  border: '1px solid rgba(99,102,241,0.36)',
-  background: 'rgba(99,102,241,0.12)',
-  color: '#e8edff',
-  fontSize: 11,
-  fontWeight: 700,
-  cursor: 'pointer',
 };
 
 const buttonContentStyle = {

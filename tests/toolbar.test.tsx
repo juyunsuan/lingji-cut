@@ -14,12 +14,13 @@ describe('Toolbar', () => {
       />,
     );
 
-    expect(html).toContain('VIDEO WEB MASTER');
-    expect(html).toContain('播客视频编辑器');
-    expect(html).toContain('导入 MP3 与 SRT');
+    expect(html).toContain('欢迎页');
+    expect(html).toContain('未打开工程');
+    expect(html).toContain('导出 MP4');
+    expect(html).not.toContain('播客视频编辑器');
   });
 
-  it('renders editor guidance inside the custom titlebar', () => {
+  it('renders a centered project chip without helper copy in editor mode', () => {
     const html = renderToStaticMarkup(
       <Toolbar
         compact
@@ -30,11 +31,13 @@ describe('Toolbar', () => {
       />,
     );
 
-    expect(html).toContain('拖入素材');
-    expect(html).toContain('Remotion');
+    expect(html).toContain('未命名工程');
+    expect(html).toContain('未打开工程');
+    expect(html).not.toContain('拖入素材');
+    expect(html).not.toContain('编辑中');
   });
 
-  it('renders editor status and export action without custom menus', () => {
+  it('renders save state as icon metadata and keeps export action compact', () => {
     const html = renderToStaticMarkup(
       <Toolbar
         compact={false}
@@ -47,8 +50,10 @@ describe('Toolbar', () => {
 
     expect(html).toContain('demo-project');
     expect(html).toContain('已保存');
-    expect(html).toContain('编辑中');
     expect(html).toContain('导出 MP4');
+    expect(html).not.toContain('播客视频编辑器');
+    expect(html).not.toContain('编辑中');
+    expect(html).not.toContain('拖入素材');
     expect(html).not.toContain('>项目<');
     expect(html).not.toContain('>编辑<');
     expect(html).not.toContain('>媒体<');

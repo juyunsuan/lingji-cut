@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import type { AssetItem, AssetType } from '../types';
 import { useTimelineStore } from '../store/timeline';
+import { Button, EmptyState } from '../ui/primitives';
+import { SearchField } from '../ui/patterns';
 import { AssetCard } from './AssetCard';
 
 type AssetFilterKey = 'all' | AssetType;
@@ -102,24 +104,9 @@ export function AssetPanel({
           minWidth: 0,
         }}
       >
-        <button
-          type="button"
-          onClick={handleAddAsset}
-          style={{
-            height: 38,
-            borderRadius: 12,
-            border: '1px solid rgba(255,255,255,0.08)',
-            background: 'rgba(255,255,255,0.08)',
-            color: '#f4f7fb',
-            cursor: 'pointer',
-            fontSize: 14,
-            fontWeight: 700,
-            padding: compact ? '0 12px' : '0 14px',
-            whiteSpace: 'nowrap',
-          }}
-        >
+        <Button onClick={() => void handleAddAsset()} variant="secondary">
           + 导入
-        </button>
+        </Button>
         {compact ? (
           <div
             style={{
@@ -135,39 +122,12 @@ export function AssetPanel({
             素材库 · {visibleAssets.length} 项
           </div>
         ) : (
-          <label
-            style={{
-              flex: 1,
-              minWidth: 0,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              height: 38,
-              padding: '0 12px',
-              borderRadius: 12,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'rgba(0,0,0,0.18)',
-              color: '#8593a7',
-            }}
-          >
-            <span style={{ fontSize: 15, lineHeight: 1 }}>⌕</span>
-            <input
-              type="search"
-              value={keyword}
-              aria-label="搜索素材"
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="搜索文件名"
-              style={{
-                flex: 1,
-                minWidth: 0,
-                background: 'transparent',
-                border: 'none',
-                outline: 'none',
-                color: '#eef4ff',
-                fontSize: 13,
-              }}
-            />
-          </label>
+          <SearchField
+            value={keyword}
+            aria-label="搜索素材"
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder="搜索文件名"
+          />
         )}
       </div>
 
@@ -194,25 +154,14 @@ export function AssetPanel({
               const isActive = option.key === activeFilter;
 
               return (
-                <button
+                <Button
                   key={option.key}
-                  type="button"
                   onClick={() => setActiveFilter(option.key)}
-                  style={{
-                    height: 28,
-                    padding: '0 10px',
-                    borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    background: isActive ? 'rgba(255,255,255,0.12)' : 'transparent',
-                    color: isActive ? '#f4f7fb' : '#9aa7b8',
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    fontWeight: isActive ? 700 : 500,
-                    whiteSpace: 'nowrap',
-                  }}
+                  variant={isActive ? 'secondary' : 'ghost'}
+                  size="sm"
                 >
                   {option.label}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -243,20 +192,8 @@ export function AssetPanel({
         }}
       >
         {visibleAssets.length === 0 ? (
-          <div
-            style={{
-              borderRadius: 16,
-              border: '1px solid rgba(255,255,255,0.06)',
-              background: 'rgba(255,255,255,0.03)',
-              padding: compact ? 12 : 14,
-              color: '#8a97aa',
-              fontSize: 12,
-              lineHeight: 1.6,
-              minWidth: compact ? 220 : 'auto',
-              gridColumn: compact ? undefined : '1 / -1',
-            }}
-          >
-            {emptyMessage}
+          <div style={{ minWidth: compact ? 220 : 'auto', gridColumn: compact ? undefined : '1 / -1' }}>
+            <EmptyState title="暂无素材" description={emptyMessage} />
           </div>
         ) : null}
 

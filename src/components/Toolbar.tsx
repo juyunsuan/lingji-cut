@@ -1,5 +1,7 @@
+import { AppIcon, type AppIconName } from './AppIcon';
 import type { MenuAction } from '../lib/electron-api';
 import type { SaveStatus } from '../store/timeline';
+import { Badge, Button } from '../ui/primitives';
 
 interface ToolbarProps {
   compact: boolean;
@@ -16,17 +18,11 @@ const saveStatusLabelMap: Record<SaveStatus, string> = {
   error: '保存失败',
 };
 
-const baseMenuButtonStyle = {
-  height: 36,
-  padding: '0 14px',
-  borderRadius: 12,
-  border: '1px solid rgba(148, 163, 184, 0.16)',
-  background: 'rgba(15, 23, 42, 0.6)',
-  color: '#f8fafc',
-  cursor: 'pointer',
-  fontSize: 13,
-  fontWeight: 600,
-  transition: 'all 150ms ease-out',
+const saveStatusMetaMap: Record<SaveStatus, { icon: AppIconName; color: string }> = {
+  idle: { icon: 'circle', color: '#64748b' },
+  saving: { icon: 'refresh-cw', color: '#38bdf8' },
+  saved: { icon: 'circle-check-big', color: '#22c55e' },
+  error: { icon: 'alert-circle', color: '#f87171' },
 };
 
 export function Toolbar({
@@ -36,22 +32,23 @@ export function Toolbar({
   saveStatus,
   onCommand,
 }: ToolbarProps) {
-  const helperText =
-    page === 'setup'
-      ? '导入 MP3 与 SRT 后，即可进入时间轴编辑。'
-      : '拖入素材、调整时间轴，并直接导出 Remotion 视频。';
   const saveStatusLabel = saveStatusLabelMap[saveStatus];
+  const saveStatusMeta = saveStatusMetaMap[saveStatus];
   const visibleProjectName = projectName || (page === 'editor' ? '未命名工程' : '欢迎页');
+  const controlHeight = compact ? 34 : 36;
+  const controlRadius = compact ? 11 : 12;
+  const controlFontSize = 13;
+  const chromeSpacerWidth = compact ? 76 : 94;
 
   return (
     <div
       style={{
-        minHeight: compact ? 66 : 62,
+        minHeight: compact ? 50 : 54,
         display: 'grid',
-        gridTemplateColumns: 'minmax(0, 1fr) auto',
+        gridTemplateColumns: 'minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr)',
         alignItems: 'center',
-        gap: 14,
-        padding: compact ? '10px 16px' : '10px 20px',
+        gap: 12,
+        padding: compact ? '8px 16px' : '9px 18px',
         borderBottom: '1px solid rgba(148, 163, 184, 0.12)',
         background: 'linear-gradient(180deg, rgba(2, 6, 23, 0.98) 0%, rgba(15, 23, 42, 0.92) 100%)',
         backdropFilter: 'blur(20px)',
@@ -59,104 +56,80 @@ export function Toolbar({
         WebkitAppRegion: 'drag',
         userSelect: 'none',
       }}
-    >
+      >
+      <div
+        style={{
+          minWidth: chromeSpacerWidth,
+          height: controlHeight,
+          display: 'flex',
+          alignItems: 'center',
+          justifySelf: 'start',
+        }}
+      />
       <div
         style={{
           minWidth: 0,
-          display: 'flex',
+          maxWidth: compact ? 'min(58vw, 480px)' : 'min(54vw, 560px)',
+          height: controlHeight,
+          display: 'inline-flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 20,
+          justifySelf: 'center',
+          gap: 10,
+          padding: compact ? '0 12px' : '0 14px',
+          borderRadius: controlRadius,
+          border: '1px solid rgba(148, 163, 184, 0.16)',
+          background: 'rgba(15, 23, 42, 0.48)',
+          boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.04)',
         }}
+        title={saveStatusLabel}
       >
-        <div style={{ minWidth: 0 }}>
-          <div style={{
-            fontSize: 11,
-            letterSpacing: '0.20em',
-            color: '#38bdf8',
-            fontWeight: 800,
-            textTransform: 'uppercase',
-          }}>
-            VIDEO WEB MASTER
-          </div>
-          <div style={{ marginTop: 3, fontSize: compact ? 17 : 18, fontWeight: 800, color: '#f8fafc' }}>
-            播客视频编辑器
-          </div>
-          <div
-            style={{
-              marginTop: 5,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              color: '#94a3b8',
-              fontSize: 12,
-            }}
-          >
-            <span style={{ fontWeight: 500 }}>{visibleProjectName}</span>
-            <span
-              style={{
-                padding: '4px 10px',
-                borderRadius: 999,
-                background:
-                  saveStatus === 'error'
-                    ? 'rgba(239, 68, 68, 0.18)'
-                    : 'rgba(148, 163, 184, 0.10)',
-                color: saveStatus === 'error' ? '#fca5a5' : '#cbd5e1',
-                fontWeight: 600,
-                border: saveStatus === 'error'
-                  ? '1px solid rgba(239, 68, 68, 0.35)'
-                  : '1px solid rgba(148, 163, 184, 0.15)',
-              }}
-            >
-              {saveStatusLabel}
-            </span>
-          </div>
-        </div>
-        <div
+        <span
+          aria-label={saveStatusLabel}
           style={{
-            color: '#64748b',
-            fontSize: 12,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            textAlign: 'right',
-            fontWeight: 500,
+            width: 16,
+            height: 16,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: saveStatusMeta.color,
+            flexShrink: 0,
           }}
         >
-          {helperText}
-        </div>
+          <AppIcon name={saveStatusMeta.icon} size={14} />
+        </span>
+        <span
+          style={{
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontSize: controlFontSize,
+            fontWeight: 700,
+            color: '#f8fafc',
+            letterSpacing: '0.01em',
+          }}
+        >
+          {visibleProjectName}
+        </span>
       </div>
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          color: '#94a3b8',
-          fontSize: 12,
+          justifySelf: 'end',
           WebkitAppRegion: 'no-drag',
         }}
       >
-        <div style={{ whiteSpace: 'nowrap', fontWeight: 500 }}>
-          {page === 'editor' ? '编辑中' : '准备导入'}
-        </div>
-        <button
-          type="button"
+        {!compact ? <Badge variant={saveStatus === 'error' ? 'danger' : saveStatus === 'saved' ? 'success' : 'neutral'}>{saveStatusLabel}</Badge> : null}
+        <Button
           disabled={page !== 'editor'}
           onClick={() => onCommand('export')}
-          style={{
-            ...baseMenuButtonStyle,
-            color: page === 'editor' ? '#f8fafc' : '#475569',
-            cursor: page === 'editor' ? 'pointer' : 'not-allowed',
-            background: page === 'editor'
-              ? 'linear-gradient(135deg, rgba(249, 115, 22, 0.22) 0%, rgba(234, 88, 12, 0.14) 100%)'
-              : 'rgba(15, 23, 42, 0.6)',
-            borderColor: page === 'editor'
-              ? 'rgba(249, 115, 22, 0.35)'
-              : 'rgba(148, 163, 184, 0.16)',
-          }}
+          variant={page === 'editor' ? 'tint' : 'secondary'}
+          size={compact ? 'sm' : 'md'}
+          style={{ height: controlHeight, borderRadius: controlRadius, fontSize: controlFontSize }}
         >
           导出 MP4
-        </button>
+        </Button>
       </div>
     </div>
   );

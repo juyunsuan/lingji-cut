@@ -4,6 +4,8 @@ import { fitPreviewStage } from '../lib/preview';
 import { formatTime, msToFrame } from '../lib/utils';
 import { PodcastComposition } from '../remotion/PodcastComposition';
 import { useTimelineStore } from '../store/timeline';
+import { Badge, Button } from '../ui/primitives';
+import { PanelHeader } from '../ui/patterns';
 
 interface PreviewPanelProps {
   playerRef: RefObject<PlayerRef | null>;
@@ -84,43 +86,16 @@ function PreviewPanelComponent({
     >
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
           padding: '16px 20px',
           borderBottom: '1px solid rgba(148, 163, 184, 0.10)',
           background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(15, 23, 42, 0.7) 100%)',
         }}
       >
-        <div>
-          <div style={{
-            fontSize: 11,
-            letterSpacing: '0.16em',
-            color: '#38bdf8',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-          }}>
-            PREVIEW
-          </div>
-          <div style={{
-            marginTop: 4,
-            fontSize: 16,
-            fontWeight: 700,
-            color: '#f8fafc',
-          }}>
-            播客预览
-          </div>
-        </div>
-        <div style={{
-          fontSize: 12,
-          color: '#94a3b8',
-          background: 'rgba(15, 23, 42, 0.5)',
-          padding: '6px 12px',
-          borderRadius: 999,
-          border: '1px solid rgba(148, 163, 184, 0.15)',
-        }}>
-          {timeline.width} × {timeline.height} · {fps}fps
-        </div>
+        <PanelHeader
+          eyebrow="PREVIEW"
+          title="播客预览"
+          meta={<Badge variant="neutral">{timeline.width} × {timeline.height} · {fps}fps</Badge>}
+        />
       </div>
 
       <div
@@ -188,30 +163,14 @@ function PreviewPanelComponent({
             minWidth: 0,
           }}
         >
-          <button
+          <Button
             onClick={onTogglePlay}
-            style={{
-              height: 48,
-              padding: '0 24px',
-              borderRadius: 16,
-              border: isPlaying
-                ? '1px solid rgba(56, 189, 248, 0.4)'
-                : '1px solid rgba(148, 163, 184, 0.18)',
-              background: isPlaying
-                ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.25) 0%, rgba(56, 189, 248, 0.15) 100%)'
-                : 'linear-gradient(135deg, rgba(148, 163, 184, 0.15) 0%, rgba(148, 163, 184, 0.08) 100%)',
-              color: '#f8fafc',
-              cursor: 'pointer',
-              fontSize: 15,
-              fontWeight: 700,
-              transition: 'all 200ms ease-out',
-              boxShadow: isPlaying
-                ? '0 0 20px rgba(56, 189, 248, 0.25)'
-                : 'none',
-            }}
+            variant={isPlaying ? 'tint' : 'secondary'}
+            size="lg"
+            style={{ height: 48, padding: '0 24px', borderRadius: 16, fontSize: 15 }}
           >
             {isPlaying ? '⏸ 暂停' : '▶ 播放'}
-          </button>
+          </Button>
 
           <div
             style={{
@@ -236,46 +195,22 @@ function PreviewPanelComponent({
             >
               {formatTime(currentTimeMs)} / {formatTime(durationMs)}
             </div>
-            <div
-              style={{
-                padding: '8px 14px',
-                borderRadius: 999,
-                background: isPlaying
-                  ? 'linear-gradient(135deg, rgba(56, 189, 248, 0.2) 0%, rgba(56, 189, 248, 0.1) 100%)'
-                  : 'rgba(15, 23, 42, 0.4)',
-                color: isPlaying ? '#38bdf8' : '#94a3b8',
-                fontSize: 12,
-                fontWeight: 700,
-                border: isPlaying
-                  ? '1px solid rgba(56, 189, 248, 0.35)'
-                  : '1px solid rgba(148, 163, 184, 0.12)',
-                transition: 'all 200ms ease-out',
-              }}
-            >
+            <div>
+              <Badge variant={isPlaying ? 'info' : 'neutral'}>
               {isPlaying ? '● 播放中' : '⏸ 已暂停'}
+              </Badge>
             </div>
           </div>
         </div>
 
-        <button
+        <Button
           onClick={onExport}
-          style={{
-            height: 48,
-            padding: '0 28px',
-            borderRadius: 16,
-            border: 'none',
-            background: 'linear-gradient(135deg, #f97316 0%, #ea580c 50%, #dc2626 100%)',
-            color: '#0f172a',
-            cursor: 'pointer',
-            fontSize: 15,
-            fontWeight: 800,
-            alignSelf: compact ? 'stretch' : 'auto',
-            boxShadow: '0 12px 32px rgba(249, 115, 22, 0.45)',
-            transition: 'all 200ms ease-out',
-          }}
+          variant="danger"
+          size="lg"
+          style={{ height: 48, padding: '0 28px', borderRadius: 16, fontSize: 15, alignSelf: compact ? 'stretch' : 'auto' }}
         >
           导出 MP4
-        </button>
+        </Button>
       </div>
     </div>
   );

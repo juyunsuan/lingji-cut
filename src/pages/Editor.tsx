@@ -13,6 +13,7 @@ import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
 import { shouldUpdatePlaybackTime } from '../lib/playback';
 import { frameToMs, msToFrame } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
+import { TabBar } from '../ui/patterns';
 
 interface EditorProps {
   onAddAsset: () => Promise<void>;
@@ -273,43 +274,20 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
         >
           <div
             style={{
-              display: 'flex',
               borderBottom: '1px solid rgba(148, 163, 184, 0.10)',
               flexShrink: 0,
               padding: '6px 8px 0',
               background: 'linear-gradient(180deg, rgba(15, 23, 42, 0.6) 0%, rgba(15, 23, 42, 0.3) 100%)',
             }}
           >
-            <button
-              type="button"
-              onClick={() => setActivePanel('assets')}
-              style={{
-                ...sidebarTabStyle,
-                borderBottom:
-                  activePanel === 'assets' ? '2px solid #38bdf8' : '2px solid transparent',
-                color: activePanel === 'assets' ? '#f8fafc' : '#64748b',
-                background: activePanel === 'assets' ? 'rgba(56, 189, 248, 0.08)' : 'transparent',
-                borderRadius: activePanel === 'assets' ? '12px 12px 0 0' : 0,
-                margin: '0 2px',
-              }}
-            >
-              素材
-            </button>
-            <button
-              type="button"
-              onClick={() => setActivePanel('ai')}
-              style={{
-                ...sidebarTabStyle,
-                borderBottom:
-                  activePanel === 'ai' ? '2px solid #818cf8' : '2px solid transparent',
-                color: activePanel === 'ai' ? '#f8fafc' : '#64748b',
-                background: activePanel === 'ai' ? 'rgba(129, 140, 248, 0.08)' : 'transparent',
-                borderRadius: activePanel === 'ai' ? '12px 12px 0 0' : 0,
-                margin: '0 2px',
-              }}
-            >
-              AI 助手
-            </button>
+            <TabBar
+              items={[
+                { value: 'assets', label: '素材' },
+                { value: 'ai', label: 'AI 助手' },
+              ]}
+              value={activePanel}
+              onChange={setActivePanel}
+            />
           </div>
           <div style={{ flex: 1, minHeight: 0, overflow: 'hidden', display: 'flex' }}>
             {activePanel === 'assets' ? (
@@ -389,17 +367,4 @@ const timelineResizeHandleStyle: CSSProperties = {
   background: 'linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.96))',
   borderTop: '1px solid rgba(148, 163, 184, 0.10)',
   borderBottom: '1px solid rgba(148, 163, 184, 0.08)',
-};
-
-const sidebarTabStyle: CSSProperties = {
-  flex: 1,
-  padding: '12px 0',
-  background: 'none',
-  borderLeft: 'none',
-  borderRight: 'none',
-  borderTop: 'none',
-  fontSize: 13,
-  fontWeight: 600,
-  cursor: 'pointer',
-  transition: 'all 200ms ease-out',
 };

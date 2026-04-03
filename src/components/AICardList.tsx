@@ -1,6 +1,7 @@
 import { AppIcon, type AppIconName } from './AppIcon';
 import { formatTime } from '../lib/utils';
 import type { AICard, AICardType } from '../types/ai';
+import { Badge, Button, IconButton } from '../ui/primitives';
 
 export interface AICardPlacement {
   trackId: string;
@@ -53,47 +54,40 @@ export function AICardList({
               </div>
               <div style={cardContentStyle}>
                 <div style={cardHeaderStyle}>
-                  <button
-                    type="button"
+                  <IconButton
                     aria-label={card.enabled ? `取消选择卡片 ${card.title}` : `选择卡片 ${card.title}`}
                     title={card.enabled ? '已选' : '未选'}
                     onClick={(event) => {
                       event.stopPropagation();
                       onToggleEnabled(card.id);
                     }}
-                    style={{
-                      ...selectionToggleStyle,
-                      color: card.enabled ? '#22c55e' : '#64748b',
-                    }}
+                    variant={card.enabled ? 'brand' : 'ghost'}
+                    size="sm"
+                    style={{ color: card.enabled ? '#22c55e' : '#64748b' }}
                   >
                     <AppIcon name={card.enabled ? 'circle-check-big' : 'circle'} size={15} />
-                  </button>
+                  </IconButton>
                   <div style={cardTitleStyle}>{card.title}</div>
                 </div>
                 <div style={cardMetaStyle}>
                   {formatTime(card.startMs)} - {formatTime(card.endMs)}
                 </div>
-                <div
-                  style={{
-                    ...cardPlacementStyle,
-                    color: placement ? '#38bdf8' : '#64748b',
-                  }}
-                >
-                  {placementText}
+                <div style={cardPlacementStyle}>
+                  <Badge variant={placement ? 'info' : 'neutral'}>{placementText}</Badge>
                 </div>
               </div>
-              <button
-                type="button"
+              <Button
                 aria-label={`删除卡片 ${card.title}`}
                 title="删除卡片"
                 onClick={(event) => {
                   event.stopPropagation();
                   onDeleteCard(card.id);
                 }}
-                style={deleteButtonStyle}
+                variant="danger"
+                size="sm"
               >
                 删除
-              </button>
+              </Button>
             </div>
           </div>
         );
@@ -166,34 +160,4 @@ const cardPlacementStyle = {
   fontSize: 10,
   fontWeight: 600,
   letterSpacing: '0.01em',
-};
-
-const selectionToggleStyle = {
-  width: 22,
-  height: 22,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'rgba(255,255,255,0.04)',
-  border: '1px solid rgba(255,255,255,0.08)',
-  borderRadius: 999,
-  cursor: 'pointer',
-  padding: 0,
-  flexShrink: 0,
-};
-
-const deleteButtonStyle = {
-  minWidth: 38,
-  height: 26,
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  borderRadius: 8,
-  border: '1px solid rgba(248,113,113,0.22)',
-  background: 'rgba(127,29,29,0.24)',
-  color: '#fda4af',
-  cursor: 'pointer',
-  padding: '0 8px',
-  fontSize: 11,
-  fontWeight: 600,
 };

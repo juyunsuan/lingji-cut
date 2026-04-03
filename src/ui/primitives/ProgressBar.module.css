@@ -1,0 +1,23 @@
+.track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-muted);
+}
+
+.fill {
+  height: 100%;
+  transition: width var(--motion-base);
+}
+
+.toneBrand {
+  background: var(--gradient-brand);
+}
+
+.toneInfo {
+  background: var(--gradient-info);
+}
+
+.toneDanger {
+  background: linear-gradient(90deg, #ff6e6e 0%, #ff9d6e 100%);
+}
