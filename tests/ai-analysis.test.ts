@@ -77,11 +77,14 @@ describe('buildAnalysisPrompt', () => {
     expect(prompt).toContain('coverPrompts');
     expect(prompt).toContain('webCard');
     expect(prompt).toContain('整体偏商业分析风');
+    expect(prompt).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
+    expect(prompt).toContain('summary: #6366f1');
+    expect(prompt).toContain('禁止输出任何“数据来源”');
   });
 });
 
 describe('buildCardRegenerationPrompt', () => {
-  it('includes global and card level prompts in regeneration instructions', () => {
+  it('reuses the first-pass visual baseline and includes current card cues', () => {
     const prompt = buildCardRegenerationPrompt(
       {
         id: 'card-1',
@@ -109,6 +112,11 @@ describe('buildCardRegenerationPrompt', () => {
     expect(prompt).toContain('整体偏商业分析风');
     expect(prompt).toContain('这一张做成更像封面海报');
     expect(prompt).toContain('webCard');
+    expect(prompt).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
+    expect(prompt).toContain('template: summary-default');
+    expect(prompt).toContain('style.primaryColor: #6366f1');
+    expect(prompt).toContain('视觉风格必须与首次生成保持一致');
+    expect(prompt).toContain('禁止输出任何“数据来源”');
   });
 });
 
@@ -287,6 +295,7 @@ describe('analyzeSrt', () => {
     expect(result.cards[0]?.renderMode).toBe('web-card');
     expect(result.cards[0]?.webCard?.srcDoc).toContain('网页卡片');
     expect(result.globalPrompt).toBe('整体偏商业分析风');
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
   });
 });
 
@@ -354,5 +363,8 @@ describe('regenerateAICard', () => {
     expect(result.renderMode).toBe('web-card');
     expect(result.webCard?.srcDoc).toContain('新网页卡');
     expect(modelCaller).toHaveBeenCalledTimes(1);
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('template: summary-default');
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('style.primaryColor: #6366f1');
   });
 });

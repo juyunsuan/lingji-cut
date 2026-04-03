@@ -74,4 +74,39 @@ describe('AICardOverlay', () => {
     expect(html).toContain('AI 网页卡片');
     expect(html).toContain('Hello Web Card');
   });
+
+  it('forces iframe refresh when the generated html file is overwritten in place', () => {
+    const overlay: OverlayItem = {
+      id: 'ai-overlay-3',
+      type: 'image',
+      assetPath: '',
+      trackId: 'visual-1',
+      startMs: 0,
+      durationMs: 5_000,
+      position: { x: 0, y: 0, width: 1_920, height: 1_080 },
+      overlayType: 'ai-card',
+      aiCardData: {
+        sourceCardId: 'card-3',
+        cardType: 'summary',
+        title: '网页卡片',
+        content: '重点内容',
+        template: 'web-card',
+        displayMode: 'fullscreen',
+        renderMode: 'web-card',
+        webCard: {
+          src: '/tmp/card-3.html',
+          lastGeneratedAt: 1_234,
+        },
+        style: {
+          primaryColor: '#6366f1',
+          backgroundColor: '#0f172a',
+          fontSize: 48,
+        },
+      },
+    };
+
+    const html = renderToStaticMarkup(<AICardOverlay overlay={overlay} fps={30} />);
+
+    expect(html).toContain('file:///tmp/card-3.html?t=1234');
+  });
 });

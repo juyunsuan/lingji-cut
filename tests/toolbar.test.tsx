@@ -10,11 +10,7 @@ describe('Toolbar', () => {
         page="setup"
         projectName=""
         saveStatus="idle"
-        canUndo={false}
-        canRedo={false}
-        recentProjects={[]}
         onCommand={() => undefined}
-        onOpenRecentProject={() => undefined}
       />,
     );
 
@@ -30,11 +26,7 @@ describe('Toolbar', () => {
         page="editor"
         projectName=""
         saveStatus="idle"
-        canUndo={false}
-        canRedo={false}
-        recentProjects={[]}
         onCommand={() => undefined}
-        onOpenRecentProject={() => undefined}
       />,
     );
 
@@ -42,31 +34,23 @@ describe('Toolbar', () => {
     expect(html).toContain('Remotion');
   });
 
-  it('renders project menus and save status in editor mode', () => {
+  it('renders editor status and export action without custom menus', () => {
     const html = renderToStaticMarkup(
       <Toolbar
         compact={false}
         page="editor"
         projectName="demo-project"
         saveStatus="saved"
-        canUndo
-        canRedo
-        recentProjects={[
-          {
-            path: '/tmp/demo-project',
-            name: 'demo-project',
-            lastOpenedAt: 1,
-          },
-        ]}
         onCommand={() => undefined}
-        onOpenRecentProject={() => undefined}
       />,
     );
 
-    expect(html).toContain('项目');
-    expect(html).toContain('编辑');
-    expect(html).toContain('媒体');
     expect(html).toContain('demo-project');
     expect(html).toContain('已保存');
+    expect(html).toContain('编辑中');
+    expect(html).toContain('导出 MP4');
+    expect(html).not.toContain('>项目<');
+    expect(html).not.toContain('>编辑<');
+    expect(html).not.toContain('>媒体<');
   });
 });

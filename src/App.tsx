@@ -13,7 +13,6 @@ import {
   clearCurrentProject,
   getCurrentProjectDir,
   getCurrentSaveStatus,
-  getRecentProjects,
   removeRecentProject,
   setProjectDir,
   subscribeToSaveStatus,
@@ -29,7 +28,6 @@ export default function App() {
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [currentProjectDir, setCurrentProjectDir] = useState(() => getCurrentProjectDir());
-  const [recentProjects, setRecentProjects] = useState(() => getRecentProjects());
   const [saveStatus, setSaveStatus] = useState(() => getCurrentSaveStatus());
   const [exportRequestToken, setExportRequestToken] = useState(0);
   const {
@@ -49,7 +47,6 @@ export default function App() {
 
   const syncWorkspaceState = useCallback(() => {
     setCurrentProjectDir(getCurrentProjectDir());
-    setRecentProjects(getRecentProjects());
   }, []);
 
   const resetToSetup = useCallback(() => {
@@ -64,7 +61,7 @@ export default function App() {
       try {
         const storedTimeline = await window.electronAPI.loadTimeline(projectDir);
         if (!storedTimeline) {
-          setRecentProjects(removeRecentProject(projectDir));
+          removeRecentProject(projectDir);
           if (getCurrentProjectDir() === projectDir) {
             clearCurrentProject();
           }
@@ -109,7 +106,7 @@ export default function App() {
         );
       } catch (error) {
         console.error('恢复工程失败:', error);
-        setRecentProjects(removeRecentProject(projectDir));
+        removeRecentProject(projectDir);
         if (getCurrentProjectDir() === projectDir) {
           clearCurrentProject();
         }
@@ -347,14 +344,8 @@ export default function App() {
           page="setup"
           projectName={projectName}
           saveStatus={saveStatus}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          recentProjects={recentProjects}
           onCommand={(command) => {
             void handleCommand(command);
-          }}
-          onOpenRecentProject={(projectDir) => {
-            void openProject(projectDir);
           }}
         />
         <div style={{ display: 'grid', placeItems: 'center', minHeight: 0 }}>
@@ -388,14 +379,8 @@ export default function App() {
         page={page}
         projectName={projectName}
         saveStatus={saveStatus}
-        canUndo={canUndo}
-        canRedo={canRedo}
-        recentProjects={recentProjects}
         onCommand={(command) => {
           void handleCommand(command);
-        }}
-        onOpenRecentProject={(projectDir) => {
-          void openProject(projectDir);
         }}
       />
       <div style={{ minHeight: 0 }}>

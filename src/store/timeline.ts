@@ -5,6 +5,7 @@ import { DEFAULT_VISUAL_TRACK_ID, createDefaultTimeline } from '../types';
 import type { AICardTimelineDraft } from '../types/ai';
 import { getFileNameFromPath } from '../lib/utils';
 import { getNextVisualTrack, normalizeTimelineData } from '../lib/timeline-tracks';
+import { getAICardOverlayPosition, isFullscreenAICardPosition } from '../lib/ai-card-layout';
 
 type OverlayDraft = Omit<OverlayItem, 'id'>;
 type TimelineSnapshot = TimelineData;
@@ -373,15 +374,29 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
             overlay.overlayType === 'ai-card' &&
             overlay.aiCardData?.sourceCardId === card.sourceCardId,
         );
+        const nextDefaultPosition = getAICardOverlayPosition(
+          card.aiCardData.displayMode,
+          state.timeline.width,
+          state.timeline.height,
+        );
 
         if (existingOverlayIndex >= 0) {
           const existingOverlay = overlays[existingOverlayIndex];
+          const shouldResetPosition =
+            existingOverlay.aiCardData?.displayMode !== card.aiCardData.displayMode ||
+            (card.aiCardData.displayMode === 'pip' &&
+              isFullscreenAICardPosition(
+                existingOverlay.position,
+                state.timeline.width,
+                state.timeline.height,
+              ));
           overlays[existingOverlayIndex] = {
             ...existingOverlay,
             type: 'image',
             assetPath: '',
             startMs: card.startMs,
             durationMs: card.durationMs,
+            position: shouldResetPosition ? nextDefaultPosition : existingOverlay.position,
             overlayType: 'ai-card',
             aiCardData: {
               ...card.aiCardData,
@@ -398,12 +413,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
           trackId,
           startMs: card.startMs,
           durationMs: card.durationMs,
-          position: {
-            x: 0,
-            y: 0,
-            width: state.timeline.width,
-            height: state.timeline.height,
-          },
+          position: nextDefaultPosition,
           overlayType: 'ai-card',
           aiCardData: {
             ...card.aiCardData,

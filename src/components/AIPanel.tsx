@@ -321,7 +321,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
   );
   const handleRegenerateCard = useCallback(async (draftUpdates: Partial<AICard>) => {
     if (!editingCard || !analysisResult) {
-      return;
+      return null;
     }
 
     const settings = loadAISettings();
@@ -329,7 +329,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
     if (settingsIssue) {
       setAnalysisError(settingsIssue);
       setIsSettingsOpen(true);
-      return;
+      return null;
     }
 
     setIsRegeneratingCard(true);
@@ -354,7 +354,7 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
         ...regeneratedCard,
       });
       if (!nextResult) {
-        return;
+        return null;
       }
 
       const persistedState = await persistAIState(nextResult, coverCandidates);
@@ -365,9 +365,11 @@ export function AIPanel({ compact, railHeight }: AIPanelProps) {
       if (persistedCard && cardPlacements[editingCard.id]) {
         addAICardsToTimeline([buildAICardTimelineDraft(persistedCard)]);
       }
+      return persistedCard ?? null;
     } catch (error) {
       console.error('单卡重生成失败:', error);
       setAnalysisError(error instanceof Error ? error.message : '单卡重生成失败');
+      return null;
     } finally {
       setIsRegeneratingCard(false);
     }

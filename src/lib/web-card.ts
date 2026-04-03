@@ -1,6 +1,14 @@
 export const DEFAULT_WEB_CARD_STAGE_WIDTH = 1_920;
 export const DEFAULT_WEB_CARD_STAGE_HEIGHT = 1_080;
 
+export function appendCacheBuster(url: string, cacheKey?: number): string {
+  if (!url || !Number.isFinite(cacheKey)) {
+    return url;
+  }
+
+  return `${url}${url.includes('?') ? '&' : '?'}t=${Number(cacheKey)}`;
+}
+
 function injectIntoHead(source: string, injection: string): string {
   if (/<head[^>]*>/i.test(source)) {
     return source.replace(/<head([^>]*)>/i, `<head$1>${injection}`);
@@ -42,7 +50,7 @@ function buildAutoScaleScript(
   function getPrimary(body){
     var children=Array.prototype.filter.call(body.children||[],isVisible);
     if(children.length===1)return children[0];
-    return body.querySelector('[data-web-card-stage]')||body.firstElementChild||null;
+    return body.querySelector('[data-web-card-stage]')||body;
   }
   function expandPrimary(body){
     var primary=getPrimary(body);
