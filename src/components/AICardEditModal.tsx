@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { AICard, AICardType } from '../types/ai';
 import { WebCardPreview } from './WebCardPreview';
+import { getAICardOverlayPosition } from '../lib/ai-card-layout';
 
 interface AICardEditModalProps {
   visible: boolean;
@@ -10,7 +11,7 @@ interface AICardEditModalProps {
   previewWidth?: number;
   previewHeight?: number;
   onClose: () => void;
-  onRegenerate: (updates: Partial<AICard>) => void;
+  onRegenerate: (updates: Partial<AICard>) => Promise<AICard | null>;
   onSave: (cardId: string, updates: Partial<AICard>) => void;
 }
 
@@ -43,6 +44,7 @@ export function AICardEditModal({
   const [type, setType] = useState<AICardType>('summary');
   const [displayMode, setDisplayMode] = useState<'fullscreen' | 'pip'>('fullscreen');
   const [displayDurationMs, setDisplayDurationMs] = useState(5_000);
+  const [previewWebCard, setPreviewWebCard] = useState<AICard['webCard']>();
 
   useEffect(() => {
     if (!visible || !card) {
@@ -57,6 +59,7 @@ export function AICardEditModal({
     setType(card.type);
     setDisplayMode(card.displayMode);
     setDisplayDurationMs(card.displayDurationMs);
+    setPreviewWebCard(card.webCard);
   }, [card, visible]);
 
   if (!visible || !card) {
@@ -81,6 +84,33 @@ export function AICardEditModal({
     displayDurationMs,
     cardPrompt: cardPrompt.trim() || undefined,
     template: `${type}-default`,
+  };
+  const previewCardPosition = getAICardOverlayPosition(displayMode, previewWidth, previewHeight);
+  const previewFrameStyle =
+    displayMode === 'fullscreen'
+      ? previewFullscreenFrameStyle
+      : {
+          ...previewPipFrameStyle,
+          left: `${(previewCardPosition.x / Math.max(1, previewWidth)) * 100}%`,
+          top: `${(previewCardPosition.y / Math.max(1, previewHeight)) * 100}%`,
+          width: `${(previewCardPosition.width / Math.max(1, previewWidth)) * 100}%`,
+        };
+
+  const handleRegenerateClick = async () => {
+    if (previewWebCard) {
+      setPreviewWebCard({
+        ...previewWebCard,
+        runtimeStatus: 'loading',
+      });
+    }
+
+    const regeneratedCard = await onRegenerate(draftUpdates);
+    if (regeneratedCard?.webCard) {
+      setPreviewWebCard(regeneratedCard.webCard);
+      return;
+    }
+
+    setPreviewWebCard(card.webCard);
   };
 
   const modalContent = (
@@ -142,11 +172,26 @@ export function AICardEditModal({
 
           <div>
             <div style={fieldLabelStyle}>网页卡片预览</div>
-            <WebCardPreview
-              webCard={card.webCard}
-              stageWidth={previewWidth}
-              stageHeight={previewHeight}
-            />
+            <div
+              style={{
+                ...previewStageStyle,
+                aspectRatio: `${Math.max(1, previewWidth)} / ${Math.max(1, previewHeight)}`,
+              }}
+            >
+              <div style={previewCanvasStyle} />
+              <div style={previewFrameStyle}>
+                <WebCardPreview
+                  webCard={previewWebCard ?? card.webCard}
+                  stageWidth={previewWidth}
+                  stageHeight={previewHeight}
+                  isLoading={isRegenerating}
+                  loadingLabel="正在重生成网页卡片..."
+                />
+              </div>
+              <span style={previewModeBadgeStyle}>
+                {displayMode === 'fullscreen' ? '全屏位置预览' : '画中画位置预览'}
+              </span>
+            </div>
           </div>
 
           <div style={twoColumnStyle}>
@@ -193,7 +238,9 @@ export function AICardEditModal({
           </button>
           <button
             type="button"
-            onClick={() => onRegenerate(draftUpdates)}
+            onClick={() => {
+              void handleRegenerateClick();
+            }}
             disabled={isRegenerating}
             style={{
               ...secondaryButtonStyle,
@@ -313,6 +360,48 @@ const textareaStyle = {
 const twoColumnStyle = {
   display: 'flex',
   gap: 16,
+};
+
+const previewStageStyle = {
+  position: 'relative' as const,
+  overflow: 'hidden' as const,
+  borderRadius: 18,
+  border: '1px solid rgba(255,255,255,0.08)',
+  background:
+    'linear-gradient(180deg, rgba(15,23,42,0.98) 0%, rgba(8,12,20,0.94) 100%)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04)',
+};
+
+const previewCanvasStyle = {
+  position: 'absolute' as const,
+  inset: 0,
+  background:
+    'radial-gradient(circle at top, rgba(99,102,241,0.14) 0%, rgba(15,23,42,0) 46%), linear-gradient(180deg, rgba(148,163,184,0.04) 0%, rgba(15,23,42,0) 100%)',
+};
+
+const previewFullscreenFrameStyle = {
+  position: 'absolute' as const,
+  inset: 0,
+};
+
+const previewPipFrameStyle = {
+  position: 'absolute' as const,
+};
+
+const previewModeBadgeStyle = {
+  position: 'absolute' as const,
+  left: 12,
+  top: 12,
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '6px 10px',
+  borderRadius: 999,
+  border: '1px solid rgba(255,255,255,0.08)',
+  background: 'rgba(2,6,23,0.68)',
+  color: '#cbd5e1',
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: '0.02em',
 };
 
 const actionsStyle = {

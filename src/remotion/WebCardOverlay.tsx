@@ -1,5 +1,5 @@
 import { useMemo, type CSSProperties } from 'react';
-import { normalizeWebCardSrcDoc } from '../lib/web-card';
+import { appendCacheBuster, normalizeWebCardSrcDoc } from '../lib/web-card';
 import type { WebCardPayload } from '../types/ai';
 import { resolveRemotionAssetSrc } from '../lib/remotion-assets';
 
@@ -12,12 +12,28 @@ export function WebCardOverlay({ webCard, style }: WebCardOverlayProps) {
   const iframeSource = useMemo(
     () =>
       webCard.src
-        ? { src: resolveRemotionAssetSrc(webCard.src) }
+        ? {
+            src: appendCacheBuster(
+              resolveRemotionAssetSrc(webCard.src),
+              webCard.lastGeneratedAt,
+            ),
+          }
         : webCard.srcDoc
           ? { srcDoc: normalizeWebCardSrcDoc(webCard.srcDoc) }
           : null,
-    [webCard.src, webCard.srcDoc],
+    [webCard.lastGeneratedAt, webCard.src, webCard.srcDoc],
   );
+  const iframeKey = useMemo(() => {
+    if (webCard.src) {
+      return `${webCard.src}:${webCard.lastGeneratedAt ?? 0}`;
+    }
+
+    if (webCard.srcDoc) {
+      return `${webCard.lastGeneratedAt ?? 0}:${webCard.srcDoc.length}`;
+    }
+
+    return 'empty';
+  }, [webCard.lastGeneratedAt, webCard.src, webCard.srcDoc]);
 
   if (!iframeSource) {
     return null;
@@ -25,6 +41,7 @@ export function WebCardOverlay({ webCard, style }: WebCardOverlayProps) {
 
   return (
     <iframe
+      key={iframeKey}
       title="AI 网页卡片"
       {...iframeSource}
       style={{

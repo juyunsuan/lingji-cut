@@ -128,6 +128,29 @@ function normalizeCard(rawCard: unknown, index: number): AICard | null {
   };
 }
 
+function formatCardContentForPrompt(content: AICard['content']): string {
+  return typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+}
+
+function buildUnifiedVisualPromptSection(): string {
+  return `统一视觉基线（首次生成与二次重生成都必须遵守）：
+- 必须按 1920x1080 的 16:9 画布设计，并默认铺满整个画面
+- 禁止只做居中的窄卡片、手机比例、小弹窗或大量留白布局
+- 不要把主要内容限制在很小的 max-width 容器里
+- 尽量做成信息层级清晰、视觉冲击力强的 16:9 卡片
+- 不要输出 markdown 代码块
+- 内容必须忠于字幕事实，不要编造
+- 禁止输出任何“数据来源”“来源：”“Source”"数据统计口径"之类的底部标注、免责声明、署名或角标文案
+- 请保留 card 的 title/content 作为结构化兜底文本
+
+颜色建议：
+- summary: #6366f1
+- data: #10b981
+- insight: #f59e0b
+- chapter: #8b5cf6
+- quote: #ec4899`;
+}
+
 function parsePartialResult(value: unknown): AIAnalysisResult | null {
   if (!value || typeof value !== 'object') {
     return null;
@@ -197,6 +220,7 @@ export function buildAnalysisPrompt(globalPrompt?: string): string {
   const promptLine = globalPrompt?.trim()
     ? `\n额外创作要求：${globalPrompt.trim()}\n`
     : '\n';
+  const visualPrompt = buildUnifiedVisualPromptSection();
 
   return `你是一个播客内容分析助手，同时也是一个网页信息卡设计师。请分析字幕并输出严格 JSON。${promptLine}
 
@@ -239,20 +263,7 @@ srcDoc 要求：
 - 必须是完整 HTML 文档
 - 允许 HTML/CSS/JS
 - 允许外部图片、脚本、字体和样式
-- 必须按 1920x1080 的 16:9 画布设计，并默认铺满整个画面
-- 禁止只做居中的窄卡片、手机比例、小弹窗或大量留白布局
-- 不要把主要内容限制在很小的 max-width 容器里
-- 尽量做成信息层级清晰、视觉冲击力强的 16:9 卡片
-- 不要输出 markdown 代码块
-- 内容必须忠于字幕事实，不要编造
-- 请保留 card 的 title/content 作为结构化兜底文本
-
-颜色建议：
-- summary: #6366f1
-- data: #10b981
-- insight: #f59e0b
-- chapter: #8b5cf6
-- quote: #ec4899
+${visualPrompt}
 
 请只返回 JSON，不要附加解释。`;
 }
@@ -266,16 +277,26 @@ export function buildCardRegenerationPrompt(
 ): string {
   const globalPrompt = options.globalPrompt?.trim();
   const cardPrompt = options.cardPrompt?.trim();
+  const visualPrompt = buildUnifiedVisualPromptSection();
+  const currentContent = formatCardContentForPrompt(card.content);
 
-  return `你要重生成一张播客信息卡，请输出严格 JSON，且只返回单张卡片对象。
+  return `你是一个播客内容分析助手，同时也是一个网页信息卡设计师。现在要重生成一张播客信息卡，请输出严格 JSON，且只返回单张卡片对象。
+
+这次重生成必须沿用首次生成时的统一视觉基线；如果没有明确要求，不要另起一套新的设计语言。
 
 当前卡片信息：
 - id: ${card.id}
 - type: ${card.type}
 - title: ${card.title}
+- content: ${currentContent}
 - startMs: ${card.startMs}
 - endMs: ${card.endMs}
 - displayDurationMs: ${card.displayDurationMs}
+- displayMode: ${card.displayMode}
+- template: ${card.template}
+- style.primaryColor: ${card.style.primaryColor}
+- style.backgroundColor: ${card.style.backgroundColor}
+- style.fontSize: ${card.style.fontSize}
 
 整期创作提示词：
 ${globalPrompt || '无'}
@@ -303,12 +324,10 @@ ${cardPrompt || '无'}
 - renderMode 默认输出 "web-card"
 - webCard.srcDoc 必须是完整 HTML 文档
 - 允许 HTML/CSS/JS 和外部资源
-- 必须按 1920x1080 的 16:9 画布设计，并默认铺满整个画面
-- 禁止只做居中的窄卡片、手机比例、小弹窗或大量留白布局
-- 不要把主要内容限制在很小的 max-width 容器里
-- 内容必须忠于字幕事实，不要编造
-- 允许改变文案组织、视觉结构和表现方式
-- 保留结构化的 title/content 作为兜底文本
+${visualPrompt}
+- 可以基于当前卡片信息和追加提示词调整文案组织与排版细节
+- 视觉风格必须与首次生成保持一致
+- 优先延续当前卡片的 template 与 style 线索
 
 请只返回 JSON 对象，不要附加解释。`;
 }

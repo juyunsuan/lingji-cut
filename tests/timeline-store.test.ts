@@ -289,6 +289,98 @@ describe('useTimelineStore', () => {
     });
   });
 
+  it('uses a smaller bottom-right layout when the ai card display mode is pip', () => {
+    const store = useTimelineStore.getState();
+
+    store.addAICardsToTimeline([
+      {
+        sourceCardId: 'ai-card-pip',
+        startMs: 2_000,
+        durationMs: 5_000,
+        aiCardData: {
+          sourceCardId: 'ai-card-pip',
+          cardType: 'summary',
+          title: '总结卡',
+          content: '重点内容',
+          template: 'summary-default',
+          displayMode: 'pip',
+          style: {
+            primaryColor: '#6366f1',
+            backgroundColor: '#0f172a',
+            fontSize: 48,
+          },
+        },
+      },
+    ]);
+
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      overlayType: 'ai-card',
+      position: {
+        x: 1224,
+        y: 670,
+        width: 653,
+        height: 367,
+      },
+    });
+  });
+
+  it('reflows an existing ai card overlay when display mode changes to pip', () => {
+    const store = useTimelineStore.getState();
+
+    store.addAICardsToTimeline([
+      {
+        sourceCardId: 'ai-card-1',
+        startMs: 2_000,
+        durationMs: 5_000,
+        aiCardData: {
+          sourceCardId: 'ai-card-1',
+          cardType: 'summary',
+          title: '总结卡',
+          content: '重点内容',
+          template: 'summary-default',
+          displayMode: 'fullscreen',
+          style: {
+            primaryColor: '#6366f1',
+            backgroundColor: '#0f172a',
+            fontSize: 48,
+          },
+        },
+      },
+    ]);
+    store.addAICardsToTimeline([
+      {
+        sourceCardId: 'ai-card-1',
+        startMs: 8_000,
+        durationMs: 5_000,
+        aiCardData: {
+          sourceCardId: 'ai-card-1',
+          cardType: 'summary',
+          title: '总结卡',
+          content: '重点内容',
+          template: 'summary-default',
+          displayMode: 'pip',
+          style: {
+            primaryColor: '#6366f1',
+            backgroundColor: '#0f172a',
+            fontSize: 48,
+          },
+        },
+      },
+    ]);
+
+    expect(useTimelineStore.getState().timeline.overlays).toHaveLength(1);
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      startMs: 8_000,
+      durationMs: 5_000,
+      position: {
+        x: 1224,
+        y: 670,
+        width: 653,
+        height: 367,
+      },
+    });
+  });
+
   it('stores the selected cover as a full-duration default background', () => {
     const store = useTimelineStore.getState();
     store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 12_000);
