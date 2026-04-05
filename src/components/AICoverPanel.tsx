@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { CoverCandidate } from '../types/ai';
 import { toFileSrc } from '../lib/utils';
+import { Button, Card, EmptyState, Field, Textarea } from '../ui';
 import { AppIcon } from './AppIcon';
-import { Button, EmptyState, Field, IconButton, Textarea } from '../ui/primitives';
 import styles from './AICoverPanel.module.css';
 
 interface AICoverPanelProps {
@@ -59,15 +59,15 @@ export function AICoverPanel({
         <div className={styles.sectionTitleRow}>
           <div className={styles.sectionTitle}>提示词</div>
           {!isEditing ? (
-            <IconButton
+            <Button
               onClick={() => setIsEditing(true)}
               variant="ghost"
-              size="sm"
+              iconOnly
               title="编辑提示词"
               aria-label="编辑提示词"
             >
               <AppIcon name="pencil-line" size={14} />
-            </IconButton>
+            </Button>
           ) : null}
         </div>
       </div>
@@ -84,18 +84,18 @@ export function AICoverPanel({
         ) : (
           <>
             <div className={styles.promptText}>{prompt}</div>
-            <IconButton
+            <Button
               onClick={onRegeneratePrompt}
               disabled={isRegeneratingPrompt || isGenerating}
               loading={isRegeneratingPrompt}
-              variant="brand"
-              size="sm"
+              variant="accent"
+              iconOnly
               className={styles.promptRegenerateButton}
               title="AI 重新生成提示词"
               aria-label="AI 重新生成提示词"
             >
               <AppIcon name="sparkles" size={14} />
-            </IconButton>
+            </Button>
           </>
         )}
       </div>
@@ -111,7 +111,7 @@ export function AICoverPanel({
           variant="primary"
           size="sm"
           fullWidth
-          leadingIcon={isGenerating ? undefined : <AppIcon name="image" size={14} />}
+          leftIcon={isGenerating ? undefined : <AppIcon name="image" size={14} />}
         >
           {isGenerating ? '生成中...' : candidates.length > 0 ? '重新生成' : '生成封面'}
         </Button>
@@ -129,10 +129,16 @@ export function AICoverPanel({
               const isSelected = candidate.id === selectedCandidate?.id;
 
               return (
-                <div
+                <Card
                   key={candidate.id}
                   draggable={Boolean(candidate.imageUrl)}
                   onClick={() => onSelectCover(candidate.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onSelectCover(candidate.id);
+                    }
+                  }}
                   onDragStart={(event) => {
                     if (!candidate.imageUrl) {
                       event.preventDefault();
@@ -150,6 +156,9 @@ export function AICoverPanel({
                       }),
                     );
                   }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
                   data-draggable={Boolean(candidate.imageUrl)}
                   className={joinClassNames(
                     styles.candidateCard,
@@ -165,7 +174,7 @@ export function AICoverPanel({
                   ) : (
                     <div className={styles.candidateFallback}>{candidate.error ?? '生成失败'}</div>
                   )}
-                </div>
+                </Card>
               );
             })}
           </div>
@@ -173,10 +182,10 @@ export function AICoverPanel({
           {selectedCandidate?.imageUrl ? (
             <Button
               onClick={() => onAddToTimeline(selectedCandidate.id)}
-              variant="tint"
+              variant="accent"
               size="sm"
               fullWidth
-              leadingIcon={<AppIcon name="send-horizontal" size={14} />}
+              leftIcon={<AppIcon name="send-horizontal" size={14} />}
             >
               设为整期背景
             </Button>

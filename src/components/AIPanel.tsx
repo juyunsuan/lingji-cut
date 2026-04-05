@@ -1,4 +1,5 @@
-import { type CSSProperties, type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type CSSProperties, useCallback, useEffect, useState } from 'react';
+import { CheckCheck, Plus, Trash2 } from 'lucide-react';
 import {
   createPersistedAIState,
   parsePersistedAIState,
@@ -21,9 +22,23 @@ import { AICardList, type AICardPlacement } from './AICardList';
 import { AppIcon, type AppIconName } from './AppIcon';
 import { AICoverPanel } from './AICoverPanel';
 import { AISettingsModal } from './AISettingsModal';
-import { LoadingSpinner } from './LoadingSpinner';
-import { Badge, Button, Field, IconButton, Textarea } from '../ui/primitives';
-import { ActionBar, PanelHeader, TabBar } from '../ui/patterns';
+import {
+  ActionBar,
+  Alert,
+  Badge,
+  Button,
+  Field,
+  PanelHeader,
+  Spinner,
+  StepIndicator,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../ui';
 import styles from './AIPanel.module.css';
 
 interface AIPanelProps {
@@ -38,20 +53,6 @@ const TAB_META: Record<'cards' | 'cover', { label: string; shortLabel: string; i
   cards: { label: '内容卡片', shortLabel: '卡片', icon: 'layout-template' },
   cover: { label: '封面', shortLabel: '封面', icon: 'image' },
 };
-
-interface HoverHintProps {
-  label: string;
-  children: ReactNode;
-}
-
-function HoverHint({ label, children }: HoverHintProps) {
-  return (
-    <span className={styles.hoverHint}>
-      {children}
-      <span role="tooltip" className={styles.hoverHintBubble}>{label}</span>
-    </span>
-  );
-}
 
 export function AIPanel({
   compact,
@@ -111,9 +112,9 @@ export function AIPanel({
     },
     {},
   );
-  const panelPadding = compact ? 10 : 14;
-  const panelGap = compact ? 8 : 10;
-  const primaryButtonHeight = compact ? 34 : 38;
+  const panelPadding = compact ? 8 : 10;
+  const panelGap = compact ? 6 : 8;
+  const primaryButtonHeight = compact ? 28 : 30;
 
   useEffect(() => {
     setGlobalPromptDraft(analysisResult?.globalPrompt ?? '');
@@ -441,6 +442,11 @@ export function AIPanel({
     : isCardListEmpty
     ? `内容卡片已全部删除，当前仍有 ${srtEntries.length} 条字幕可重新分析生成`
     : `已加载 ${srtEntries.length} 条字幕，点击分析`;
+  const analysisSteps = [
+    { label: '解析字幕', status: 'active' as const },
+    { label: '提炼重点', status: 'active' as const },
+    { label: '生成卡片', status: 'active' as const },
+  ];
   const analyzeButtonLabel = isAnalyzing
     ? '分析中...'
     : aiSettingsIssue
@@ -460,7 +466,7 @@ export function AIPanel({
       <PanelHeader
         title="AI 助手"
         leading={
-          <HoverHint label="AI 分析与生成助手">
+          <HintTooltip label="AI 分析与生成助手">
             <span
               className={styles.headerIcon}
               title="AI 分析与生成助手"
@@ -468,57 +474,63 @@ export function AIPanel({
             >
               <AppIcon name="sparkles" size={14} />
             </span>
-          </HoverHint>
+          </HintTooltip>
         }
         meta={
           hasGeneratedCards && !compact ? (
-            <Badge variant="brand">已选 {enabledCount}/{analysisResult.cards.length}</Badge>
+            <Badge variant="default">已选 {enabledCount}/{analysisResult.cards.length}</Badge>
           ) : null
         }
         actions={
           <>
             {analysisResult ? (
-              <HoverHint label={isAnalyzing ? 'AI 正在重新分析内容卡片' : '根据当前字幕和提示词重新生成内容卡片'}>
-                <IconButton
+              <HintTooltip
+                label={isAnalyzing ? 'AI 正在重新分析内容卡片' : '根据当前字幕和提示词重新生成内容卡片'}
+              >
+                <Button
                   onClick={() => void handleAnalyze()}
-                  disabled={isAnalyzing}
-                  variant="subtle"
-                  size={compact ? 'sm' : 'md'}
+                  loading={isAnalyzing}
+                  variant="secondary"
+                  iconOnly
                   title={isAnalyzing ? '分析中' : '重新分析'}
                   aria-label={isAnalyzing ? '分析中' : '重新分析'}
                 >
-                  {isAnalyzing ? <LoadingSpinner size={14} color="#c7d2fe" /> : <AppIcon name="refresh-cw" size={14} />}
-                </IconButton>
-              </HoverHint>
+                  <AppIcon name="refresh-cw" size={14} />
+                </Button>
+              </HintTooltip>
             ) : null}
-            <HoverHint label="打开 AI 全局设置">
-              <IconButton
+            <HintTooltip label="打开 AI 全局设置">
+              <Button
                 onClick={() => setIsSettingsOpen(true)}
-                variant="subtle"
-                size={compact ? 'sm' : 'md'}
+                variant="secondary"
+                iconOnly
                 title="打开 AI 全局设置"
                 aria-label="打开 AI 全局设置"
               >
                 <AppIcon name="settings-2" size={14} />
-              </IconButton>
-            </HoverHint>
+              </Button>
+            </HintTooltip>
           </>
         }
       />
 
-      <TabBar
-        items={(['cards', 'cover'] as const).map((tab) => ({
-          value: tab,
-          label: (
-            <span className={styles.tabContent}>
-              <AppIcon name={TAB_META[tab].icon} size={14} />
-              {compact ? TAB_META[tab].shortLabel : TAB_META[tab].label}
-            </span>
-          ),
-        }))}
+      <Tabs
         value={activeTab}
-        onChange={setActiveTab}
-      />
+        onValueChange={(value) => setActiveTab(value as 'cards' | 'cover')}
+      >
+        <TabsList className={styles.tabList}>
+          {(['cards', 'cover'] as const).map((tab) => (
+            <TabsTrigger
+              key={tab}
+              value={tab}
+              className={styles.tabTrigger}
+              icon={<AppIcon name={TAB_META[tab].icon} size={14} />}
+            >
+              {compact ? TAB_META[tab].shortLabel : TAB_META[tab].label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       <div className={styles.body}>
         {activeTab === 'cards' ? (
@@ -549,8 +561,8 @@ export function AIPanel({
                 )}
                 aria-busy={isAnalyzing}
               >
-                <Badge variant="brand">
-                  {isAnalyzing ? <LoadingSpinner size={14} color="#c7d2fe" /> : <AppIcon name="sparkles" size={14} />}
+                <Badge variant="default">
+                  {isAnalyzing ? <Spinner size={14} color="#dcecff" /> : <AppIcon name="sparkles" size={14} />}
                   {generationStateBadgeLabel}
                 </Badge>
                 <div className={styles.emptyStateText}>{generationStateText}</div>
@@ -558,34 +570,23 @@ export function AIPanel({
                 <Button
                   onClick={handleAnalyze}
                   disabled={analyzeButtonDisabled}
+                  loading={isAnalyzing}
+                  loadingText={analyzeButtonLabel}
                   variant="primary"
                   size="md"
                 >
-                  <span className={styles.primaryActionContent}>
-                    {isAnalyzing ? (
-                      <LoadingSpinner size={14} color="#ffffff" />
-                    ) : (
-                      <AppIcon name={aiSettingsIssue ? 'settings-2' : 'sparkles'} size={14} />
-                    )}
-                    {analyzeButtonLabel}
-                  </span>
+                  <AppIcon name={aiSettingsIssue ? 'settings-2' : 'sparkles'} size={14} />
+                  {analyzeButtonLabel}
                 </Button>
 
                 {isAnalyzing ? (
                   <div className={styles.analysisNotice} role="status" aria-live="polite">
                     <div className={styles.analysisNoticeHeader}>
-                      <LoadingSpinner size={16} color="#818cf8" />
+                      <Spinner size={16} color="#79c4ff" />
                       <span className={styles.analysisNoticeTitle}>{analysisHeadline}</span>
                     </div>
                     <div className={styles.analysisNoticeText}>{analysisDescription}</div>
-                    <div className={styles.analysisStepRow}>
-                      {['解析字幕', '提炼重点', '生成卡片'].map((label) => (
-                        <span key={label} className={styles.analysisStepChip}>
-                          <LoadingSpinner size={12} color="#94a3b8" />
-                          {label}
-                        </span>
-                      ))}
-                    </div>
+                    <StepIndicator steps={analysisSteps} />
                   </div>
                 ) : null}
               </div>
@@ -595,7 +596,7 @@ export function AIPanel({
               <div className={styles.analysisBanner} role="status" aria-live="polite">
                 <div className={styles.analysisBannerHeader}>
                   <span className={styles.analysisBannerBadge}>
-                    <LoadingSpinner size={12} color="#ffffff" />
+                    <Spinner size={12} color="#f7f8fb" />
                     分析中
                   </span>
                   <span className={styles.analysisBannerTitle}>{analysisHeadline}</span>
@@ -603,7 +604,11 @@ export function AIPanel({
                 <div className={styles.analysisBannerText}>{analysisDescription}</div>
               </div>
             ) : null}
-            {analysisError ? <div className={styles.error}>{analysisError}</div> : null}
+            {analysisError ? (
+              <div style={{ marginBottom: 8 }}>
+                <Alert variant="destructive">{analysisError}</Alert>
+              </div>
+            ) : null}
             {hasGeneratedCards ? (
               <div className={styles.analysisWorkspace}>
                 <div
@@ -614,7 +619,12 @@ export function AIPanel({
                 >
                   <ActionBar
                     start={
-                      <Button onClick={handleSelectAllCards} variant="secondary" size="sm">
+                      <Button
+                        onClick={handleSelectAllCards}
+                        variant="secondary"
+                        size="sm"
+                        leftIcon={<CheckCheck className="h-full w-full" />}
+                      >
                         {allCardsSelected ? '取消全选' : '全选'}
                       </Button>
                     }
@@ -627,8 +637,9 @@ export function AIPanel({
                       <Button
                         onClick={() => handleDeleteCards(enabledCardIds)}
                         disabled={selectedCount === 0 || isAnalyzing}
-                        variant="danger"
+                        variant="destructive"
                         size="sm"
+                        leftIcon={<Trash2 className="h-full w-full" />}
                       >
                         删除已选
                       </Button>
@@ -646,19 +657,12 @@ export function AIPanel({
                   <div className={styles.analysisOverlay} role="status" aria-live="polite">
                     <div className={styles.analysisOverlayCard}>
                       <span className={styles.analysisBannerBadge}>
-                        <LoadingSpinner size={12} color="#ffffff" />
+                        <Spinner size={12} color="#f7f8fb" />
                         重新分析中
                       </span>
                       <div className={styles.analysisOverlayTitle}>{analysisOverlayTitle}</div>
                       <div className={styles.analysisOverlayText}>{analysisOverlayText}</div>
-                      <div className={styles.analysisStepRow}>
-                        {['解析字幕', '提炼重点', '生成卡片'].map((label) => (
-                          <span key={label} className={styles.analysisStepChip}>
-                            <LoadingSpinner size={12} color="#94a3b8" />
-                            {label}
-                          </span>
-                        ))}
-                      </div>
+                      <StepIndicator steps={analysisSteps} />
                     </div>
                   </div>
                 ) : null}
@@ -685,16 +689,18 @@ export function AIPanel({
           <Button
             onClick={handleApplyToTimeline}
             disabled={enabledCount === 0 || isAnalyzing}
+            loading={isAnalyzing}
+            loadingText="分析中..."
             variant="primary"
             size={compact ? 'sm' : 'md'}
             fullWidth
             className={styles.footerButton}
+            aria-label="应用到时间线"
+            title="应用到时间线"
           >
-            <span className={styles.primaryActionContent}>
-              {isAnalyzing ? <LoadingSpinner size={14} color="#ffffff" /> : <AppIcon name="send-horizontal" size={14} />}
-              {isAnalyzing ? '分析中...' : '应用到时间线'}
-              <span className={styles.countBadge}>{enabledCount}</span>
-            </span>
+            <Plus className="h-3.5 w-3.5" />
+            上轨
+            <span className={styles.countBadge}>{enabledCount}</span>
           </Button>
         </div>
       ) : null}
@@ -725,4 +731,19 @@ function createPanelVars(options: {
 
 function joinClassNames(...values: Array<string | undefined>): string {
   return values.filter(Boolean).join(' ');
+}
+
+function HintTooltip({
+  children,
+  label,
+}: {
+  children: React.ReactNode;
+  label: React.ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
 }

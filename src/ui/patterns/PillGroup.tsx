@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import type { ButtonSize } from '../primitives/Button';
-import { Button } from '../primitives';
+import { Button } from '../components/button';
 import styles from './PillGroup.module.css';
+
+type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface PillGroupItem<T extends string> {
   value: T;
@@ -42,7 +43,7 @@ export function PillGroup<T extends string>({
             key={item.value}
             onClick={() => onChange(item.value)}
             variant={isActive ? 'primary' : 'secondary'}
-            size={size}
+            size={size === 'md' ? 'default' : size}
             className={styles.item}
             aria-pressed={isActive}
             disabled={item.disabled}

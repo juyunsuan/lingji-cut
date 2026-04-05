@@ -1,6 +1,13 @@
-import type { AICard } from '../types/ai';
-import { Button, ModalShell } from '../ui/primitives';
-import { AICardInspector } from './AICardInspector';
+import type { AICard } from "../types/ai";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "../ui";
+import { AICardInspector } from "./AICardInspector";
+import styles from "./AICardEditModal.module.css";
 
 interface AICardEditModalProps {
   visible: boolean;
@@ -28,31 +35,28 @@ export function AICardEditModal({
   }
 
   return (
-    <ModalShell
-      visible={visible}
-      eyebrow="EDIT CARD"
-      title="编辑卡片"
-      size="lg"
-      zIndex={160}
-      footer={
-        <Button variant="secondary" onClick={onClose}>
-          关闭
-        </Button>
-      }
-    >
-      <AICardInspector
-        card={card}
-        isRegenerating={isRegenerating}
-        previewWidth={previewWidth}
-        previewHeight={previewHeight}
-        showCancel
-        onCancel={onClose}
-        onRegenerate={onRegenerate}
-        onSave={(cardId, updates) => {
-          onSave(cardId, updates);
-          onClose();
-        }}
-      />
-    </ModalShell>
+    <Dialog open={visible} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent size="lg">
+        <DialogHeader>
+          <div className={styles.eyebrow}>EDIT CARD</div>
+          <DialogTitle>编辑卡片</DialogTitle>
+        </DialogHeader>
+        <DialogBody>
+          <AICardInspector
+            card={card}
+            isRegenerating={isRegenerating}
+            previewWidth={previewWidth}
+            previewHeight={previewHeight}
+            showCancel
+            onCancel={onClose}
+            onRegenerate={onRegenerate}
+            onSave={(cardId, updates) => {
+              onSave(cardId, updates);
+              onClose();
+            }}
+          />
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }

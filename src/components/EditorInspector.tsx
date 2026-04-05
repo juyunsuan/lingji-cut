@@ -1,7 +1,5 @@
-import { EmptyState, IconButton, SurfaceCard } from '../ui/primitives';
-import { Badge } from '../ui/primitives/Badge';
-import { PanelHeader } from '../ui/patterns';
-import { AppIcon } from './AppIcon';
+import { X } from 'lucide-react';
+import { Button, EmptyState } from '../ui';
 import { AICardInspector } from './AICardInspector';
 import { SubtitleInspector } from './SubtitleInspector';
 import { useAICardInspector } from '../hooks/useAICardInspector';
@@ -33,6 +31,22 @@ export function EditorInspector({
     regenerateCard,
     saveCard,
   } = useAICardInspector(selection.type === 'ai-card' ? selection.cardId : null);
+
+  /* ── eyebrow pill 内容 ── */
+  const eyebrowLabel =
+    selection.type === 'subtitle-style'
+      ? '字幕块'
+      : selection.type === 'ai-card'
+      ? 'AI 卡片'
+      : '检查器';
+
+  /* ── 右侧索引/状态标签 ── */
+  const indexLabel =
+    selection.type === 'ai-card' && card
+      ? isPlacedOnTimeline
+        ? '已上轨'
+        : '仅素材'
+      : null;
 
   const renderBody = () => {
     if (selection.type === 'subtitle-style') {
@@ -75,54 +89,35 @@ export function EditorInspector({
   };
 
   return (
-    <SurfaceCard
-      variant="elevated"
-      padding="none"
+    <div
       className={styles.shell}
       data-editor-region="inspector-shell"
     >
+      {/* Header */}
       <div className={styles.header}>
-        <PanelHeader
-          eyebrow="INSPECTOR"
-          title={
-            selection.type === 'subtitle-style'
-              ? '字幕高亮设置'
-              : selection.type === 'ai-card'
-              ? 'AI 卡片设置'
-              : '配置区'
-          }
-          description={
-            selection.type === 'ai-card' ? (
-              <span className={styles.statusLine}>编辑卡片文案、版式和网页卡片预览。</span>
-            ) : selection.type === 'subtitle-style' ? (
-              <span className={styles.statusLine}>集中调整关键词高亮生成与字幕样式。</span>
-            ) : (
-              <span className={styles.statusLine}>统一承接素材与字幕配置，减少弹窗式编辑。</span>
-            )
-          }
-          meta={
-            selection.type === 'ai-card' && card ? (
-              <Badge variant={isPlacedOnTimeline ? 'info' : 'neutral'}>
-                {isPlacedOnTimeline ? '已上轨' : '仅素材'}
-              </Badge>
-            ) : null
-          }
-          actions={
-            selection.type === 'empty' ? null : (
-              <IconButton
-                aria-label="关闭右侧配置区"
-                title="关闭右侧配置区"
-                onClick={onClose}
-                variant="ghost"
-                size="sm"
-              >
-                ×
-              </IconButton>
-            )
-          }
-        />
+        <div className={styles.headerLeft}>
+          <span className={styles.eyebrowPill}>{eyebrowLabel}</span>
+        </div>
+        <div className={styles.headerRight}>
+          {indexLabel && (
+            <span className={styles.indexLabel}>{indexLabel}</span>
+          )}
+          {selection.type !== 'empty' && (
+            <Button.Icon
+              variant="ghost"
+              aria-label="关闭右侧配置区"
+              title="关闭右侧配置区"
+              onClick={onClose}
+              className={styles.closeBtn}
+            >
+              <X size={14} />
+            </Button.Icon>
+          )}
+        </div>
       </div>
+
+      {/* Body */}
       <div className={styles.body}>{renderBody()}</div>
-    </SurfaceCard>
+    </div>
   );
 }

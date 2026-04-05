@@ -13,7 +13,7 @@
 .loadingLine {
   width: 100%;
   height: 1px;
-  background: linear-gradient(90deg, rgba(56, 189, 248, 0.2), rgba(56, 189, 248, 0.65), rgba(56, 189, 248, 0.2));
+  background: color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
 }
 
 .peaksShell {
@@ -26,7 +26,6 @@
 .peak {
   flex: 1 0 0;
   min-width: 1px;
-  background: linear-gradient(180deg, rgba(125, 211, 252, 0.95), rgba(14, 165, 233, 0.55));
-  border-radius: 999px;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+  background: color-mix(in srgb, var(--color-brand-accent) 74%, var(--color-selection-blue));
+  border-radius: 999px 999px 2px 2px;
 }

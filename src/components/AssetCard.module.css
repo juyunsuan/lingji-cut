@@ -1,134 +1,94 @@
+/* 方形网格卡片 — design.pen */
 .root {
+  position: relative;
+  width: 65px;
+  height: 65px;
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-elevated);
+  border: 1px solid var(--color-control-bg);
+  overflow: hidden;
+  cursor: default;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  cursor: default;
-  min-width: 0;
-  width: 100%;
 }
 
 .draggable {
   cursor: grab;
 }
 
-.regular {
-  width: 100%;
-}
-
+/* compact 模式下保持方形大小不变 */
 .compact {
-  min-width: 138px;
-  width: 138px;
+  width: 65px;
+  height: 65px;
 }
 
-.mediaFrame {
-  position: relative;
-  aspect-ratio: 16 / 9;
-  min-height: 72px;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  background: #0b1320;
-  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.22);
+.regular {
+  width: 65px;
+  height: 65px;
 }
 
-.compact .mediaFrame {
-  min-height: 76px;
-}
-
-.mediaOverlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(0, 0, 0, 0.48) 0%, rgba(0, 0, 0, 0.1) 42%, rgba(0, 0, 0, 0.22) 100%);
-  pointer-events: none;
-}
-
-.flag {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.62);
-  color: #f7faff;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-}
-
-.duration {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 3px 7px;
-  border-radius: var(--radius-pill);
-  background: rgba(0, 0, 0, 0.48);
-  color: #f7faff;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-}
-
-.content {
-  min-width: 0;
-}
-
-.title {
-  color: #eef4ff;
-  font-size: 12px;
-  line-height: 1.35;
-  font-weight: 600;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-}
-
-.compact .title {
-  -webkit-line-clamp: 1;
-}
-
-.regular .title {
-  -webkit-line-clamp: 2;
-}
-
-.metaRow {
-  margin-top: 6px;
+/* 顶部带色背景区域 */
+.iconArea {
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: center;
+  background: var(--icon-area-bg, var(--color-panel-bg));
 }
 
-.typeBadge {
-  background: var(--asset-badge-bg, rgba(255, 255, 255, 0.08)) !important;
-  color: var(--asset-accent, #ffffff) !important;
+/* 按素材类型着色 */
+.typeVideo .iconArea {
+  --icon-area-bg: color-mix(in srgb, var(--color-selection-blue) 18%, var(--color-panel-bg));
 }
 
-.locked {
-  color: #93a4bb;
-  font-size: 11px;
-  white-space: nowrap;
+.typeImage .iconArea {
+  --icon-area-bg: color-mix(in srgb, var(--color-success) 14%, var(--color-panel-bg));
 }
 
-.removeButton {
-  line-height: 1;
-  flex: 0 0 auto;
+.typeAudio .iconArea {
+  --icon-area-bg: color-mix(in srgb, var(--color-brand-warm) 18%, var(--color-panel-bg));
 }
 
-.status {
-  margin-top: 6px;
-  color: #8593a7;
-  font-size: 11px;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-box-orient: vertical;
+.typeSrt .iconArea {
+  --icon-area-bg: color-mix(in srgb, #B48CFF 14%, var(--color-panel-bg));
+}
+
+/* 底部文件名区域 */
+.nameArea {
+  flex-shrink: 0;
+  padding: 0 3px 3px;
+  text-align: center;
+}
+
+.name {
+  color: var(--color-text-muted);
+  font-size: 8px;
+  line-height: 1.2;
   overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  display: block;
 }
 
-.compact .status {
-  -webkit-line-clamp: 1;
+/* ghost 导入卡片 */
+.ghost {
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-control-bg);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
 }
 
-.regular .status {
-  -webkit-line-clamp: 2;
+.ghost:hover {
+  background: var(--color-bg-muted);
+}
+
+.ghostLabel {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.2;
 }

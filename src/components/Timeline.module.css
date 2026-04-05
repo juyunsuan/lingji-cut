@@ -1,134 +1,72 @@
 .root {
   height: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.14);
-  border-radius: 24px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.98) 100%);
   display: grid;
   min-height: 0;
   overflow: hidden;
-  box-shadow: 0 -20px 60px rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  border: none;
+  border-radius: 0;
+  background: var(--color-timeline-bg);
 }
 
 .toolbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 0 16px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.92) 0%, rgba(15, 23, 42, 0.82) 100%);
+  gap: var(--space-4);
+  padding: 0 var(--space-6);
+  height: 40px;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-panel-bg);
 }
 
-.toolbarInfo {
+.toolbarLeft {
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-width: 0;
+  gap: var(--space-4);
 }
 
-.eyebrow {
-  padding: 5px 12px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.18) 0%, rgba(129, 140, 248, 0.12) 100%);
-  color: #38bdf8;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-}
-
-.toolbarMeta {
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.toolbarActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.button {
-  height: 30px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 12px;
-  border: 1px solid transparent;
-  transition: all 150ms ease-out;
-}
-
-.button:hover {
-  transform: translateY(-1px);
-}
-
-.button:active {
-  transform: translateY(0);
-}
-
-.button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px rgba(125, 211, 252, 0.55), 0 0 0 4px rgba(14, 165, 233, 0.18);
-}
-
-.actionButton {
-  composes: button;
-  width: 28px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.6);
-  color: #e2e8f0;
-  line-height: 1;
+.toolbarTitle {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
   font-weight: 600;
 }
 
-.actionButton:hover,
-.fitButton:hover {
-  border-color: rgba(125, 211, 252, 0.24);
-  background: rgba(15, 23, 42, 0.82);
-  color: #f8fafc;
-}
-
-.trackButton {
-  composes: button;
-  padding: 0 12px;
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22) 0%, rgba(129, 140, 248, 0.14) 100%);
-  color: #e0f2fe;
+.zoomPill {
+  padding: 3px 8px;
+  border-radius: 5px;
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-panel-elevated);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
   font-weight: 700;
 }
 
-.trackButton:hover {
-  border-color: rgba(125, 211, 252, 0.48);
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.3) 0%, rgba(129, 140, 248, 0.2) 100%);
-  box-shadow: 0 10px 24px rgba(14, 165, 233, 0.18);
+.toolbarSpacer {
+  flex: 1;
 }
 
-.fitButton {
-  composes: button;
-  padding: 0 12px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.6);
-  color: #e2e8f0;
-  font-weight: 700;
+.addTrackButton {
+  gap: var(--space-2);
+  background: var(--color-control-bg);
 }
 
-.zoomValue {
-  min-width: 52px;
-  text-align: center;
-  color: #f8fafc;
-  font-size: 12px;
-  font-weight: 800;
-  background: rgba(15, 23, 42, 0.6);
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.15);
+.addTrackButton:hover {
+  background: color-mix(in srgb, var(--color-control-bg) 80%, white 20%);
+}
+
+.addTrackIcon {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+}
+
+.addTrackLabel {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
 }
 
 .scrollArea {
-  overflow: auto;
   min-height: 0;
+  overflow: auto;
 }
 
 .canvas {
@@ -140,30 +78,39 @@
   position: relative;
 }
 
-.rulerRow {
+.rulerRow,
+.laneRow,
+.overlayRow {
   display: grid;
   position: relative;
 }
 
-.rulerSide {
+.rulerSide,
+.trackControls {
   position: sticky;
   left: 0;
-  z-index: 4;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85));
-  border-right: 1px solid rgba(148, 163, 184, 0.14);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  color: #64748b;
-  font-size: 11px;
-  font-weight: 600;
+  box-sizing: border-box;
+  width: 80px;
+  border-right: 1px solid var(--color-separator);
+  background: var(--color-titlebar-bg);
+}
+
+.rulerSide {
+  z-index: 4;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--color-separator);
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .rulerMain {
   position: relative;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.45));
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-timeline-bg);
 }
 
 .tick {
@@ -175,251 +122,55 @@
 
 .tickMarker {
   position: absolute;
-  top: 6px;
+  top: 4px;
   left: 50%;
   width: 1px;
-  height: 10px;
-  background: rgba(148, 163, 184, 0.25);
+  height: 8px;
+  background: color-mix(in srgb, var(--color-border-strong) 56%, transparent);
 }
 
 .tickLabel {
-  margin-top: 14px;
-  color: #94a3b8;
-  font-size: 11px;
+  margin-top: 11px;
+  color: var(--color-text-muted);
+  font-size: 10px;
   font-weight: 600;
 }
 
 .trackControls {
-  position: sticky;
-  left: 0;
   z-index: 3;
   height: 100%;
-  border-right: 1px solid rgba(148, 163, 184, 0.14);
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85));
-  display: flex;
-  align-items: center;
-  box-sizing: border-box;
-}
-
-.trackControlsCompact {
   padding: 0 10px;
-}
-
-.trackControlsRegular {
-  padding: 0 14px;
 }
 
 .trackControlsBody {
   width: 100%;
   min-width: 0;
-}
-
-.trackBadgeWrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.trackBadge {
-  min-width: 38px;
-  height: 22px;
-  border-radius: 8px;
-  color: #f8fafc;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  padding: 0 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-}
-
-.trackTitle {
-  margin-top: 5px;
-  color: #e2e8f0;
-  font-size: 12px;
-  font-weight: 700;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.trackSubtitle {
-  margin-top: 2px;
-  color: #64748b;
-  font-size: 10px;
-  font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.trackActions {
-  margin-top: 8px;
-}
-
-.subtitleTools {
-  position: relative;
-}
-
-.subtitleStatus {
-  color: rgba(255, 237, 213, 0.88);
-  font-size: 10px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-
-.subtitleActionRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.subtitleActionButton {
-  height: 24px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(251, 146, 60, 0.24);
-  background: rgba(124, 45, 18, 0.24);
-  color: #ffedd5;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.subtitleActionButton:disabled {
-  cursor: wait;
-  opacity: 0.72;
-}
-
-.subtitleActionButtonSecondary {
-  border-color: rgba(251, 191, 36, 0.24);
-  background: rgba(120, 53, 15, 0.18);
-  color: #fde68a;
-}
-
-.subtitleStylePanel {
-  position: absolute;
-  top: calc(100% + 12px);
-  left: 0;
-  z-index: 20;
-  width: 260px;
-  padding: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(251, 146, 60, 0.24);
-  background:
-    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
-  box-shadow:
-    0 18px 36px rgba(2, 6, 23, 0.48),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.subtitleStyleHeader {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.subtitleStyleTitle {
-  color: #f8fafc;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.subtitleStyleMeta {
-  color: #fdba74;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.subtitleSwitchRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 12px;
-  color: #e2e8f0;
-  font-size: 11px;
+.trackTypeLine {
+  font-size: var(--font-size-xs);
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.subtitleSwitchRow input {
-  accent-color: #fb923c;
+.trackNameLine {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.subtitleStyleGrid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-  margin-top: 12px;
-}
-
-.subtitleField {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: #cbd5e1;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.subtitleField input,
-.subtitleField select {
-  height: 32px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.88);
-  color: #f8fafc;
-  padding: 0 10px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.subtitleField input[type='color'] {
-  padding: 4px;
-}
-
-.subtitleField input:focus-visible,
-.subtitleField select:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.5), 0 0 0 4px rgba(249, 115, 22, 0.16);
-}
-
-.subtitlePreview {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(148, 163, 184, 0.12);
-}
-
-.subtitlePreviewPrefix {
-  color: #cbd5e1;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.subtitlePreviewChip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 28px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.laneRow {
-  display: grid;
-}
-
-.laneMain {
+.laneMain,
+.trackDropLane {
   position: relative;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+  border-bottom: 1px solid var(--color-separator);
 }
 
 .lockedLane {
@@ -432,58 +183,54 @@
   pointer-events: none;
 }
 
-.overlayRow {
-  display: grid;
-}
-
 .trackDropLane {
-  position: relative;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.08);
-  background-color: #020617;
-  transition: background-color 150ms ease-out, box-shadow 150ms ease-out;
+  background-color: var(--color-timeline-bg);
+  transition:
+    background-color var(--motion-fast),
+    box-shadow var(--motion-fast);
 }
 
 .trackDropLaneHover {
-  background-color: rgba(15, 23, 42, 0.85);
+  background-color: color-mix(in srgb, var(--color-selection-blue) 12%, var(--color-timeline-bg));
   box-shadow:
-    inset 0 0 0 1px rgba(56, 189, 248, 0.35),
-    0 0 30px rgba(56, 189, 248, 0.15);
+    inset 0 0 0 1px color-mix(in srgb, var(--color-selection-blue) 28%, transparent),
+    inset 0 0 40px color-mix(in srgb, var(--color-selection-blue) 10%, transparent);
 }
 
 .emptyHint {
   position: absolute;
-  left: 14px;
   top: 50%;
+  left: 10px;
   transform: translateY(-50%);
-  color: #475569;
-  font-size: 12px;
+  color: var(--color-text-disabled);
+  font-size: 11px;
   font-weight: 500;
   pointer-events: none;
-  transition: color 150ms ease-out;
+  transition: color var(--motion-fast);
 }
 
 .emptyHintHover {
-  color: #38bdf8;
+  color: var(--color-brand-accent);
 }
 
 .playhead {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 2px;
-  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
-  pointer-events: none;
   z-index: 5;
-  box-shadow: 0 0 20px rgba(56, 189, 248, 0.6), 0 0 40px rgba(56, 189, 248, 0.3);
+  width: 2px;
+  pointer-events: none;
+  background: var(--color-selection-blue);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
 }
 
 .playheadHandle {
   position: absolute;
   top: -2px;
-  left: -6px;
-  width: 14px;
-  height: 14px;
-  border-radius: 0 0 10px 10px;
-  background: linear-gradient(180deg, #38bdf8, #0ea5e9);
-  box-shadow: 0 4px 12px rgba(56, 189, 248, 0.5);
+  left: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 0 0 7px 7px;
+  background: color-mix(in srgb, var(--color-selection-blue-hover) 76%, white 10%);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.18);
 }

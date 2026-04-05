@@ -1,71 +1,65 @@
 .root {
-  min-height: 54px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, auto) minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding: 9px 18px;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
-  background: linear-gradient(180deg, rgba(2, 6, 23, 0.98) 0%, rgba(15, 23, 42, 0.92) 100%);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  -webkit-app-region: drag;
-  user-select: none;
-}
-
-.compact {
-  min-height: 50px;
-  padding: 8px 16px;
-}
-
-.spacer {
+  height: 44px;
+  position: relative;
   display: flex;
   align-items: center;
-  justify-self: start;
-}
-
-.projectChip {
-  min-width: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-self: center;
-  gap: 10px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(15, 23, 42, 0.48);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-}
-
-.projectChipCompact {
-  padding: 0 12px;
-  border-radius: 11px;
-}
-
-.statusIcon {
-  width: 16px;
-  height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--color-separator);
+  background: var(--color-titlebar-bg);
+  -webkit-app-region: drag;
+  user-select: none;
   flex-shrink: 0;
 }
 
-.projectName {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-  font-weight: 700;
-  color: #f8fafc;
-  letter-spacing: 0.01em;
+.compact {
+  height: 40px;
+  padding: 0 12px;
 }
 
+/* macOS hiddenInset：为系统原生红绿灯预留空间 */
+.trafficLightSpacer {
+  width: 68px;
+  flex-shrink: 0;
+}
+
+/* ── 居中标题（absolute，不影响 flex 两端） ── */
+.titleArea {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.projectName {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  line-height: 1;
+}
+
+.saveStatus {
+  font-size: var(--font-size-xs);
+  font-weight: 400;
+  color: rgba(235, 235, 245, 0.48);
+  line-height: 1;
+}
+
+/* ── 右侧操作区 ── */
 .actions {
   display: flex;
   align-items: center;
-  justify-self: end;
-  gap: 10px;
+  gap: 6px;
+  z-index: 1;
   -webkit-app-region: no-drag;
 }
+

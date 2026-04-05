@@ -6,67 +6,75 @@
 }
 
 .variantAudio {
-  background: linear-gradient(180deg, #2c9ad1 0%, #1b82c1 55%, #166aa7 100%);
+  background: color-mix(in srgb, var(--color-panel-elevated) 82%, var(--color-timeline-bg));
 }
 
 .audioWavePrimary {
   position: absolute;
   inset: 18% 0 auto;
   height: 34%;
-  background: repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.85) 0 2px, transparent 2px 6px);
-  opacity: 0.9;
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-brand-accent) 76%, white 24%) 0 2px,
+    transparent 2px 6px
+  );
+  opacity: 0.74;
 }
 
 .audioWaveSecondary {
   position: absolute;
   inset: 52% 0 auto;
   height: 22%;
-  background: repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.22) 0 3px, transparent 3px 8px);
-  opacity: 0.55;
+  background: repeating-linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--color-selection-blue) 20%, black 80%) 0 3px,
+    transparent 3px 8px
+  );
+  opacity: 0.52;
 }
 
 .audioLabel {
   position: absolute;
-  left: 10px;
-  bottom: 10px;
-  color: rgba(255, 255, 255, 0.86);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  left: 8px;
+  bottom: 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .variantSrt {
   box-sizing: border-box;
-  padding: 12px 10px;
-  background: linear-gradient(135deg, rgba(22, 30, 44, 0.98) 0%, rgba(11, 16, 27, 0.98) 100%);
+  padding: 10px 8px;
+  background: color-mix(in srgb, var(--color-panel-elevated) 86%, var(--color-timeline-bg));
 }
 
 .srtLine {
-  height: 7px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
-  margin-bottom: 8px;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-panel-muted) 92%, var(--color-border-subtle));
+  margin-bottom: 6px;
 }
 
 .srtLineAccent {
-  background: rgba(199, 183, 255, 0.45);
+  background: color-mix(in srgb, var(--color-selection-blue) 46%, var(--color-panel-muted));
   margin-bottom: 0;
 }
 
 .srtLabel {
-  margin-top: 12px;
-  color: #c7b7ff;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  margin-top: 10px;
+  color: var(--color-brand-accent);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }
 
 .variantGeneric {
   display: grid;
   place-items: center;
-  background: linear-gradient(135deg, rgba(24, 36, 58, 0.95) 0%, rgba(11, 16, 27, 0.98) 100%);
+  background: color-mix(in srgb, var(--color-panel-elevated) 86%, var(--color-timeline-bg));
   color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
 }

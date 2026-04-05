@@ -150,11 +150,15 @@ function buildUnifiedVisualPromptSection(): string {
 - 请保留 card 的 title/content 作为结构化兜底文本
 
 颜色建议：
-- summary: #6366f1
-- data: #10b981
-- insight: #f59e0b
-- chapter: #8b5cf6
-- quote: #ec4899`;
+- summary: #79c4ff
+- data: #4ed38a
+- insight: #ffb347
+- chapter: #9eb7ff
+- quote: #ff8f7a
+
+整体风格建议：
+- 偏 macOS desktop dark / Swift UI 的半透明磨砂层次
+- 高光和阴影要克制，避免霓虹紫、强饱和电商橙、网页营销页式渐变`;
 }
 
 function normalizeCoverPrompts(value: unknown): string[] {

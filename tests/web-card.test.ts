@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { appendCacheBuster, normalizeWebCardSrcDoc } from '../src/lib/web-card';
+import {
+  appendCacheBuster,
+  DEFAULT_WEB_CARD_BACKGROUND,
+  normalizeWebCardSrcDoc,
+} from '../src/lib/web-card';
 
 describe('normalizeWebCardSrcDoc', () => {
   it('injects viewport normalization markup once for iframe rendering', () => {
@@ -9,7 +13,7 @@ describe('normalizeWebCardSrcDoc', () => {
 
     expect(normalized).toContain('data-web-card-normalized="true"');
     expect(normalized).toContain('name="viewport"');
-    expect(normalized).toContain('background: #020617');
+    expect(normalized).toContain(`background: ${DEFAULT_WEB_CARD_BACKGROUND}`);
   });
 
   it('does not inject duplicate normalization wrappers', () => {

@@ -1,140 +1,153 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-.summaryCard {
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(251, 146, 60, 0.24);
-  background:
-    linear-gradient(180deg, rgba(30, 41, 59, 0.98), rgba(15, 23, 42, 0.98));
-  box-shadow:
-    0 18px 36px rgba(2, 6, 23, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+/* ── Section ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
 }
 
-.summaryTitle {
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: 800;
+.section + .section {
+  border-top: 1px solid var(--color-panel-elevated);
 }
 
-.summaryMeta {
-  margin-top: 4px;
-  color: #fdba74;
+/* Section Header */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sectionIcon {
+  color: rgba(235, 235, 245, 0.3);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  color: rgba(235, 235, 245, 0.6);
   font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* ── 状态卡片 ── */
+.statusCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--color-panel-elevated);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-strong);
+}
+
+.statusCardMeta {
+  color: rgba(235, 235, 245, 0.3);
+  font-size: 10px;
   font-weight: 600;
 }
 
-.summaryText {
-  margin-top: 10px;
-  color: #cbd5e1;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.error {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(248, 113, 113, 0.24);
-  background: rgba(127, 29, 29, 0.18);
-  color: #fecaca;
-  font-size: 12px;
+.statusCardText {
+  color: rgba(235, 235, 245, 0.6);
+  font-size: 11px;
   line-height: 1.5;
 }
 
-.actionRow {
+/* ── 字段行 (label + control) ── */
+.fieldRow {
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
 }
 
+.fieldLabel {
+  flex-shrink: 0;
+  width: 48px;
+  color: rgba(235, 235, 245, 0.3);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.fieldControl {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 颜色双列 ── */
+.colorRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+}
+
+/* ── 数字字段行 ── */
+.numberRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* ── 单位文本 ── */
+.unitText {
+  color: rgba(235, 235, 245, 0.3);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* ── 开关行 ── */
 .switchRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(15, 23, 42, 0.46);
-  color: #e2e8f0;
-  font-size: 12px;
-  font-weight: 700;
+  gap: 8px;
 }
 
-.switchRow input {
-  accent-color: #fb923c;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  color: #cbd5e1;
+.switchLabel {
+  color: rgba(235, 235, 245, 0.6);
   font-size: 11px;
-  font-weight: 700;
 }
 
-.field input,
-.field select {
-  height: 36px;
-  border-radius: 10px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  background: rgba(15, 23, 42, 0.88);
-  color: #f8fafc;
-  padding: 0 10px;
-  font-size: 12px;
-  font-weight: 600;
+/* ── 操作按钮 ── */
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
-.field input[type='color'] {
-  padding: 4px;
-}
-
-.field input:focus-visible,
-.field select:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.5), 0 0 0 4px rgba(249, 115, 22, 0.16);
-}
-
+/* ── 预览区 ── */
 .preview {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.12);
-  background: rgba(15, 23, 42, 0.46);
+  padding: 12px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border-strong);
+  background: var(--color-panel-elevated);
 }
 
 .previewPrefix {
-  color: #cbd5e1;
+  color: rgba(235, 235, 245, 0.6);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .previewChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 28px;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  min-height: 26px;
   font-size: 12px;
   font-weight: 800;
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+/* ── 错误提示 ── */
+.errorText {
+  color: var(--color-danger);
+  font-size: 11px;
+  line-height: 1.4;
 }

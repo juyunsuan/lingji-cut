@@ -29,12 +29,12 @@
   padding: var(--space-3);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
-  background: var(--color-bg-subtle);
+  background: color-mix(in srgb, var(--color-panel-subtle) 72%, var(--color-panel-bg));
 }
 
 .promptText {
   padding-right: 40px;
-  color: #94a3b8;
+  color: var(--color-text-secondary);
   font-size: var(--font-size-xs);
   line-height: 1.5;
   white-space: pre-wrap;
@@ -58,7 +58,7 @@
 }
 
 .hint {
-  color: #71839a;
+  color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   line-height: 1.5;
 }
@@ -75,12 +75,11 @@
   overflow: hidden;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.03);
-  box-shadow: var(--shadow-card);
+  background: color-mix(in srgb, var(--color-panel-subtle) 76%, var(--color-panel-bg));
   cursor: pointer;
   transition:
-    transform var(--motion-fast),
     border-color var(--motion-base),
+    background var(--motion-base),
     box-shadow var(--motion-base);
 }
 
@@ -89,15 +88,14 @@
 }
 
 .candidateCard:hover {
-  transform: translateY(-1px);
   border-color: var(--color-border-strong);
+  background: color-mix(in srgb, var(--color-panel-muted) 68%, var(--color-panel-bg));
 }
 
 .candidateSelected {
-  border-color: rgba(129, 140, 248, 0.5);
-  box-shadow:
-    0 0 0 1px rgba(99, 102, 241, 0.45),
-    0 18px 36px rgba(79, 70, 229, 0.18);
+  border-color: color-mix(in srgb, var(--color-selection-blue) 48%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--color-selection-blue) 6%, var(--color-panel-bg));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-selection-blue) 24%, transparent);
 }
 
 .candidateImage {
@@ -114,9 +112,9 @@
   height: 100%;
   padding: var(--space-3);
   box-sizing: border-box;
-  color: #fca5a5;
+  color: color-mix(in srgb, var(--color-danger) 82%, white 18%);
   font-size: var(--font-size-xs);
   line-height: 1.5;
   text-align: center;
-  background: linear-gradient(180deg, rgba(127, 29, 29, 0.3), rgba(15, 23, 42, 0.86));
+  background: color-mix(in srgb, var(--color-bg-error) 88%, var(--color-panel-bg));
 }

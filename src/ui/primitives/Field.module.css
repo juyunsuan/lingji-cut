@@ -1,7 +1,7 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
 }
 
 .labelRow {
@@ -12,11 +12,13 @@
 
 .label {
   font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--color-text-secondary);
 }
 
 .required {
-  color: #fda4af;
+  color: var(--color-danger);
   font-size: var(--font-size-xs);
 }
 
@@ -26,12 +28,12 @@
 
 .hint {
   font-size: var(--font-size-xs);
-  color: var(--color-text-disabled);
+  color: var(--color-text-muted);
   line-height: var(--line-height-normal);
 }
 
 .error {
   font-size: var(--font-size-xs);
-  color: #fca5a5;
+  color: var(--color-danger);
   line-height: var(--line-height-normal);
 }

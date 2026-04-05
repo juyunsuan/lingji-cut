@@ -21,6 +21,11 @@ import {
 
 type Page = 'setup' | 'editor';
 
+const APP_FONT_STACK =
+  '"SF Pro Text", "SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif';
+const APP_LOADING_BACKGROUND = 'var(--color-window-bg)';
+const APP_WINDOW_BACKGROUND = 'var(--color-window-bg)';
+
 export default function App() {
   const viewport = useViewportSize();
   const [page, setPage] = useState<Page>('setup');
@@ -333,10 +338,9 @@ export default function App() {
           height: '100%',
           display: 'grid',
           gridTemplateRows: 'auto minmax(0, 1fr)',
-          background:
-            'radial-gradient(circle at 20% -10%, rgba(56, 189, 248, 0.15), transparent 40%), radial-gradient(circle at 80% 0%, rgba(129, 140, 248, 0.12), transparent 45%), #020617',
-          color: '#f8fafc',
-          fontFamily: '"PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif',
+          background: APP_LOADING_BACKGROUND,
+          color: 'var(--color-text-primary)',
+          fontFamily: APP_FONT_STACK,
         }}
       >
         <Toolbar
@@ -350,7 +354,13 @@ export default function App() {
         />
         <div style={{ display: 'grid', placeItems: 'center', minHeight: 0 }}>
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 14, letterSpacing: '0.16em', color: '#7bd5ff' }}>
+            <div
+              style={{
+                fontSize: 14,
+                letterSpacing: '0.16em',
+                color: 'var(--color-brand-accent)',
+              }}
+            >
               VIDEO WEB MASTER
             </div>
             <h1 style={{ margin: '12px 0 0', fontSize: 28 }}>正在恢复上次工程...</h1>
@@ -365,11 +375,10 @@ export default function App() {
       style={{
         width: '100%',
         height: '100%',
-        background:
-          'radial-gradient(circle at 20% -10%, rgba(56, 189, 248, 0.12), transparent 45%), radial-gradient(circle at 85% -5%, rgba(129, 140, 248, 0.10), transparent 50%), radial-gradient(circle at 50% 120%, rgba(249, 115, 22, 0.08), transparent 40%), #020617',
-        color: '#f8fafc',
+        background: APP_WINDOW_BACKGROUND,
+        color: 'var(--color-text-primary)',
         overflow: 'hidden',
-        fontFamily: '"PingFang SC", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, sans-serif',
+        fontFamily: APP_FONT_STACK,
         display: 'grid',
         gridTemplateRows: 'auto minmax(0, 1fr)',
       }}

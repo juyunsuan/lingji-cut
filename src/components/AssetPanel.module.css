@@ -1,92 +1,86 @@
+/* 左侧素材面板 — design.pen */
 .root {
-  flex: 1;
-  min-height: 0;
-  background: rgba(21, 23, 28, 0.98);
-  padding: 14px;
+  width: 224px;
+  flex-shrink: 0;
+  background: var(--color-panel-bg);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  min-height: 0;
   max-height: 100%;
   overflow: hidden;
 }
 
-.regular {
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-}
-
+/* compact（横向 rail）模式下取消固定宽度，跟随父容器 */
 .compact {
-  padding: 12px;
-  gap: 10px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  width: auto;
+  flex: 1;
 }
 
-.header {
+.regular {
+  width: 224px;
+}
+
+/* ── 搜索栏 ── */
+.searchWrap {
+  margin: 8px 8px 0;
+  flex-shrink: 0;
+}
+
+/* ── 筛选 pill 行 ── */
+.filterRow {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
+  gap: 6px;
+  padding: 8px 8px 0;
+  flex-shrink: 0;
 }
 
-.compactSummary {
-  min-width: 0;
+/* ── 内容网格 ── */
+.content {
   flex: 1;
-  color: #a8b3c2;
+  min-height: 0;
+  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 65px);
+  gap: 4px;
+  align-content: start;
+}
+
+/* compact（横向 rail）时改为横向滚动一行 */
+.contentCompact {
+  overflow-y: hidden;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.gridCompact {
+  display: flex;
+  gap: 4px;
+}
+
+/* compact 搜索栏隐藏 */
+.compact .searchWrap {
+  display: none;
+}
+
+/* compact 筛选行隐藏 */
+.compact .filterRow {
+  display: none;
+}
+
+/* compact 计数文字 */
+.compactSummary {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.filterRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-width: 0;
-}
-
-.filterList {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.count {
-  color: #7f8ca0;
-  font-size: 11px;
-  white-space: nowrap;
-}
-
-.content {
-  flex: 1;
-  min-height: 0;
-  align-content: start;
-}
-
-.contentRegular {
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  padding-right: 4px;
-}
-
-.contentCompact {
-  overflow-y: hidden;
-  overflow-x: auto;
-  display: flex;
-  gap: 12px;
-  padding-bottom: 4px;
-}
-
-.emptyWrap {
-  min-width: 220px;
-}
-
-.emptyWrapRegular {
-  min-width: auto;
-  grid-column: 1 / -1;
+  padding: 8px;
 }

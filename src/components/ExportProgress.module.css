@@ -1,11 +1,18 @@
+.eyebrow {
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
 .status {
   margin-top: 14px;
-  color: #8da0bb;
+  color: var(--color-text-secondary);
   font-size: var(--font-size-md);
   line-height: var(--line-height-normal);
   word-break: break-all;
 }
 
 .statusError {
-  color: #ffb2b2;
+  color: color-mix(in srgb, var(--color-danger) 76%, white 24%);
 }

@@ -45,8 +45,8 @@ describe('AICardEditModal', () => {
     expect(html).toContain('重新生成此卡');
     expect(html).toContain('aspect-ratio:1080 / 1920');
     expect(html).toContain('data-web-card-normalized=&quot;true&quot;');
-    expect(html).toContain('width:100%');
-    expect(html).toContain('height:100%');
+    expect(html).toContain('width: 100%');
+    expect(html).toContain('height: 100%');
   });
 
   it('shows a loading mask over the web-card preview while regenerating', () => {

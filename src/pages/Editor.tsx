@@ -14,8 +14,7 @@ import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
 import { shouldUpdatePlaybackTime } from '../lib/playback';
 import { frameToMs, msToFrame } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
-import { SurfaceCard } from '../ui/primitives';
-import { TabBar } from '../ui/patterns';
+import { Card, Tabs, TabsList, TabsTrigger } from '../ui';
 import styles from './Editor.module.css';
 
 interface EditorProps {
@@ -24,7 +23,7 @@ interface EditorProps {
 }
 
 const TIMELINE_PANEL_HEIGHT_KEY = 'podcast-editor-timeline-panel-height';
-const TIMELINE_RESIZE_HANDLE_HEIGHT = 10;
+const TIMELINE_RESIZE_HANDLE_HEIGHT = 6;
 
 function readStoredTimelinePanelHeight(): number | null {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
@@ -255,7 +254,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
         style={{
           gridTemplateColumns: layout.stackSidebar
             ? 'minmax(0, 1fr)'
-            : 'minmax(280px, 320px) minmax(0, 1fr) minmax(320px, 360px)',
+            : '224px minmax(0, 1fr) 256px',
           gridTemplateRows: layout.stackSidebar
             ? `minmax(0, 1fr) ${layout.sidebarRailHeight}px`
             : 'minmax(0, 1fr)',
@@ -285,21 +284,24 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
           </>
         ) : (
           <>
-            <SurfaceCard
-              variant="elevated"
-              padding="none"
+            <Card
               className={styles.sidebarShell}
               data-editor-region="sidebar-shell"
             >
               <div className={styles.tabStrip}>
-                <TabBar
-                  items={[
-                    { value: 'assets', label: '素材' },
-                    { value: 'ai', label: 'AI 助手' },
-                  ]}
+                <Tabs
                   value={activePanel}
-                  onChange={setActivePanel}
-                />
+                  onValueChange={(value) => setActivePanel(value as 'assets' | 'ai')}
+                >
+                  <TabsList className={styles.tabList}>
+                    <TabsTrigger value="assets" className={styles.tabTrigger}>
+                      素材
+                    </TabsTrigger>
+                    <TabsTrigger value="ai" className={styles.tabTrigger}>
+                      AI 助手
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </div>
               <div className={styles.panelBody}>
                 {activePanel === 'assets' ? (
@@ -318,7 +320,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                   />
                 )}
               </div>
-            </SurfaceCard>
+            </Card>
             <div className={styles.previewWrap}>
               <PreviewPanel
                 playerRef={playerRef}

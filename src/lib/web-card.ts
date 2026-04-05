@@ -1,5 +1,6 @@
 export const DEFAULT_WEB_CARD_STAGE_WIDTH = 1_920;
 export const DEFAULT_WEB_CARD_STAGE_HEIGHT = 1_080;
+export const DEFAULT_WEB_CARD_BACKGROUND = '#10131a';
 
 export function appendCacheBuster(url: string, cacheKey?: number): string {
   if (!url || !Number.isFinite(cacheKey)) {
@@ -78,7 +79,7 @@ function buildAutoScaleScript(
     root.style.width='100%';
     root.style.height='100%';
     root.style.overflow='hidden';
-    root.style.background=body.style.background||getComputedStyle(body).backgroundColor||'#020617';
+    root.style.background=body.style.background||getComputedStyle(body).backgroundColor||'${DEFAULT_WEB_CARD_BACKGROUND}';
     body.style.width=W+'px';
     body.style.height=H+'px';
     body.style.minWidth=W+'px';
@@ -120,7 +121,7 @@ export function normalizeWebCardSrcDoc(
 html, body {
   margin: 0 !important;
   overflow: hidden !important;
-  background: #020617;
+  background: ${DEFAULT_WEB_CARD_BACKGROUND};
   width: 100%;
   height: 100%;
 }
@@ -166,7 +167,7 @@ export function fitWebCardIframe(
   root.style.width = '100%';
   root.style.height = '100%';
   root.style.overflow = 'hidden';
-  root.style.background = body.style.background || '#020617';
+  root.style.background = body.style.background || DEFAULT_WEB_CARD_BACKGROUND;
 
   body.style.width = `${stageWidth}px`;
   body.style.height = `${stageHeight}px`;

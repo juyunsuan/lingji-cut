@@ -33,7 +33,7 @@ describe('getEditorLayoutMode', () => {
       stackSidebar: false,
       compactToolbar: false,
       compactTimeline: false,
-      timelineHeight: 280,
+      timelineHeight: 198,
       sidebarRailHeight: 0,
     });
   });
@@ -43,8 +43,8 @@ describe('getEditorLayoutMode', () => {
       stackSidebar: true,
       compactToolbar: false,
       compactTimeline: true,
-      timelineHeight: 220,
-      sidebarRailHeight: 180,
+      timelineHeight: 176,
+      sidebarRailHeight: 138,
     });
   });
 
@@ -53,8 +53,8 @@ describe('getEditorLayoutMode', () => {
       stackSidebar: true,
       compactToolbar: true,
       compactTimeline: true,
-      timelineHeight: 210,
-      sidebarRailHeight: 154,
+      timelineHeight: 140,
+      sidebarRailHeight: 126,
     });
   });
 });
@@ -62,17 +62,17 @@ describe('getEditorLayoutMode', () => {
 describe('getTimelinePanelBounds', () => {
   it('returns bounded defaults for regular desktop timelines', () => {
     expect(getTimelinePanelBounds(900, false)).toEqual({
-      minHeight: 220,
-      maxHeight: 630,
-      defaultHeight: 280,
+      minHeight: 156,
+      maxHeight: 495,
+      defaultHeight: 198,
     });
   });
 
   it('keeps compact timelines resizable without crushing the preview', () => {
     expect(getTimelinePanelBounds(700, true)).toEqual({
-      minHeight: 180,
-      maxHeight: 490,
-      defaultHeight: 210,
+      minHeight: 132,
+      maxHeight: 385,
+      defaultHeight: 140,
     });
   });
 });

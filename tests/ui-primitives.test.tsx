@@ -1,44 +1,71 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
+  Alert,
   Badge,
   Button,
+  Card,
+  Divider,
+  Dialog,
+  DialogContent,
   EmptyState,
   Field,
-  IconButton,
+  FieldGrid,
+  FileDropCard,
   Input,
+  LoadingOverlay,
   MediaPlaceholder,
-  ModalShell,
-  ProgressBar,
-  SurfaceCard,
+  ModalFooter,
+  NumberField,
+  Progress,
+  SearchInput,
+  Select,
+  StepIndicator,
+  SummaryCard,
+  Switch,
+  Tabs,
+  TabsList,
+  TabsTrigger,
   Textarea,
-} from '../src/ui/primitives';
-import { FileDropCard, SelectionCard } from '../src/ui/patterns';
+} from '../src/ui';
 
 describe('ui primitives', () => {
   it('renders a loading button with disabled busy state', () => {
     const html = renderToStaticMarkup(
-      <Button variant="primary" size="lg" loading>
+      <Button variant="primary" size="lg" loading loadingText="保存中">
         保存
       </Button>,
     );
 
-    expect(html).toContain('aria-busy="true"');
     expect(html).toContain('disabled=""');
-    expect(html).toContain('data-variant="primary"');
-    expect(html).toContain('data-size="lg"');
+    expect(html).toContain('保存中');
   });
 
-  it('renders an icon button with an accessible label', () => {
+  it('renders Darwin button icons with local business content', () => {
     const html = renderToStaticMarkup(
-      <IconButton aria-label="打开设置" variant="ghost" size="sm">
+      <Button
+        variant="accent"
+        size="sm"
+        leftIcon={<span>left</span>}
+        rightIcon={<span>right</span>}
+      >
+        生成
+      </Button>,
+    );
+
+    expect(html).toContain('left');
+    expect(html).toContain('right');
+    expect(html).toContain('生成');
+  });
+
+  it('renders an icon-only button with an accessible label', () => {
+    const html = renderToStaticMarkup(
+      <Button aria-label="打开设置" variant="ghost" iconOnly>
         <span>icon</span>
-      </IconButton>,
+      </Button>,
     );
 
     expect(html).toContain('aria-label="打开设置"');
-    expect(html).toContain('data-variant="ghost"');
-    expect(html).toContain('data-size="sm"');
     expect(html).toContain('icon');
   });
 
@@ -74,59 +101,37 @@ describe('ui primitives', () => {
     expect(html).toContain('待处理');
   });
 
-  it('renders badges, progress bar and modal shell metadata', () => {
+  it('renders badges, progress and card content', () => {
     const html = renderToStaticMarkup(
-      <ModalShell
-        visible
-        eyebrow="EXPORT"
-        title="导出设置"
-        footer={
-          <>
-            <Badge variant="info">1080p</Badge>
-            <ProgressBar value={42} tone="brand" />
-          </>
-        }
-      >
-        <Badge variant="warning" shape="rounded">
-          极速低码率
-        </Badge>
-      </ModalShell>,
+      <Card>
+        <Badge variant="info">1080p</Badge>
+        <Progress value={42} variant="default" />
+        <Badge variant="warning">极速低码率</Badge>
+      </Card>,
     );
 
-    expect(html).toContain('导出设置');
-    expect(html).toContain('EXPORT');
     expect(html).toContain('1080p');
     expect(html).toContain('极速低码率');
     expect(html).toContain('aria-valuenow="42"');
-    expect(html).toContain('role="dialog"');
   });
 
-  it('renders surface cards, selection cards and file drop cards', () => {
+  it('renders cards and file drop cards', () => {
     const html = renderToStaticMarkup(
-      <SurfaceCard variant="brand" padding="lg">
-        <SelectionCard
-          title="1080p"
-          description="更清晰但导出更慢"
-          meta="1920 x 1080"
-          selected
-          tone="brand"
-        />
+      <Card>
         <FileDropCard
           eyebrow="AUDIO"
           heading="拖入 MP3"
           placeholder="把文件拖到这里"
           value="demo.mp3"
-          accentColor="#7bd5ff"
+          accentColor="#79c4ff"
           action={<span>选择文件</span>}
         />
-      </SurfaceCard>,
+      </Card>,
     );
 
-    expect(html).toContain('data-variant="brand"');
-    expect(html).toContain('1080p');
-    expect(html).toContain('data-selected="true"');
     expect(html).toContain('拖入 MP3');
     expect(html).toContain('demo.mp3');
+    expect(html).toContain('选择文件');
   });
 
   it('renders media placeholders for non-visual assets', () => {
@@ -141,5 +146,121 @@ describe('ui primitives', () => {
     expect(html).toContain('AUDIO');
     expect(html).toContain('SRT');
     expect(html).toContain('PDF');
+  });
+
+  it('renders alert and loading overlay primitives', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Alert variant="warning" dismissible>
+          配置还不完整
+        </Alert>
+        <LoadingOverlay label="正在处理中..." />
+      </>,
+    );
+
+    expect(html).toContain('role="alert"');
+    expect(html).toContain('配置还不完整');
+    expect(html).toContain('Dismiss alert');
+    expect(html).toContain('正在处理中...');
+  });
+
+  it('renders divider, switch, number field and select controls', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Divider label="高级设置" />
+        <Switch label="启用关键词高亮" checked onChange={() => undefined} />
+        <NumberField
+          label="圆角"
+          value={12}
+          min={0}
+          max={24}
+          onChange={() => undefined}
+        />
+        <Field label="高亮动画">
+          <Select
+            value="pop"
+            onChange={() => undefined}
+            options={[
+              { value: 'pop', label: '弹入' },
+              { value: 'wipe', label: '擦入' },
+            ]}
+          />
+        </Field>
+      </>,
+    );
+
+    expect(html).toContain('高级设置');
+    expect(html).toContain('启用关键词高亮');
+    expect(html).toContain('圆角');
+    expect(html).toContain('value="12"');
+    expect(html).toContain('高亮动画');
+    expect(html).toContain('弹入');
+  });
+
+  it('renders a search input, field grid and summary card', () => {
+    const html = renderToStaticMarkup(
+      <FieldGrid columns={2}>
+        <SummaryCard title="关键词高亮样式" meta="demo.srt">
+          当前有 5 处高亮
+        </SummaryCard>
+        <SearchInput value="关键词" readOnly placeholder="搜索文件名" />
+      </FieldGrid>,
+    );
+
+    expect(html).toContain('关键词高亮样式');
+    expect(html).toContain('demo.srt');
+    expect(html).toContain('当前有 5 处高亮');
+    expect(html).toContain('value="关键词"');
+  });
+
+  it('renders modal footer and step indicator states', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <ModalFooter
+          cancelLabel="取消"
+          confirmLabel="保存"
+          onCancel={() => undefined}
+          onConfirm={() => undefined}
+        />
+        <StepIndicator
+          steps={[
+            { label: '解析字幕', status: 'completed' },
+            { label: '提炼重点', status: 'active' },
+            { label: '生成卡片', status: 'pending' },
+          ]}
+        />
+      </>,
+    );
+
+    expect(html).toContain('取消');
+    expect(html).toContain('保存');
+    expect(html).toContain('解析字幕');
+    expect(html).toContain('提炼重点');
+    expect(html).toContain('生成卡片');
+  });
+
+  it('renders default dark primitives without custom glass chrome classes', () => {
+    const html = renderToStaticMarkup(
+      <>
+        <Button variant="secondary">默认按钮</Button>
+        <Card>默认卡片</Card>
+        <Input value="demo" readOnly />
+        <Tabs value="assets" onValueChange={() => undefined}>
+          <TabsList>
+            <TabsTrigger value="assets">素材</TabsTrigger>
+            <TabsTrigger value="ai">AI</TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <Dialog open onOpenChange={() => undefined}>
+          <DialogContent>默认弹窗</DialogContent>
+        </Dialog>
+      </>,
+    );
+
+    expect(html).not.toContain('backdrop-blur');
+    expect(html).not.toContain('dark:bg-zinc-900');
+    expect(html).not.toContain('bg-white/80');
+    expect(html).toContain('bg-card');
+    expect(html).toContain('border-border');
   });
 });

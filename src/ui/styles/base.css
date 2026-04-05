@@ -4,6 +4,10 @@
   box-sizing: border-box;
 }
 
+html {
+  background: var(--color-window-bg);
+}
+
 html,
 body,
 #root {
@@ -12,16 +16,13 @@ body,
 
 body {
   margin: 0;
-  background: var(--color-bg-canvas);
+  background: var(--color-window-bg);
   color: var(--color-text-primary);
-  font-family:
-    Inter,
-    "SF Pro Display",
-    "Segoe UI",
-    sans-serif;
+  font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 button,
@@ -33,6 +34,20 @@ select {
 
 button {
   margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+input,
+textarea,
+select {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+#root {
+  position: relative;
+  isolation: isolate;
 }
 
 button:focus:not(:focus-visible),
@@ -48,5 +63,31 @@ select:focus:not(:focus-visible) {
 }
 
 ::selection {
-  background: rgba(99, 102, 241, 0.28);
+  background: rgba(10, 132, 255, 0.3);
+}
+
+/* macOS-style scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.15);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

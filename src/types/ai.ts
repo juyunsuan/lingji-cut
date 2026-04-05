@@ -87,12 +87,14 @@ export interface AICardTimelineDraft {
   aiCardData: AICardOverlayData;
 }
 
+const DEFAULT_CARD_BACKGROUND = '#151922';
+
 export const DEFAULT_CARD_STYLE: Record<AICardType, CardStyle> = {
-  summary: { primaryColor: '#6366f1', backgroundColor: '#0f172a', fontSize: 48 },
-  data: { primaryColor: '#10b981', backgroundColor: '#0f172a', fontSize: 48 },
-  insight: { primaryColor: '#f59e0b', backgroundColor: '#0f172a', fontSize: 48 },
-  chapter: { primaryColor: '#8b5cf6', backgroundColor: '#0f172a', fontSize: 48 },
-  quote: { primaryColor: '#ec4899', backgroundColor: '#0f172a', fontSize: 48 },
+  summary: { primaryColor: '#79c4ff', backgroundColor: DEFAULT_CARD_BACKGROUND, fontSize: 48 },
+  data: { primaryColor: '#4ed38a', backgroundColor: DEFAULT_CARD_BACKGROUND, fontSize: 48 },
+  insight: { primaryColor: '#ffb347', backgroundColor: DEFAULT_CARD_BACKGROUND, fontSize: 48 },
+  chapter: { primaryColor: '#9eb7ff', backgroundColor: DEFAULT_CARD_BACKGROUND, fontSize: 48 },
+  quote: { primaryColor: '#ff8f7a', backgroundColor: DEFAULT_CARD_BACKGROUND, fontSize: 48 },
 };
 
 export const DEFAULT_CARD_DURATION_MS = 5_000;

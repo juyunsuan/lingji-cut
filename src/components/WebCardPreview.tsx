@@ -2,7 +2,8 @@ import { useMemo } from 'react';
 import { appendCacheBuster, normalizeWebCardSrcDoc } from '../lib/web-card';
 import type { WebCardPayload } from '../types/ai';
 import { toFileSrc } from '../lib/utils';
-import { LoadingSpinner } from './LoadingSpinner';
+import { LoadingOverlay } from '../ui';
+import styles from './WebCardPreview.module.css';
 
 const DEFAULT_STAGE_WIDTH = 1_920;
 const DEFAULT_STAGE_HEIGHT = 1_080;
@@ -50,84 +51,16 @@ export function WebCardPreview({
 
   return (
     <div
-      style={{
-        ...frameShellStyle,
-        aspectRatio,
-      }}
+      className={styles.root}
+      style={{ aspectRatio }}
       aria-busy={showLoading || undefined}
     >
       {iframeSource ? (
-        <iframe key={iframeKey} title="网页卡片预览" {...iframeSource} style={frameStyle} />
+        <iframe key={iframeKey} title="网页卡片预览" {...iframeSource} className={styles.frame} />
       ) : (
-        <div style={emptyStyle}>网页卡片预览将在分析或单卡重生成后显示</div>
+        <div className={styles.empty}>网页卡片预览将在分析或单卡重生成后显示</div>
       )}
-      {showLoading ? (
-        <div style={loadingOverlayStyle} role="status" aria-live="polite">
-          <div style={loadingCardStyle}>
-            <LoadingSpinner size={16} color="#ffffff" />
-            <span>{loadingLabel}</span>
-          </div>
-        </div>
-      ) : null}
+      <LoadingOverlay visible={showLoading} label={loadingLabel} />
     </div>
   );
 }
-
-const frameShellStyle = {
-  width: '100%',
-  position: 'relative' as const,
-  overflow: 'hidden' as const,
-  borderRadius: 16,
-  border: '1px solid rgba(255,255,255,0.08)',
-  background:
-    'radial-gradient(circle at top, rgba(148,163,184,0.12) 0%, rgba(2,6,23,0.96) 72%)',
-};
-
-const frameStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  width: '100%',
-  height: '100%',
-  border: 'none',
-  background: '#020617',
-  display: 'block',
-  pointerEvents: 'none' as const,
-};
-
-const emptyStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  borderRadius: 16,
-  border: '1px dashed rgba(255,255,255,0.12)',
-  background: 'rgba(255,255,255,0.02)',
-  color: '#94a3b8',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  textAlign: 'center' as const,
-  padding: 20,
-  boxSizing: 'border-box' as const,
-};
-
-const loadingOverlayStyle = {
-  position: 'absolute' as const,
-  inset: 0,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'rgba(2,6,23,0.56)',
-  backdropFilter: 'blur(8px)',
-};
-
-const loadingCardStyle = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 10,
-  padding: '10px 14px',
-  borderRadius: 999,
-  border: '1px solid rgba(255,255,255,0.12)',
-  background: 'rgba(15,23,42,0.82)',
-  color: '#f8fafc',
-  fontSize: 13,
-  fontWeight: 600,
-};

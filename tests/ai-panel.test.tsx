@@ -129,7 +129,7 @@ describe('AIPanel', () => {
     expect(html).toContain('封面');
     expect(html).toContain('应用到时间线');
     expect(html).toContain('重新分析');
-    expect(html).toContain('根据当前字幕和提示词重新生成内容卡片');
+    expect(html).toContain('title="重新分析"');
     expect(html).toContain('已在轨道 1');
     expect(html).toContain('整体创作提示词');
     expect(html).toContain('删除已选');

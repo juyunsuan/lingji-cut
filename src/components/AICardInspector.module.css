@@ -1,40 +1,76 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
 }
 
-.error {
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(248, 113, 113, 0.24);
-  background: rgba(127, 29, 29, 0.18);
-  color: #fecaca;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.form {
+/* ── Section ── */
+.section {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+  gap: 10px;
+  padding: 12px;
 }
 
+.section + .section {
+  border-top: 1px solid var(--color-separator);
+}
+
+/* Section Header — macOS 检查器眉批风格：全大写、稀疏字间距、静音色 */
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sectionIcon {
+  color: rgba(235, 235, 245, 0.35);
+  flex-shrink: 0;
+}
+
+.sectionTitle {
+  color: rgba(235, 235, 245, 0.42);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+/* ── 字段行 ── */
+.fieldRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldLabel {
+  flex-shrink: 0;
+  width: 44px;
+  color: rgba(235, 235, 245, 0.44);
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.fieldControl {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 预览区 ── */
 .previewStage {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(8, 12, 20, 0.94) 100%);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-preview-bg);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .previewCanvas {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at top, rgba(99, 102, 241, 0.14) 0%, rgba(15, 23, 42, 0) 46%),
-    linear-gradient(180deg, rgba(148, 163, 184, 0.04) 0%, rgba(15, 23, 42, 0) 100%);
+  background: transparent;
 }
 
 .previewFrame {
@@ -49,38 +85,38 @@
   position: absolute;
 }
 
+/* 预览角标 — vibrancy 效果 */
 .previewModeBadge {
   position: absolute;
-  top: 12px;
-  left: 12px;
+  top: 8px;
+  left: 8px;
   display: inline-flex;
   align-items: center;
-  padding: 6px 10px;
-  border: 1px solid var(--color-border-subtle);
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 999px;
-  background: rgba(2, 6, 23, 0.68);
-  color: #cbd5e1;
-  font-size: var(--font-size-sm);
+  background: rgba(28, 28, 30, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: rgba(235, 235, 245, 0.65);
+  font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
-.twoColumn {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
+/* ── 操作按钮行 ── */
 .actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
 }
 
-@media (max-width: 900px) {
-  .twoColumn {
-    grid-template-columns: 1fr;
-  }
+/* ── 错误提示 ── */
+.errorText {
+  color: var(--color-danger);
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 0 12px 10px;
 }

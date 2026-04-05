@@ -19,9 +19,7 @@ export function QuoteCard({ content, style }: QuoteCardProps) {
           fontWeight: 800,
           lineHeight: 1.5,
           textAlign: 'center',
-          background: `linear-gradient(135deg, ${style.primaryColor}, #f472b6)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
+          color: style.primaryColor,
         }}
       >
         {content}

@@ -1,11 +1,20 @@
-import { memo, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
+import {
+  Maximize2,
+  Minimize2,
+  Pause,
+  Play,
+  Settings2,
+  SkipBack,
+  SkipForward,
+  Volume2,
+} from 'lucide-react';
 import { fitPreviewStage } from '../lib/preview';
 import { formatTime, msToFrame } from '../lib/utils';
 import { PodcastComposition } from '../remotion/PodcastComposition';
 import { useTimelineStore } from '../store/timeline';
-import { Badge, Button, SurfaceCard } from '../ui/primitives';
-import { PanelHeader } from '../ui/patterns';
+import { Button, Card } from '../ui';
 import styles from './PreviewPanel.module.css';
 
 interface PreviewPanelProps {
@@ -22,7 +31,6 @@ function PreviewPanelComponent({
   playerRef,
   isPlaying,
   onTogglePlay,
-  onExport,
   currentTimeMs,
   durationMs,
   compact,
@@ -34,11 +42,29 @@ function PreviewPanelComponent({
     [fps, timeline.podcast.durationMs],
   );
   const playerInputProps = useMemo(() => ({ timeline, srtEntries }), [srtEntries, timeline]);
+  const cardRef = useRef<HTMLDivElement>(null);
   const previewAreaRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState(() => ({
     width: timeline.width,
     height: timeline.height,
   }));
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleChange);
+    return () => document.removeEventListener('fullscreenchange', handleChange);
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    if (!document.fullscreenElement) {
+      el.requestFullscreen();
+    } else {
+      document.exitFullscreen();
+    }
+  }, []);
 
   useEffect(() => {
     const container = previewAreaRef.current;
@@ -69,19 +95,26 @@ function PreviewPanelComponent({
   }, [timeline.height, timeline.width]);
 
   return (
-    <SurfaceCard variant="elevated" padding="none" className={styles.root}>
+    <Card ref={cardRef} className={styles.root}>
+      {/* Header */}
       <div className={styles.header}>
-        <PanelHeader
-          eyebrow="PREVIEW"
-          title="播客预览"
-          meta={<Badge variant="neutral">{timeline.width} × {timeline.height} · {fps}fps</Badge>}
-        />
+        <span className={styles.headerTitle}>预览</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className={styles.resolutionPill}
+          title={`分辨率: ${timeline.width}×${timeline.height} · ${fps}fps`}
+        >
+          <Settings2 size={12} />
+          <span>{timeline.width}×{timeline.height}</span>
+        </Button>
       </div>
 
+      {/* Stage 区域 */}
       <div
         ref={previewAreaRef}
         className={styles.stageArea}
-        style={{ padding: compact ? 16 : 24 }}
+        style={{ padding: compact ? 10 : 14 }}
       >
         <div
           className={styles.stageFrame}
@@ -103,58 +136,63 @@ function PreviewPanelComponent({
               width: '100%',
               height: '100%',
               display: 'block',
-              background: '#000',
+              background: 'var(--color-preview-bg)',
             }}
           />
         </div>
       </div>
 
-      <div
-        className={[
-          styles.footer,
-          compact ? styles.footerCompact : '',
-        ].filter(Boolean).join(' ')}
-      >
-        <div
-          className={[
-            styles.footerCluster,
-            compact ? styles.footerClusterCompact : '',
-          ].filter(Boolean).join(' ')}
-        >
-          <Button
-            onClick={onTogglePlay}
-            variant={isPlaying ? 'tint' : 'secondary'}
-            size="lg"
-            className={styles.playButton}
-          >
-            {isPlaying ? '⏸ 暂停' : '▶ 播放'}
-          </Button>
-
-          <div className={styles.statusRow}>
-            <div className={styles.timeBadge}>
-              {formatTime(currentTimeMs)} / {formatTime(durationMs)}
-            </div>
-            <div>
-              <Badge variant={isPlaying ? 'info' : 'neutral'}>
-                {isPlaying ? '● 播放中' : '⏸ 已暂停'}
-              </Badge>
-            </div>
-          </div>
+      {/* Footer 播放控件 */}
+      <div className={styles.footer}>
+        {/* 左段 — 时间组 */}
+        <div className={styles.footerLeft}>
+          <Volume2 size={16} className={styles.volumeIcon} />
+          <span className={styles.timeCurrentLabel}>{formatTime(currentTimeMs)}</span>
+          <span className={styles.timeSeparator}>/</span>
+          <span className={styles.timeTotalLabel}>{formatTime(durationMs)}</span>
         </div>
 
-        <Button
-          onClick={onExport}
-          variant="danger"
-          size="lg"
-          className={[
-            styles.exportButton,
-            compact ? styles.exportButtonCompact : '',
-          ].filter(Boolean).join(' ')}
-        >
-          导出 MP4
-        </Button>
+        {/* 中段 — 播放控件 */}
+        <div className={styles.footerCenter}>
+          <Button variant="ghost" size="icon" className={styles.skipButton} title="上一段" aria-label="上一段">
+            <SkipBack size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={styles.playButton}
+            onClick={onTogglePlay}
+            title={isPlaying ? '暂停' : '播放'}
+            aria-label={isPlaying ? '暂停' : '播放'}
+          >
+            {isPlaying
+              ? <Pause size={18} className={styles.playIcon} />
+              : <Play size={18} className={styles.playIcon} />
+            }
+          </Button>
+          <Button variant="ghost" size="icon" className={styles.skipButton} title="下一段" aria-label="下一段">
+            <SkipForward size={16} />
+          </Button>
+        </div>
+
+        {/* 右段 — 辅助控件 */}
+        <div className={styles.footerRight}>
+          <Button variant="ghost" size="sm" className={styles.speedButton} title="播放速度" aria-label="播放速度">
+            1×
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={styles.auxButton}
+            title={isFullscreen ? '退出全屏' : '全屏'}
+            aria-label={isFullscreen ? '退出全屏' : '全屏'}
+            onClick={handleToggleFullscreen}
+          >
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+          </Button>
+        </div>
       </div>
-    </SurfaceCard>
+    </Card>
   );
 }
 

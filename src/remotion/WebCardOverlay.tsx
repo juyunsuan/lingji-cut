@@ -1,5 +1,9 @@
 import { useMemo, type CSSProperties } from 'react';
-import { appendCacheBuster, normalizeWebCardSrcDoc } from '../lib/web-card';
+import {
+  appendCacheBuster,
+  DEFAULT_WEB_CARD_BACKGROUND,
+  normalizeWebCardSrcDoc,
+} from '../lib/web-card';
 import type { WebCardPayload } from '../types/ai';
 import { resolveRemotionAssetSrc } from '../lib/remotion-assets';
 
@@ -48,7 +52,7 @@ export function WebCardOverlay({ webCard, style }: WebCardOverlayProps) {
         width: '100%',
         height: '100%',
         border: 'none',
-        background: '#020617',
+        background: DEFAULT_WEB_CARD_BACKGROUND,
         ...style,
       }}
     />

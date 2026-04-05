@@ -23,13 +23,13 @@ function clampDimension(value: number, min: number, max: number): number {
 }
 
 export function getTimelinePanelBounds(height: number, compactTimeline: boolean): TimelinePanelBounds {
-  const minHeight = compactTimeline ? 180 : 220;
+  const minHeight = compactTimeline ? 132 : 156;
   const defaultHeight = compactTimeline
-    ? clampDimension(Math.round(height * 0.3), 180, 220)
-    : clampDimension(Math.round(height * 0.32), 220, 280);
+    ? clampDimension(Math.round(height * 0.2), 132, 176)
+    : clampDimension(Math.round(height * 0.22), 156, 210);
   const maxHeight = Math.max(
-    minHeight + 96,
-    Math.min(Math.round(height * 0.7), height - (compactTimeline ? 180 : 240)),
+    minHeight + 72,
+    Math.min(Math.round(height * 0.55), height - (compactTimeline ? 140 : 180)),
   );
 
   return {
@@ -57,7 +57,7 @@ export function getEditorLayoutMode(width: number, height: number): EditorLayout
   const stackSidebar = width < 1180 || height < 760;
   const timelineHeight = getTimelinePanelBounds(height, compactTimeline).defaultHeight;
   const sidebarRailHeight = stackSidebar
-    ? clampDimension(Math.round(height * 0.22), 144, 180)
+    ? clampDimension(Math.round(height * 0.18), 108, 138)
     : 0;
 
   return {

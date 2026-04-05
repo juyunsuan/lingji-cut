@@ -4,8 +4,7 @@ import { useViewportSize } from '../hooks/useViewportSize';
 import { getDroppedFilePath, getImportFileError, type ImportKind } from '../lib/import-files';
 import { getSetupLayoutMode } from '../lib/layout';
 import { getFileNameFromPath } from '../lib/utils';
-import { Badge, Button, SurfaceCard } from '../ui/primitives';
-import { FileDropCard } from '../ui/patterns';
+import { Alert, Badge, Button, Card, FileDropCard } from '../ui';
 import styles from './Setup.module.css';
 
 interface SetupProps {
@@ -48,11 +47,7 @@ function ImportCard({
           type="button"
           onClick={onPickFile}
           variant="secondary"
-          style={{
-            height: 42,
-            borderColor: `${accentColor}55`,
-            background: `${accentColor}18`,
-          }}
+          style={{ height: 42 }}
         >
           {selectLabel}
         </Button>
@@ -139,21 +134,18 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
             <div className={styles.heroEyebrow}>LOCAL PODCAST VIDEO EDITOR</div>
             <h1
               className={styles.heroTitle}
-              style={{ fontSize: layout.compactHero ? 'clamp(32px, 7vw, 42px)' : 'clamp(42px, 6vw, 54px)' }}
+              style={{ fontSize: layout.compactHero ? 'clamp(26px, 6vw, 34px)' : 'clamp(30px, 4.2vw, 40px)' }}
             >
-              给口播音频
-              <br />
-              搭一条可编辑的视频时间轴
+              导入音频与字幕
             </h1>
             <p
               className={styles.heroDescription}
               style={{
-                maxWidth: layout.stackColumns ? '100%' : 560,
+                maxWidth: layout.stackColumns ? '100%' : 500,
                 fontSize: layout.compactHero ? 15 : 16,
               }}
             >
-              先导入 MP3 和匹配的 SRT。进入编辑器后，你可以把图片和视频拖到时间轴里，
-              用同一份时间线驱动 Remotion 预览和 MP4 导出。
+              先导入 MP3 和匹配的 SRT。准备完成后，直接进入暗黑桌面工作区，在同一条时间线上完成预览、素材叠加和 MP4 导出。
             </p>
           </div>
 
@@ -165,28 +157,24 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
             }}
           >
             {[
-              ['01', '导入口播', '拖拽 MP3 与 SRT，自动解析字幕时长'],
-              ['02', '叠加素材', '把图片或视频拖到时间轴目标时间点'],
-              ['03', '实时导出', '预览与 renderMedia 共用一套 inputProps'],
+              ['01', '导入口播', '拖拽 MP3 与 SRT，自动建立时间轴长度'],
+              ['02', '整理画面', '在编辑器里叠加图片、视频、封面与 AI 卡片'],
+              ['03', '导出成片', '预览与导出使用同一份 timeline 数据'],
             ].map(([index, title, description]) => (
-              <SurfaceCard
+              <Card
                 key={index}
-                variant="subtle"
-                padding="md"
-                className={styles.featureCard}
+                className={`${styles.featureCard} p-4`}
               >
                 <div className={styles.featureIndex}>{index}</div>
                 <div className={styles.featureTitle}>{title}</div>
                 <div className={styles.featureDescription}>{description}</div>
-              </SurfaceCard>
+              </Card>
             ))}
           </div>
         </div>
 
-        <SurfaceCard
-          variant="elevated"
-          padding="lg"
-          className={styles.importPanel}
+        <Card
+          className={`${styles.importPanel} p-5`}
           style={{
             maxWidth: layout.stackColumns ? 720 : 'none',
             justifySelf: layout.stackColumns ? 'stretch' : 'auto',
@@ -195,7 +183,7 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
           }}
         >
           <div>
-            <Badge variant="neutral">STEP 1</Badge>
+            <Badge variant="secondary">STEP 1</Badge>
             <h2
               className={styles.importIntroTitle}
               style={{ fontSize: layout.compactHero ? 24 : 28 }}
@@ -218,7 +206,7 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
               label="AUDIO"
               helper="拖入 MP3 口播音频"
               value={audioPath}
-              accentColor="#7bd5ff"
+              accentColor="#79c4ff"
               icon="🎙"
               selectLabel="选择 MP3 文件"
               onPickFile={() => {
@@ -243,9 +231,7 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
           </div>
 
           {errorMessage || localError ? (
-            <SurfaceCard variant="danger" padding="sm" className={styles.errorBanner}>
-              {localError || errorMessage}
-            </SurfaceCard>
+            <Alert variant="destructive">{localError || errorMessage}</Alert>
           ) : null}
 
           <Button
@@ -255,13 +241,13 @@ export function Setup({ busy, errorMessage, onComplete }: SetupProps) {
                 void onComplete(audioPath, srtPath);
               }
             }}
-            variant={canStart ? 'tint' : 'secondary'}
+            variant={canStart ? 'accent' : 'secondary'}
             size="lg"
             className={styles.primaryAction}
           >
             {busy ? '正在初始化工程...' : '开始编辑'}
           </Button>
-        </SurfaceCard>
+        </Card>
       </div>
 
       <div

@@ -21,7 +21,7 @@
   min-height: 44px;
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border-subtle);
-  background: var(--color-bg-subtle);
+  background: color-mix(in srgb, var(--color-panel-subtle) 88%, var(--color-panel-bg));
   color: var(--color-text-muted);
   font-size: var(--font-size-sm);
   display: flex;
@@ -53,6 +53,10 @@
   gap: 10px;
   flex-wrap: wrap;
   margin-top: 10px;
+}
+
+.summaryCard {
+  margin-top: 18px;
 }
 
 @media (max-width: 720px) {

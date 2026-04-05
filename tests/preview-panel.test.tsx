@@ -45,9 +45,9 @@ describe('PreviewPanel', () => {
       />,
     );
 
-    expect(html).toContain('▶ 播放');
+    expect(html).toContain('播放');
     expect(html).toContain('00:15 / 01:30');
-    expect(html).toContain('导出 MP4');
+    expect(html).toContain('aria-label="导出 MP4"');
     expect(html).toContain('data-size="1920x1080"');
   });
 });

@@ -28,19 +28,19 @@ export function OverlayBlock({
   const isAICard = overlay.overlayType === 'ai-card';
   const isDefaultBackground = overlay.overlayRole === 'default-background';
   const color = isDefaultBackground
-    ? '#7bd5ff'
+    ? 'var(--color-brand-accent)'
     : isAICard
-    ? overlay.aiCardData?.style.primaryColor ?? '#8b5cf6'
+    ? overlay.aiCardData?.style.primaryColor ?? 'var(--color-brand-accent)'
     : overlay.type === 'video'
-      ? '#3ea6ff'
-      : '#d6864a';
+      ? 'var(--color-selection-blue-hover)'
+      : 'var(--color-brand-warm)';
   const colorGlow = isDefaultBackground
-    ? 'rgba(123,213,255,0.22)'
+    ? 'color-mix(in srgb, var(--color-brand-accent) 22%, transparent)'
     : isAICard
-    ? 'rgba(139,92,246,0.24)'
+    ? 'color-mix(in srgb, var(--color-brand-accent) 24%, transparent)'
     : overlay.type === 'video'
-      ? 'rgba(62,166,255,0.25)'
-      : 'rgba(214,134,74,0.24)';
+      ? 'color-mix(in srgb, var(--color-selection-blue-hover) 24%, transparent)'
+      : 'color-mix(in srgb, var(--color-brand-warm) 22%, transparent)';
   const left = overlay.startMs * pxPerMs;
   const width = Math.max(24, overlay.durationMs * pxPerMs);
   const thumbnailWidth = Math.max(0, Math.min(38, width - 26));

@@ -56,7 +56,7 @@ describe('Editor', () => {
     expect(html).toContain('素材');
     expect(html).toContain('AI 助手');
     expect(html).toContain('data-editor-region="inspector-shell"');
-    expect(html).toContain('minmax(280px, 320px) minmax(0, 1fr) minmax(320px, 360px)');
+    expect(html).toContain('minmax(228px, 264px) minmax(0, 1fr) minmax(248px, 288px)');
   });
 
   it('clips the timeline row so the lower panel shadow cannot overlap the sidebar footer', () => {

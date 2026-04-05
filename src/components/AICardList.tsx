@@ -1,8 +1,9 @@
 import type { CSSProperties } from 'react';
+import { Trash2 } from 'lucide-react';
 import { formatTime } from '../lib/utils';
 import type { AICard, AICardType } from '../types/ai';
+import { Badge, Button, Card } from '../ui';
 import { AppIcon, type AppIconName } from './AppIcon';
-import { Badge, Button, IconButton, SurfaceCard } from '../ui/primitives';
 import styles from './AICardList.module.css';
 
 export interface AICardPlacement {
@@ -19,11 +20,11 @@ interface AICardListProps {
 }
 
 const CARD_TYPE_META: Record<AICardType, { label: string; color: string; icon: AppIconName }> = {
-  summary: { label: '摘要', color: '#6366f1', icon: 'file-text' },
-  data: { label: '数据', color: '#10b981', icon: 'chart-column' },
-  insight: { label: '观点', color: '#f59e0b', icon: 'lightbulb' },
-  chapter: { label: '章节', color: '#8b5cf6', icon: 'book-open-text' },
-  quote: { label: '金句', color: '#ec4899', icon: 'quote' },
+  summary: { label: '摘要', color: 'var(--color-selection-blue)', icon: 'file-text' },
+  data: { label: '数据', color: 'var(--color-success)', icon: 'chart-column' },
+  insight: { label: '观点', color: 'var(--color-warning)', icon: 'lightbulb' },
+  chapter: { label: '章节', color: 'var(--color-brand-accent)', icon: 'book-open-text' },
+  quote: { label: '金句', color: 'var(--color-danger)', icon: 'quote' },
 };
 
 export function AICardList({
@@ -41,11 +42,8 @@ export function AICardList({
         const placementText = placement ? `已在${placement.trackLabel}` : '未上轨';
 
         return (
-          <SurfaceCard
+          <Card
             key={card.id}
-            variant="subtle"
-            padding="sm"
-            interactive
             onClick={() => onEditCard(card.id)}
             className={styles.card}
             data-enabled={card.enabled}
@@ -58,20 +56,20 @@ export function AICardList({
 
               <div className={styles.content}>
                 <div className={styles.header}>
-                  <IconButton
+                  <Button
                     aria-label={card.enabled ? `取消选择卡片 ${card.title}` : `选择卡片 ${card.title}`}
                     title={card.enabled ? '已选' : '未选'}
                     onClick={(event) => {
                       event.stopPropagation();
                       onToggleEnabled(card.id);
                     }}
-                    variant={card.enabled ? 'brand' : 'ghost'}
-                    size="sm"
+                    variant={card.enabled ? 'accent' : 'ghost'}
+                    iconOnly
                     className={styles.toggleButton}
                     data-enabled={card.enabled}
                   >
                     <AppIcon name={card.enabled ? 'circle-check-big' : 'circle'} size={15} />
-                  </IconButton>
+                  </Button>
                   <div className={styles.title}>{card.title}</div>
                 </div>
 
@@ -79,7 +77,7 @@ export function AICardList({
                   {formatTime(card.startMs)} - {formatTime(card.endMs)}
                 </div>
                 <div className={styles.placement}>
-                  <Badge variant={placement ? 'info' : 'neutral'}>{placementText}</Badge>
+                  <Badge variant={placement ? 'info' : 'secondary'}>{placementText}</Badge>
                 </div>
               </div>
 
@@ -90,14 +88,14 @@ export function AICardList({
                   event.stopPropagation();
                   onDeleteCard(card.id);
                 }}
-                variant="danger"
-                size="sm"
+                variant="ghost"
+                iconOnly
                 className={styles.deleteButton}
               >
-                删除
+                <Trash2 size={13} />
               </Button>
             </div>
-          </SurfaceCard>
+          </Card>
         );
       })}
     </div>

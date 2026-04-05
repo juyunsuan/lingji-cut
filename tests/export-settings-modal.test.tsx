@@ -16,7 +16,8 @@ describe('ExportSettingsModal', () => {
 
     expect(html).toContain('导出设置');
     expect(html).toContain('720p');
-    expect(html).toContain('极速低码率');
+    expect(html).toContain('平衡');
+    expect(html).toContain('当前导出速度说明');
     expect(html).toContain('开始导出');
   });
 });

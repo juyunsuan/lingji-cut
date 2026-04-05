@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Type, Monitor, Clock, Trash2 } from 'lucide-react';
 import { getAICardOverlayPosition } from '../lib/ai-card-layout';
 import type { AICard, AICardType } from '../types/ai';
-import { Button, Field, Input, Textarea } from '../ui/primitives';
-import { PillGroup } from '../ui/patterns';
+import { Button, PillGroup, Input, Textarea, Field, NumberField } from '../ui';
 import { WebCardPreview } from './WebCardPreview';
 import styles from './AICardInspector.module.css';
 
@@ -120,82 +120,131 @@ export function AICardInspector({
 
   return (
     <div className={styles.root}>
-      {errorMessage ? <div className={styles.error}>{errorMessage}</div> : null}
+      {errorMessage && (
+        <span className={styles.errorText}>{errorMessage}</span>
+      )}
 
-      <div className={styles.form}>
-        <Field label="卡片类型">
-          <PillGroup items={CARD_TYPES} value={type} onChange={setType} />
-        </Field>
+      {/* Section 1 — 文字内容 */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Type size={12} className={styles.sectionIcon} />
+          <span className={styles.sectionTitle}>文字内容</span>
+        </div>
 
-        <Field label="标题">
-          <Input value={title} onChange={(event) => setTitle(event.target.value)} />
-        </Field>
+        {/* 卡片类型 */}
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>类型</span>
+          <div className={styles.fieldControl}>
+            <PillGroup items={CARD_TYPES} value={type} onChange={setType} />
+          </div>
+        </div>
 
+        {/* 标题 */}
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>标题</span>
+          <div className={styles.fieldControl}>
+            <Input
+              size="sm"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* 内容 */}
         <Field label="内容">
-          <Textarea value={content} onChange={(event) => setContent(event.target.value)} rows={5} />
-        </Field>
-
-        <Field label="单卡追加提示词">
           <Textarea
-            value={cardPrompt}
-            onChange={(event) => setCardPrompt(event.target.value)}
-            rows={3}
-            placeholder="例如：做成更有冲击力的封面海报感，结论更前置"
+            size="sm"
+            value={content}
+            rows={5}
+            resize="vertical"
+            onChange={(e) => setContent(e.target.value)}
           />
         </Field>
 
-        <Field label="网页卡片预览">
-          <div
-            className={styles.previewStage}
-            style={{ aspectRatio: `${Math.max(1, previewWidth)} / ${Math.max(1, previewHeight)}` }}
-          >
-            <div className={styles.previewCanvas} />
-            <div
-              className={[
-                styles.previewFrame,
-                displayMode === 'fullscreen'
-                  ? styles.previewFrameFullscreen
-                  : styles.previewFramePip,
-              ].join(' ')}
-              style={previewFrameStyle}
-            >
-              <WebCardPreview
-                webCard={previewWebCard ?? card.webCard}
-                stageWidth={previewWidth}
-                stageHeight={previewHeight}
-                isLoading={isRegenerating}
-                loadingLabel="正在重生成网页卡片..."
-              />
-            </div>
-            <span className={styles.previewModeBadge}>
-              {displayMode === 'fullscreen' ? '全屏位置预览' : '画中画位置预览'}
-            </span>
-          </div>
+        {/* 追加提示词 */}
+        <Field label="追加提示词">
+          <Textarea
+            size="sm"
+            value={cardPrompt}
+            rows={3}
+            resize="none"
+            placeholder="例如：做成更有冲击力的封面海报感，结论更前置"
+            onChange={(e) => setCardPrompt(e.target.value)}
+          />
         </Field>
+      </div>
 
-        <div className={styles.twoColumn}>
-          <Field label="展示时长（秒）">
-            <Input
-              type="number"
-              min={1}
-              max={30}
-              value={displayDurationMs / 1_000}
-              onChange={(event) =>
-                setDisplayDurationMs(Math.max(1, Number(event.target.value) || 1) * 1_000)
-              }
-            />
-          </Field>
+      {/* Section 2 — 展示设置 */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Monitor size={12} className={styles.sectionIcon} />
+          <span className={styles.sectionTitle}>展示设置</span>
+        </div>
 
-          <Field label="展示方式">
+        {/* 展示方式 */}
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>方式</span>
+          <div className={styles.fieldControl}>
             <PillGroup
               items={DISPLAY_MODES}
               value={displayMode}
               onChange={setDisplayMode}
               fullWidth
             />
-          </Field>
+          </div>
         </div>
 
+        {/* 展示时长 */}
+        <div className={styles.fieldRow}>
+          <span className={styles.fieldLabel}>时长</span>
+          <div className={styles.fieldControl}>
+            <NumberField
+              value={displayDurationMs / 1_000}
+              min={1}
+              step={0.5}
+              unit="s"
+              onChange={(v) => setDisplayDurationMs(v * 1_000)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section 3 — 网页卡片预览 */}
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <Clock size={12} className={styles.sectionIcon} />
+          <span className={styles.sectionTitle}>网页卡片预览</span>
+        </div>
+
+        <div
+          className={styles.previewStage}
+          style={{ aspectRatio: `${Math.max(1, previewWidth)} / ${Math.max(1, previewHeight)}` }}
+        >
+          <div className={styles.previewCanvas} />
+          <div
+            className={[
+              styles.previewFrame,
+              displayMode === 'fullscreen'
+                ? styles.previewFrameFullscreen
+                : styles.previewFramePip,
+            ].join(' ')}
+            style={previewFrameStyle}
+          >
+            <WebCardPreview
+              webCard={previewWebCard ?? card.webCard}
+              stageWidth={previewWidth}
+              stageHeight={previewHeight}
+              isLoading={isRegenerating}
+              loadingLabel="正在重生成网页卡片..."
+            />
+          </div>
+          <span className={styles.previewModeBadge}>
+            {displayMode === 'fullscreen' ? '全屏' : '画中画'}
+          </span>
+        </div>
+
+        {/* 操作按钮 */}
         <div className={styles.actions}>
           {showCancel && onCancel ? (
             <Button variant="secondary" onClick={onCancel}>
@@ -214,7 +263,6 @@ export function AICardInspector({
           </Button>
           <Button
             variant="primary"
-            size="lg"
             onClick={() => {
               onSave(card.id, draftUpdates);
             }}
@@ -222,6 +270,20 @@ export function AICardInspector({
             保存
           </Button>
         </div>
+      </div>
+
+      {/* Section 4 — 危险操作 */}
+      <div className={styles.section}>
+        <Button
+          variant="destructive"
+          fullWidth
+          leftIcon={<Trash2 size={12} />}
+          onClick={() => {
+            /* 删除操作由父层通过 onSave 传入后实现，此处预留 */
+          }}
+        >
+          删除此卡片
+        </Button>
       </div>
     </div>
   );

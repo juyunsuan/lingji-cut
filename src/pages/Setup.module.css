@@ -3,9 +3,7 @@
   height: 100%;
   display: grid;
   grid-template-rows: 1fr auto;
-  background:
-    radial-gradient(circle at top left, rgba(123, 213, 255, 0.12), transparent 26%),
-    radial-gradient(circle at top right, rgba(255, 181, 71, 0.12), transparent 24%);
+  background: var(--color-window-bg);
   overflow-y: auto;
 }
 
@@ -18,52 +16,54 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  gap: 22px;
 }
 
 .heroEyebrow {
-  font-size: var(--font-size-sm);
-  letter-spacing: 0.22em;
-  color: #7bd5ff;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.24em;
+  color: var(--color-brand-accent);
 }
 
 .heroTitle {
-  margin: 18px 0 12px;
+  margin: 12px 0 10px;
   color: var(--color-text-primary);
-  line-height: 1.05;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
 
 .heroDescription {
-  color: #9baec9;
-  line-height: 1.8;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
 }
 
 .featureGrid {
   display: grid;
-  gap: var(--space-4);
+  gap: 10px;
 }
 
 .featureCard {
-  box-shadow: none;
+  background: transparent;
 }
 
 .featureIndex {
-  color: #ffb547;
+  color: var(--color-brand-accent);
   font-size: var(--font-size-xs);
   letter-spacing: 0.14em;
 }
 
 .featureTitle {
-  margin-top: var(--space-2);
+  margin-top: 6px;
   color: var(--color-text-primary);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 650;
 }
 
 .featureDescription {
-  margin-top: var(--space-2);
+  margin-top: 6px;
   color: var(--color-text-muted);
-  font-size: var(--font-size-md);
-  line-height: 1.6;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
 }
 
 .importPanel {
@@ -76,12 +76,13 @@
 .importIntroTitle {
   margin: 10px 0 8px;
   color: var(--color-text-primary);
+  letter-spacing: -0.02em;
 }
 
 .importIntroDescription {
   margin: 0;
-  color: #8ca0bc;
-  line-height: 1.7;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
 }
 
 .importGrid {
@@ -91,22 +92,22 @@
 
 .errorBanner {
   border-radius: var(--radius-lg);
-  background: rgba(255, 110, 110, 0.1);
-  border: 1px solid rgba(255, 110, 110, 0.25);
-  color: #ffb2b2;
+  background: var(--color-bg-error);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 30%, var(--color-border-subtle));
+  color: color-mix(in srgb, var(--color-danger) 74%, white 26%);
   padding: 12px 14px;
   font-size: var(--font-size-sm);
 }
 
 .primaryAction {
   margin-top: auto;
-  min-height: 50px;
-  border-radius: var(--radius-lg);
-  font-size: 16px;
+  min-height: 40px;
+  border-radius: 10px;
+  font-size: 13px;
 }
 
 .footerNote {
-  color: #6f829f;
+  color: var(--color-text-muted);
   font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }

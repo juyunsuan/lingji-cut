@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AssetItem } from '../types';
 import { toFileSrc } from '../lib/utils';
-import { MediaPlaceholder } from '../ui/primitives';
+import { MediaPlaceholder } from '../ui';
 import styles from './AssetThumbnail.module.css';
 
 interface AssetThumbnailProps {

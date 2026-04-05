@@ -1,7 +1,7 @@
-import { AppIcon, type AppIconName } from './AppIcon';
+import { Download } from 'lucide-react';
 import type { MenuAction } from '../lib/electron-api';
 import type { SaveStatus } from '../store/timeline';
-import { Badge, Button } from '../ui/primitives';
+import { Button } from '../ui';
 import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
@@ -14,16 +14,9 @@ interface ToolbarProps {
 
 const saveStatusLabelMap: Record<SaveStatus, string> = {
   idle: '未打开工程',
-  saving: '保存中',
+  saving: '保存中…',
   saved: '已保存',
   error: '保存失败',
-};
-
-const saveStatusMetaMap: Record<SaveStatus, { icon: AppIconName; color: string }> = {
-  idle: { icon: 'circle', color: '#64748b' },
-  saving: { icon: 'refresh-cw', color: '#38bdf8' },
-  saved: { icon: 'circle-check-big', color: '#22c55e' },
-  error: { icon: 'alert-circle', color: '#f87171' },
 };
 
 export function Toolbar({
@@ -34,54 +27,33 @@ export function Toolbar({
   onCommand,
 }: ToolbarProps) {
   const saveStatusLabel = saveStatusLabelMap[saveStatus];
-  const saveStatusMeta = saveStatusMetaMap[saveStatus];
   const visibleProjectName = projectName || (page === 'editor' ? '未命名工程' : '欢迎页');
-  const controlHeight = compact ? 34 : 36;
-  const controlRadius = compact ? 11 : 12;
-  const controlFontSize = 13;
-  const chromeSpacerWidth = compact ? 76 : 94;
 
   return (
-    <div
+    <header
       className={[styles.root, compact ? styles.compact : ''].filter(Boolean).join(' ')}
     >
-      <div
-        className={styles.spacer}
-        style={{ minWidth: chromeSpacerWidth, height: controlHeight }}
-      />
-      <div
-        className={[
-          styles.projectChip,
-          compact ? styles.projectChipCompact : '',
-        ].filter(Boolean).join(' ')}
-        style={{
-          minWidth: 0,
-          maxWidth: compact ? 'min(58vw, 480px)' : 'min(54vw, 560px)',
-          height: controlHeight,
-        }}
-        title={saveStatusLabel}
-      >
-        <span
-          aria-label={saveStatusLabel}
-          className={styles.statusIcon}
-          style={{ color: saveStatusMeta.color }}
-        >
-          <AppIcon name={saveStatusMeta.icon} size={14} />
-        </span>
+      {/* macOS hiddenInset 模式下系统会在此区域渲染原生红绿灯，留出占位 */}
+      <div className={styles.trafficLightSpacer} aria-hidden="true" />
+
+      {/* 居中标题（absolute 定位，不参与 flex 流） */}
+      <div className={styles.titleArea}>
         <span className={styles.projectName}>{visibleProjectName}</span>
+        <span className={styles.saveStatus}>{saveStatusLabel}</span>
       </div>
+
+      {/* 右侧操作区 */}
       <div className={styles.actions}>
-        {!compact ? <Badge variant={saveStatus === 'error' ? 'danger' : saveStatus === 'saved' ? 'success' : 'neutral'}>{saveStatusLabel}</Badge> : null}
         <Button
+          variant="primary"
+          size="sm"
           disabled={page !== 'editor'}
           onClick={() => onCommand('export')}
-          variant={page === 'editor' ? 'tint' : 'secondary'}
-          size={compact ? 'sm' : 'md'}
-          style={{ height: controlHeight, borderRadius: controlRadius, fontSize: controlFontSize }}
+          leftIcon={<Download size={14} />}
         >
-          导出 MP4
+          导出
         </Button>
       </div>
-    </div>
+    </header>
   );
 }

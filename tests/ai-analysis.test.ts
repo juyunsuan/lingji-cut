@@ -82,7 +82,7 @@ describe('buildAnalysisPrompt', () => {
     expect(prompt).toContain('整体偏商业分析风');
     expect(prompt).toContain('必须使用简体中文');
     expect(prompt).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
-    expect(prompt).toContain('summary: #6366f1');
+    expect(prompt).toContain('summary: #79c4ff');
     expect(prompt).toContain('禁止输出任何“数据来源”');
   });
 });
@@ -116,8 +116,8 @@ describe('buildCardRegenerationPrompt', () => {
         template: 'summary-default',
         enabled: true,
         style: {
-          primaryColor: '#6366f1',
-          backgroundColor: '#0f172a',
+          primaryColor: '#79c4ff',
+          backgroundColor: '#151922',
           fontSize: 48,
         },
       },
@@ -132,7 +132,7 @@ describe('buildCardRegenerationPrompt', () => {
     expect(prompt).toContain('webCard');
     expect(prompt).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
     expect(prompt).toContain('template: summary-default');
-    expect(prompt).toContain('style.primaryColor: #6366f1');
+    expect(prompt).toContain('style.primaryColor: #79c4ff');
     expect(prompt).toContain('视觉风格必须与首次生成保持一致');
     expect(prompt).toContain('禁止输出任何“数据来源”');
   });
@@ -359,8 +359,8 @@ describe('regenerateAICard', () => {
       template: 'summary-default',
       enabled: true,
       style: {
-        primaryColor: '#6366f1',
-        backgroundColor: '#0f172a',
+        primaryColor: '#79c4ff',
+        backgroundColor: '#151922',
         fontSize: 48,
       },
       cardPrompt: '做成更像封面',
@@ -383,8 +383,8 @@ describe('regenerateAICard', () => {
           srcDoc: '<!doctype html><html><body><h1>新网页卡</h1></body></html>',
         },
         style: {
-          primaryColor: '#6366f1',
-          backgroundColor: '#0f172a',
+          primaryColor: '#79c4ff',
+          backgroundColor: '#151922',
           fontSize: 48,
         },
       }),
@@ -411,6 +411,6 @@ describe('regenerateAICard', () => {
     expect(modelCaller).toHaveBeenCalledTimes(1);
     expect(modelCaller.mock.calls[0]?.[1]).toContain('统一视觉基线（首次生成与二次重生成都必须遵守）');
     expect(modelCaller.mock.calls[0]?.[1]).toContain('template: summary-default');
-    expect(modelCaller.mock.calls[0]?.[1]).toContain('style.primaryColor: #6366f1');
+    expect(modelCaller.mock.calls[0]?.[1]).toContain('style.primaryColor: #79c4ff');
   });
 });

@@ -1,13 +1,13 @@
 import type { CSSProperties, DragEvent, MouseEvent, ReactNode, WheelEvent } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Plus } from 'lucide-react';
+import { Button } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
 import { getRenderableVisualTracks, getVisualTracks } from '../lib/timeline-tracks';
 import { filterValidSubtitleHighlights } from '../lib/subtitle-highlights';
-import { clamp, formatTime, getFileNameFromPath } from '../lib/utils';
+import { formatTime } from '../lib/utils';
 import {
   getAnchoredTimelineScrollLeft,
-  getFitTimelineZoom,
-  getNextTimelineZoom,
   getTimelineTrackWidth,
   getWheelTimelineZoom,
 } from '../lib/timeline-view';
@@ -54,13 +54,13 @@ export function Timeline({
     timeline,
   } = useTimelineStore();
   const durationMs = Math.max(1000, timeline.podcast.durationMs);
-  const outerPadding = compact ? 12 : 16;
-  const sidebarWidth = compact ? 100 : 120;
-  const toolbarHeight = compact ? 44 : 52;
-  const rulerHeight = 28;
-  const audioTrackHeight = compact ? 34 : 38;
-  const subtitleTrackHeight = compact ? 72 : 86;
-  const overlayTrackHeight = compact ? 40 : 44;
+  const outerPadding = compact ? 8 : 10;
+  const sidebarWidth = compact ? 86 : 104;
+  const toolbarHeight = compact ? 36 : 40;
+  const rulerHeight = 24;
+  const audioTrackHeight = compact ? 26 : 30;
+  const subtitleTrackHeight = compact ? 52 : 60;
+  const overlayTrackHeight = compact ? 30 : 34;
   const trackWidth = useMemo(
     () => getTimelineTrackWidth(durationMs, zoomLevel, Math.max(480, viewportWidth || 960)),
     [durationMs, viewportWidth, zoomLevel],
@@ -205,11 +205,10 @@ export function Timeline({
 
     return {
       backgroundImage: [
-        `linear-gradient(180deg, rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.2))`,
-        `repeating-linear-gradient(to right, rgba(148, 163, 184, 0.12) 0 1px, transparent 1px ${major}px)`,
-        `repeating-linear-gradient(to right, rgba(148, 163, 184, 0.06) 0 1px, transparent 1px ${minor}px)`,
+        `repeating-linear-gradient(to right, color-mix(in srgb, var(--color-border-strong) 48%, transparent) 0 1px, transparent 1px ${major}px)`,
+        `repeating-linear-gradient(to right, color-mix(in srgb, var(--color-border-subtle) 62%, transparent) 0 1px, transparent 1px ${minor}px)`,
       ].join(','),
-      backgroundColor: '#020617',
+      backgroundColor: 'var(--color-recessed-bg)',
     } satisfies CSSProperties;
   }, [majorTickInterval, minorTickInterval, pxPerMs]);
 
@@ -340,21 +339,12 @@ export function Timeline({
     label: string;
     actions?: ReactNode;
   }) => (
-    <div
-      className={joinClassNames(
-        styles.trackControls,
-        compact ? styles.trackControlsCompact : styles.trackControlsRegular,
-      )}
-    >
+    <div className={styles.trackControls}>
       <div className={styles.trackControlsBody}>
-        <div className={styles.trackBadgeWrap}>
-          <div className={styles.trackBadge} style={{ background: options.tone }}>
-            {options.label}
-          </div>
+        <div className={styles.trackTypeLine} style={{ color: options.tone }}>
+          {options.title}
         </div>
-        <div className={styles.trackTitle}>{options.title}</div>
-        <div className={styles.trackSubtitle}>{options.subtitle}</div>
-        {options.actions ? <div className={styles.trackActions}>{options.actions}</div> : null}
+        <div className={styles.trackNameLine}>{options.subtitle}</div>
       </div>
     </div>
   );
@@ -391,37 +381,24 @@ export function Timeline({
       }}
     >
       <div className={styles.toolbar}>
-        <div className={styles.toolbarInfo}>
-          <div className={styles.eyebrow}>TIMELINE</div>
-          <div className={styles.toolbarMeta}>
-            {visualTracks.length} 条视觉轨 · 拖到指定轨道落片
-          </div>
+        <div className={styles.toolbarLeft}>
+          <span className={styles.toolbarTitle}>时间线</span>
+          <div className={styles.zoomPill}>{Math.round(zoomLevel * 100)}%</div>
         </div>
 
-        <div className={styles.toolbarActions}>
-          <button onClick={() => addTrack()} className={styles.trackButton}>
-            + 轨道
-          </button>
-          <button
-            onClick={() => setZoomLevel((current) => getNextTimelineZoom(current, 'out'))}
-            className={styles.actionButton}
-          >
-            −
-          </button>
-          <div className={styles.zoomValue}>{Math.round(zoomLevel * 100)}%</div>
-          <button
-            onClick={() => setZoomLevel((current) => getNextTimelineZoom(current, 'in'))}
-            className={styles.actionButton}
-          >
-            +
-          </button>
-          <button
-            onClick={() => setZoomLevel(getFitTimelineZoom(durationMs, Math.max(480, viewportWidth || 960)))}
-            className={styles.fitButton}
-          >
-            Fit
-          </button>
-        </div>
+        <div className={styles.toolbarSpacer} />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className={styles.addTrackButton}
+          onClick={() => addTrack()}
+          aria-label="添加轨道"
+          title="添加轨道"
+        >
+          <Plus size={12} className={styles.addTrackIcon} />
+          <span className={styles.addTrackLabel}>添加轨道</span>
+        </Button>
       </div>
 
       <div
@@ -462,12 +439,10 @@ export function Timeline({
               timeline.tracks[0],
               audioTrackHeight,
               renderTrackControls({
-                tone: 'linear-gradient(135deg, #0ea5e9, #0284c7)',
+                tone: 'var(--color-track-audio)',
                 label: 'AUD',
-                title: '口播',
-                subtitle: timeline.podcast.audioPath
-                  ? getFileNameFromPath(timeline.podcast.audioPath)
-                  : '等待导入音频',
+                title: '音频',
+                subtitle: '轨道 1',
               }),
               styles.lockedLane,
               {
@@ -495,29 +470,10 @@ export function Timeline({
               timeline.tracks[1],
               subtitleTrackHeight,
               renderTrackControls({
-                tone: 'linear-gradient(135deg, #f97316, #ea580c)',
+                tone: 'var(--color-track-subtitle)',
                 label: 'TXT',
                 title: '字幕',
-                subtitle: timeline.podcast.srtPath
-                  ? getFileNameFromPath(timeline.podcast.srtPath)
-                  : '等待导入字幕',
-                actions: (
-                  <div className={styles.subtitleTools}>
-                    <div className={styles.subtitleStatus}>{subtitleHighlightSummary}</div>
-                    <div className={styles.subtitleActionRow}>
-                      <button
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onOpenSubtitleInspector?.();
-                        }}
-                        className={styles.subtitleActionButton}
-                        type="button"
-                      >
-                        字幕配置
-                      </button>
-                    </div>
-                  </div>
-                ),
+                subtitle: '轨道 1',
               }),
               styles.lockedLane,
             )}
@@ -555,11 +511,11 @@ export function Timeline({
                 >
                   {renderTrackControls({
                     tone: isTopLayer
-                      ? 'linear-gradient(135deg, #6366f1, #4f46e5)'
-                      : 'linear-gradient(135deg, #475569, #334155)',
+                      ? 'var(--color-track-primary)'
+                      : 'var(--color-track-secondary)',
                     label: `V${visualTracks.length - index}`,
-                    title: track.label,
-                    subtitle: isTopLayer ? `最上层 · L${track.order}` : `覆盖级 L${track.order}`,
+                    title: '视频',
+                    subtitle: `轨道 ${visualTracks.length - index}`,
                   })}
                   <div
                     ref={(node) => {
