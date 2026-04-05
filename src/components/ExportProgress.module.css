@@ -16,3 +16,11 @@
 .statusError {
   color: color-mix(in srgb, var(--color-danger) 76%, white 24%);
 }
+
+.footerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  width: 100%;
+}

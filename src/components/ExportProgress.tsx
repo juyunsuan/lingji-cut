@@ -6,7 +6,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  ModalFooter,
   Progress,
 } from "../ui";
 import styles from "./ExportProgress.module.css";
@@ -44,24 +43,26 @@ export function ExportProgress({
               .filter(Boolean)
               .join(" ")}
           >
-            {errorMessage || (isDone ? outputPath : `${Math.round(progress * 100)}%`)}
+            {errorMessage || (isDone ? outputPath : `${Math.round(progress * 100)}% — 导出中`)}
           </div>
         </DialogBody>
         <DialogFooter>
-          <ModalFooter
-            extra={
-              isDone && outputPath ? (
-                <Button
-                  onClick={() => window.electronAPI.showItemInFolder(outputPath)}
-                  variant="accent"
-                >
-                  在 Finder 中显示
-                </Button>
-              ) : null
-            }
-            onCancel={canDismiss ? onClose : undefined}
-            cancelLabel="关闭"
-          />
+          <div className={styles.footerActions}>
+            {isDone && outputPath ? (
+              <Button
+                onClick={() => window.electronAPI.showItemInFolder(outputPath)}
+                variant="accent"
+              >
+                在 Finder 中显示
+              </Button>
+            ) : null}
+            <Button
+              onClick={onClose}
+              variant={canDismiss ? 'secondary' : 'destructive'}
+            >
+              {canDismiss ? '关闭' : '取消导出'}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
