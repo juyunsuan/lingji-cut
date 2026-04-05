@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { Sparkles, Palette, SlidersHorizontal } from "lucide-react";
+import { FileText, Sparkles, Palette, SlidersHorizontal } from "lucide-react";
 import { getAISettingsIssue } from "../lib/ai-settings";
 import { generateSubtitleHighlights } from "../lib/subtitle-highlight-runner";
 import { filterValidSubtitleHighlights } from "../lib/subtitle-highlights";
@@ -7,7 +7,7 @@ import { getFileNameFromPath } from "../lib/utils";
 import type { SubtitleStyle } from "../types";
 import { loadAISettings } from "../store/ai";
 import { useTimelineStore } from "../store/timeline";
-import { Button, Switch, NumberField, Select, ColorField } from "../ui";
+import { Button, Switch, NumberField, Select, ColorField, Alert, Badge } from "../ui";
 import styles from "./SubtitleInspector.module.css";
 
 export function SubtitleInspector() {
@@ -30,38 +30,6 @@ export function SubtitleInspector() {
     0,
     storedSubtitleHighlightCount - validSubtitleHighlights.length,
   );
-  const summaryText = useMemo(() => {
-    if (!timeline.podcast.srtPath) {
-      return "还没有导入 SRT 字幕文件，导入后就可以生成关键词高亮并在这里调整样式。";
-    }
-
-    if (subtitleHighlightError) {
-      return subtitleHighlightError;
-    }
-
-    if (isGeneratingHighlights) {
-      return "AI 正在分析字幕关键词，生成完成后会自动更新底部字幕轨和右侧预览。";
-    }
-
-    if (storedSubtitleHighlightCount === 0) {
-      return "当前还没有生成关键词高亮，建议先生成一版，再细调颜色、圆角与动画。";
-    }
-
-    if (expiredSubtitleHighlightCount > 0) {
-      return validSubtitleHighlights.length > 0
-        ? `当前有 ${validSubtitleHighlights.length} 处有效高亮，另有 ${expiredSubtitleHighlightCount} 处因字幕变化已过期。`
-        : "已有高亮结果全部过期，建议重新生成。";
-    }
-
-    return `当前已有 ${validSubtitleHighlights.length} 处关键词高亮，可继续微调样式。`;
-  }, [
-    expiredSubtitleHighlightCount,
-    isGeneratingHighlights,
-    storedSubtitleHighlightCount,
-    subtitleHighlightError,
-    timeline.podcast.srtPath,
-    validSubtitleHighlights.length,
-  ]);
 
   const handleGenerateSubtitleHighlights = useCallback(async () => {
     const settings = loadAISettings();
@@ -113,26 +81,31 @@ export function SubtitleInspector() {
           <span className={styles.sectionTitle}>关键词高亮</span>
         </div>
 
-        {/* 状态卡片 */}
-        <div className={styles.statusCard}>
-          <span className={styles.statusCardMeta}>{srtFileName}</span>
-          <span className={styles.statusCardText}>{summaryText}</span>
+        {/* 状态 chip */}
+        <div className={styles.statusChip}>
+          <FileText size={12} className={styles.statusChipIcon} />
+          <span className={styles.statusChipName}>{srtFileName}</span>
+          {validSubtitleHighlights.length > 0 && (
+            <Badge variant="default" className={styles.statusChipBadge}>
+              {validSubtitleHighlights.length} 处高亮
+            </Badge>
+          )}
         </div>
 
-        {subtitleHighlightError && (
-          <span className={styles.errorText}>{subtitleHighlightError}</span>
-        )}
+        {subtitleHighlightError ? (
+          <Alert variant="destructive">{subtitleHighlightError}</Alert>
+        ) : null}
 
-        <div className={styles.actionRow}>
-          <Button
-            onClick={() => void handleGenerateSubtitleHighlights()}
-            loading={isGeneratingHighlights}
-            disabled={!timeline.podcast.srtPath}
-            variant="primary"
-          >
-            {storedSubtitleHighlightCount > 0 ? "重新生成高亮" : "生成高亮"}
-          </Button>
-        </div>
+        <Button
+          onClick={() => void handleGenerateSubtitleHighlights()}
+          loading={isGeneratingHighlights}
+          disabled={!timeline.podcast.srtPath}
+          variant="primary"
+          fullWidth
+        >
+          <Sparkles size={13} />
+          {storedSubtitleHighlightCount > 0 ? '重新生成高亮' : '生成高亮'}
+        </Button>
 
         <div className={styles.switchRow}>
           <span className={styles.switchLabel}>启用关键词高亮</span>

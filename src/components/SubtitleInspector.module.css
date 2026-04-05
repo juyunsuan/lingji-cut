@@ -34,28 +34,6 @@
   line-height: 1;
 }
 
-/* ── 状态卡片 ── */
-.statusCard {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px 10px;
-  background: var(--color-panel-elevated);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-strong);
-}
-
-.statusCardMeta {
-  color: rgba(235, 235, 245, 0.3);
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.statusCardText {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 11px;
-  line-height: 1.5;
-}
 
 /* ── 字段行 (label + control) ── */
 .fieldRow {
@@ -111,13 +89,6 @@
   font-size: 11px;
 }
 
-/* ── 操作按钮 ── */
-.actionRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
 /* ── 预览区 ── */
 .preview {
   display: flex;
@@ -145,9 +116,32 @@
   font-weight: 800;
 }
 
-/* ── 错误提示 ── */
-.errorText {
-  color: var(--color-danger);
+/* ── 状态 chip ── */
+.statusChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  background: var(--color-panel-elevated);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.statusChipIcon {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.statusChipName {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-secondary);
   font-size: 11px;
-  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusChipBadge {
+  flex-shrink: 0;
 }
