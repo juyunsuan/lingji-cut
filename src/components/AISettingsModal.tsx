@@ -4,7 +4,6 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -54,9 +53,6 @@ export function AISettingsModal({
         <DialogHeader>
           <div className={styles.eyebrow}>SETTINGS</div>
           <DialogTitle>AI 配置</DialogTitle>
-          <DialogDescription>
-            配置内容分析与封面生成的服务入口。当前版本默认按桌面暗黑工作流整理。
-          </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <div className={styles.form}>
