@@ -464,7 +464,7 @@ export function AIPanel({
   return (
     <aside className={styles.root} style={panelVars}>
       <PanelHeader
-        title="AI 助手"
+        title="AI 分析"
         leading={
           <HintTooltip label="AI 分析与生成助手">
             <span
