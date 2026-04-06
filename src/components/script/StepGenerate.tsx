@@ -2,7 +2,7 @@
 import { ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useScriptStore } from '../../store/script';
-import { SCRIPT_TEMPLATES, getTemplateById } from '../../lib/script-templates';
+import { getAllTemplates, getAnyTemplateById } from '../../lib/script-templates';
 import { callLLMText } from '../../lib/llm-client';
 import { loadAISettings } from '../../store/ai';
 import { debouncedSaveFile } from '../../lib/script-persistence';
@@ -27,7 +27,7 @@ export function StepGenerate() {
   }, [scriptText]);
 
   const handleGenerate = useCallback(async () => {
-    const template = getTemplateById(selectedTemplate);
+    const template = getAnyTemplateById(selectedTemplate);
     if (!template || !originalText) return;
 
     const settings = loadAISettings();
@@ -51,6 +51,7 @@ export function StepGenerate() {
     }
   }, [originalText, selectedTemplate, projectDir, setScriptText, setGenerating]);
 
+  const templates = getAllTemplates();
   const hasScript = scriptText.length > 0;
 
   return (
@@ -68,7 +69,7 @@ export function StepGenerate() {
         <span style={{ fontSize: 12, fontWeight: 600, color: '#EBEBF599' }}>
           选择写稿风格
         </span>
-        {SCRIPT_TEMPLATES.map((tmpl) => {
+        {templates.map((tmpl) => {
           const isSelected = tmpl.id === selectedTemplate;
           return (
             <button
@@ -96,6 +97,9 @@ export function StepGenerate() {
                   }}
                 >
                   {tmpl.name}
+                  {!tmpl.isBuiltin && (
+                    <span style={{ fontSize: 10, color: '#FF9F0A', marginLeft: 4 }}>自定义</span>
+                  )}
                 </span>
                 <span
                   style={{
