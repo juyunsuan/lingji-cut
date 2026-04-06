@@ -9,7 +9,8 @@ import { ExportSettingsModal } from '../components/ExportSettingsModal';
 import { PreviewPanel } from '../components/PreviewPanel';
 import { Timeline } from '../components/Timeline';
 import type { ExportConfig } from '../lib/export-settings';
-import type { OverlayPosition } from '../types';
+import { createDefaultTextData } from '../lib/text-templates';
+import { DEFAULT_VISUAL_TRACK_ID, type OverlayPosition } from '../types';
 import { useViewportSize } from '../hooks/useViewportSize';
 import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
 import { shouldUpdatePlaybackTime } from '../lib/playback';
@@ -214,6 +215,34 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
     [],
   );
 
+  const handleAddTextOverlay = useCallback(() => {
+    const store = useTimelineStore.getState();
+    const currentTime = currentTimeRef.current;
+    const { width, height } = store.timeline;
+
+    // 找到第一条视觉轨道
+    const visualTrack = store.timeline.tracks.find((t) => t.kind === 'visual');
+    const trackId = visualTrack?.id ?? DEFAULT_VISUAL_TRACK_ID;
+
+    const overlayId = store.addOverlay({
+      type: 'text',
+      assetPath: '',
+      trackId,
+      startMs: Math.max(0, Math.round(currentTime)),
+      durationMs: 5000,
+      position: {
+        x: (width - 800) / 2,
+        y: (height - 200) / 2,
+        width: 800,
+        height: 200,
+      },
+      textData: createDefaultTextData(),
+    });
+
+    // 自动打开文字检查器
+    setInspectorSelection({ type: 'text-overlay', overlayId });
+  }, []);
+
   const handleSelectOverlayOnCanvas = useCallback(
     (overlayId: string | null) => {
       if (overlayId) {
@@ -364,6 +393,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                     railHeight={layout.sidebarRailHeight}
                     onAddAsset={onAddAsset}
                     onOpenSubtitleInspector={handleOpenSubtitleInspector}
+                    onAddTextOverlay={handleAddTextOverlay}
                   />
                 ) : (
                   <AIPanel
