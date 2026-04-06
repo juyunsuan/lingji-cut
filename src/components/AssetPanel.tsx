@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { Type } from 'lucide-react';
 import type { AssetItem, AssetType } from '../types';
 import { useTimelineStore } from '../store/timeline';
 import type { PillGroupItem } from '../ui';
@@ -15,7 +16,6 @@ import {
   PillGroup,
   SearchInput,
 } from '../ui';
-import { getTextTemplateAssets } from '../lib/text-templates';
 import { AssetCard, AssetImportCard } from './AssetCard';
 import styles from './AssetPanel.module.css';
 
@@ -47,11 +47,13 @@ export function AssetPanel({
   railHeight,
   onAddAsset,
   onOpenSubtitleInspector,
+  onAddTextOverlay,
 }: {
   compact: boolean;
   railHeight?: number;
   onAddAsset?: () => Promise<void>;
   onOpenSubtitleInspector?: () => void;
+  onAddTextOverlay?: () => void;
 }) {
   const { addAsset, assets, removeAsset, timeline } = useTimelineStore();
   const [keyword, setKeyword] = useState('');
@@ -93,13 +95,6 @@ export function AssetPanel({
   const visibleAssets = assets.filter((asset) =>
     matchesAssetFilter(asset, activeFilter, compact ? '' : keyword),
   );
-  const textTemplateAssets = getTextTemplateAssets();
-  const showTextTemplates = activeFilter === 'all' || activeFilter === 'text';
-  const allVisibleAssets = showTextTemplates
-    ? [...visibleAssets, ...textTemplateAssets.filter((t) =>
-        matchesAssetFilter(t, activeFilter, compact ? '' : keyword),
-      )]
-    : visibleAssets;
   const pendingRemovalUsageCount = pendingRemovalPath ? getAssetUsageCount(pendingRemovalPath) : 0;
 
   return (
@@ -138,43 +133,52 @@ export function AssetPanel({
 
       {/* compact 模式下的计数摘要 */}
       {compact && (
-        <div className={styles.compactSummary}>素材库 · {allVisibleAssets.length} 项</div>
+        <div className={styles.compactSummary}>素材库 · {visibleAssets.length} 项</div>
       )}
 
-      {/* 素材网格 */}
+      {/* 素材网格 / 文字添加按钮 */}
       <div
         className={[
           styles.content,
           compact ? styles.contentCompact : '',
         ].filter(Boolean).join(' ')}
       >
-        <div className={compact ? styles.gridCompact : styles.grid}>
-          {allVisibleAssets.map((asset) => (
-            <AssetCard
-              key={asset.path}
-              asset={asset}
-              compact={compact}
-              usageCount={getAssetUsageCount(asset.path)}
-              onRemove={handleRemoveAsset}
-              onClick={asset.type === 'srt' ? onOpenSubtitleInspector : undefined}
-              onDragStart={(event) => {
-                if (asset.locked) {
-                  event.preventDefault();
-                  return;
-                }
-                if (asset.type !== 'image' && asset.type !== 'video' && asset.type !== 'text') {
-                  event.preventDefault();
-                  return;
-                }
-                event.dataTransfer.effectAllowed = 'copy';
-                event.dataTransfer.setData('application/json', JSON.stringify(asset));
-              }}
-            />
-          ))}
+        {activeFilter === 'text' ? (
+          /* 文字 tab — 仅显示添加按钮 */
+          <button className={styles.addTextButton} onClick={onAddTextOverlay}>
+            <Type size={20} color="#10b981" />
+            <span>添加文字</span>
+            <span className={styles.addTextHint}>在时间轴当前位置添加</span>
+          </button>
+        ) : (
+          <div className={compact ? styles.gridCompact : styles.grid}>
+            {visibleAssets.map((asset) => (
+              <AssetCard
+                key={asset.path}
+                asset={asset}
+                compact={compact}
+                usageCount={getAssetUsageCount(asset.path)}
+                onRemove={handleRemoveAsset}
+                onClick={asset.type === 'srt' ? onOpenSubtitleInspector : undefined}
+                onDragStart={(event) => {
+                  if (asset.locked) {
+                    event.preventDefault();
+                    return;
+                  }
+                  if (asset.type !== 'image' && asset.type !== 'video' && asset.type !== 'text') {
+                    event.preventDefault();
+                    return;
+                  }
+                  event.dataTransfer.effectAllowed = 'copy';
+                  event.dataTransfer.setData('application/json', JSON.stringify(asset));
+                }}
+              />
+            ))}
 
-          {/* 导入 ghost 卡片 — 始终显示在末尾 */}
-          <AssetImportCard onClick={() => void handleAddAsset()} />
-        </div>
+            {/* 导入 ghost 卡片 — 始终显示在末尾 */}
+            <AssetImportCard onClick={() => void handleAddAsset()} />
+          </div>
+        )}
       </div>
 
       {/* 删除确认弹窗 */}

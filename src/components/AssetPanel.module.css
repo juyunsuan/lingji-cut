@@ -144,3 +144,28 @@
   text-overflow: ellipsis;
   padding: 8px;
 }
+
+/* ── 添加文字按钮 ── */
+.addTextButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 20px;
+  background: var(--color-surface-secondary);
+  border: 1px dashed var(--color-selection-blue);
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+
+.addTextButton:hover {
+  background: color-mix(in srgb, var(--color-selection-blue) 8%, transparent);
+}
+
+.addTextHint {
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
