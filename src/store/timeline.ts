@@ -40,7 +40,7 @@ export interface TimelineStore {
   updateSubtitleStyle: (updates: Partial<SubtitleStyle>) => void;
   setPodcast: (audioPath: string, srtPath: string, durationMs: number) => void;
   setGlobalBackground: (path: string) => void;
-  addAsset: (path: string, type: 'video' | 'image', durationMs?: number) => void;
+  addAsset: (path: string, type: 'video' | 'image' | 'text', durationMs?: number) => void;
   removeAsset: (path: string) => void;
   addTrack: () => string;
   addOverlay: (overlay: OverlayDraft) => string;
@@ -63,7 +63,7 @@ const saveStatusListeners = new Set<(status: SaveStatus) => void>();
 const buildAsset = (
   path: string,
   type: AssetType,
-  durationMs = type === 'image' ? 5000 : 10000,
+  durationMs = type === 'image' || type === 'text' ? 5000 : 10000,
   locked = false,
 ): AssetItem => ({
   path,

@@ -502,6 +502,94 @@ describe('useTimelineStore', () => {
     });
   });
 
+  it('adds a text overlay to the timeline', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'text',
+      assetPath: '',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 1000,
+      durationMs: 5000,
+      position: { x: 100, y: 200, width: 800, height: 200 },
+      textData: {
+        content: '测试',
+        fontFamily: 'PingFang SC',
+        fontSize: 64,
+        fontColor: '#FFFFFF',
+        bold: false,
+        italic: false,
+        underline: false,
+        textAlign: 'center',
+        backgroundColor: 'transparent',
+        strokeColor: '#000000',
+        strokeWidth: 0,
+        shadowColor: '#000000',
+        shadowOffsetX: 0,
+        shadowOffsetY: 2,
+        shadowBlur: 0,
+        letterSpacing: 0,
+        lineHeight: 1.5,
+        opacity: 1,
+        rotation: 0,
+        animation: {
+          enter: 'fadeIn',
+          enterDurationMs: 500,
+          exit: 'fadeOut',
+          exitDurationMs: 500,
+          loop: 'none',
+        },
+      },
+    });
+
+    expect(overlayId).toBeTruthy();
+    const overlay = useTimelineStore.getState().timeline.overlays.find((o) => o.id === overlayId);
+    expect(overlay?.type).toBe('text');
+    expect(overlay?.textData?.content).toBe('测试');
+  });
+
+  it('does not add text overlays to asset list', () => {
+    const store = useTimelineStore.getState();
+    store.addOverlay({
+      type: 'text',
+      assetPath: '',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 0, y: 0, width: 800, height: 200 },
+      textData: {
+        content: '测试',
+        fontFamily: 'PingFang SC',
+        fontSize: 64,
+        fontColor: '#FFFFFF',
+        bold: false,
+        italic: false,
+        underline: false,
+        textAlign: 'center',
+        backgroundColor: 'transparent',
+        strokeColor: '#000000',
+        strokeWidth: 0,
+        shadowColor: '#000000',
+        shadowOffsetX: 0,
+        shadowOffsetY: 2,
+        shadowBlur: 0,
+        letterSpacing: 0,
+        lineHeight: 1.5,
+        opacity: 1,
+        rotation: 0,
+        animation: {
+          enter: 'none',
+          enterDurationMs: 500,
+          exit: 'none',
+          exitDurationMs: 500,
+          loop: 'none',
+        },
+      },
+    });
+
+    const assets = useTimelineStore.getState().assets;
+    expect(assets.filter((a) => a.type === 'text')).toHaveLength(0);
+  });
+
   it('keeps the default background stretched to the latest podcast duration', () => {
     const store = useTimelineStore.getState();
     store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 12_000);
