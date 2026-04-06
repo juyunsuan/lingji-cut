@@ -27,10 +27,13 @@ export function OverlayBlock({
   const asset = assets.find((item) => item.path === overlay.assetPath);
   const isAICard = overlay.overlayType === 'ai-card';
   const isDefaultBackground = overlay.overlayRole === 'default-background';
+  const isTextOverlay = overlay.type === 'text';
   const color = isDefaultBackground
     ? 'var(--color-brand-accent)'
     : isAICard
     ? overlay.aiCardData?.style.primaryColor ?? 'var(--color-brand-accent)'
+    : isTextOverlay
+    ? '#10b981'
     : overlay.type === 'video'
       ? 'var(--color-selection-blue-hover)'
       : 'var(--color-brand-warm)';
@@ -38,6 +41,8 @@ export function OverlayBlock({
     ? 'color-mix(in srgb, var(--color-brand-accent) 22%, transparent)'
     : isAICard
     ? 'color-mix(in srgb, var(--color-brand-accent) 24%, transparent)'
+    : isTextOverlay
+    ? 'color-mix(in srgb, #10b981 22%, transparent)'
     : overlay.type === 'video'
       ? 'color-mix(in srgb, var(--color-selection-blue-hover) 24%, transparent)'
       : 'color-mix(in srgb, var(--color-brand-warm) 22%, transparent)';
@@ -46,7 +51,7 @@ export function OverlayBlock({
   const thumbnailWidth = Math.max(0, Math.min(38, width - 26));
   const blockHeight = Math.max(24, trackHeight - 6);
   const showImageThumbnail =
-    !isAICard && overlay.type === 'image' && Boolean(asset) && thumbnailWidth >= 24;
+    !isAICard && !isTextOverlay && overlay.type === 'image' && Boolean(asset) && thumbnailWidth >= 24;
   const projectDuration = timeline.podcast.durationMs || overlay.durationMs;
   const maxDurationForAsset =
     overlay.type === 'video' ? asset?.durationMs ?? overlay.durationMs : Number.POSITIVE_INFINITY;
@@ -54,8 +59,18 @@ export function OverlayBlock({
     ? `默认背景 · ${getFileNameFromPath(overlay.assetPath)}`
     : isAICard
       ? overlay.aiCardData?.title ?? 'AI 卡片'
-      : getFileNameFromPath(overlay.assetPath);
-  const badge = isDefaultBackground ? 'BG' : isAICard ? 'AI' : overlay.type === 'video' ? 'VID' : 'IMG';
+      : isTextOverlay
+        ? overlay.textData?.content?.slice(0, 20) ?? '文字'
+        : getFileNameFromPath(overlay.assetPath);
+  const badge = isDefaultBackground
+    ? 'BG'
+    : isAICard
+      ? 'AI'
+      : isTextOverlay
+        ? 'TXT'
+        : overlay.type === 'video'
+          ? 'VID'
+          : 'IMG';
 
   const handleMoveMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     if (isDefaultBackground) {
