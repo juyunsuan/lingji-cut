@@ -15,6 +15,7 @@ import {
   PillGroup,
   SearchInput,
 } from '../ui';
+import { getTextTemplateAssets } from '../lib/text-templates';
 import { AssetCard, AssetImportCard } from './AssetCard';
 import styles from './AssetPanel.module.css';
 
@@ -24,6 +25,7 @@ const FILTER_OPTIONS: Array<PillGroupItem<AssetFilterKey>> = [
   { value: 'all', label: '全部' },
   { value: 'video', label: '视频' },
   { value: 'audio', label: '音频' },
+  { value: 'text', label: '文字' },
 ];
 
 function matchesAssetFilter(asset: AssetItem, filter: AssetFilterKey, keyword: string): boolean {
@@ -91,6 +93,13 @@ export function AssetPanel({
   const visibleAssets = assets.filter((asset) =>
     matchesAssetFilter(asset, activeFilter, compact ? '' : keyword),
   );
+  const textTemplateAssets = getTextTemplateAssets();
+  const showTextTemplates = activeFilter === 'all' || activeFilter === 'text';
+  const allVisibleAssets = showTextTemplates
+    ? [...visibleAssets, ...textTemplateAssets.filter((t) =>
+        matchesAssetFilter(t, activeFilter, compact ? '' : keyword),
+      )]
+    : visibleAssets;
   const pendingRemovalUsageCount = pendingRemovalPath ? getAssetUsageCount(pendingRemovalPath) : 0;
 
   return (
@@ -129,7 +138,7 @@ export function AssetPanel({
 
       {/* compact 模式下的计数摘要 */}
       {compact && (
-        <div className={styles.compactSummary}>素材库 · {visibleAssets.length} 项</div>
+        <div className={styles.compactSummary}>素材库 · {allVisibleAssets.length} 项</div>
       )}
 
       {/* 素材网格 */}
@@ -140,7 +149,7 @@ export function AssetPanel({
         ].filter(Boolean).join(' ')}
       >
         <div className={compact ? styles.gridCompact : styles.grid}>
-          {visibleAssets.map((asset) => (
+          {allVisibleAssets.map((asset) => (
             <AssetCard
               key={asset.path}
               asset={asset}
@@ -149,11 +158,14 @@ export function AssetPanel({
               onRemove={handleRemoveAsset}
               onClick={asset.type === 'srt' ? onOpenSubtitleInspector : undefined}
               onDragStart={(event) => {
-                if (asset.locked || (asset.type !== 'image' && asset.type !== 'video')) {
+                if (asset.locked) {
                   event.preventDefault();
                   return;
                 }
-
+                if (asset.type !== 'image' && asset.type !== 'video' && asset.type !== 'text') {
+                  event.preventDefault();
+                  return;
+                }
                 event.dataTransfer.effectAllowed = 'copy';
                 event.dataTransfer.setData('application/json', JSON.stringify(asset));
               }}

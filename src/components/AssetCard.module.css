@@ -91,6 +91,10 @@
   --icon-area-bg: color-mix(in srgb, #B48CFF 14%, var(--color-panel-bg));
 }
 
+.typeText .iconArea {
+  --icon-area-bg: color-mix(in srgb, #10b981 12%, var(--color-panel-bg));
+}
+
 /* 底部文件名区域 */
 .nameArea {
   flex-shrink: 0;

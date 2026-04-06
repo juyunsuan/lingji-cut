@@ -1,5 +1,5 @@
 import type { DragEventHandler } from 'react';
-import { Film, ImageIcon, Music, FileText, Play, Plus } from 'lucide-react';
+import { Film, ImageIcon, Music, FileText, Type, Play, Plus } from 'lucide-react';
 import type { AssetItem, AssetType } from '../types';
 import { useThumbnail } from '../hooks/useThumbnail';
 import { Button } from '../ui';
@@ -39,6 +39,11 @@ const TYPE_META: Record<
     iconColor: 'color-mix(in srgb, #B48CFF 75%, transparent)',
     className: styles.typeSrt,
   },
+  text: {
+    Icon: Type,
+    iconColor: 'color-mix(in srgb, #10b981 75%, transparent)',
+    className: styles.typeText,
+  },
 };
 
 /** Ghost 导入卡片 — 放在网格末尾 */
@@ -58,7 +63,7 @@ export function AssetImportCard({ onClick }: { onClick: () => void }) {
 
 export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart, onRemove: _onRemove, onClick }: AssetCardProps) {
   const meta = TYPE_META[asset.type];
-  const isDraggable = !asset.locked && (asset.type === 'image' || asset.type === 'video');
+  const isDraggable = !asset.locked && (asset.type === 'image' || asset.type === 'video' || asset.type === 'text');
   const thumbnail = useThumbnail(asset.path, asset.type);
 
   return (
