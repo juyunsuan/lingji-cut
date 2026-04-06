@@ -17,7 +17,7 @@ import { shouldUpdatePlaybackTime } from '../lib/playback';
 import { frameToMs, msToFrame } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
 import { Button } from '../ui';
-import { FolderOpen, Sparkles } from 'lucide-react';
+import { AppIcon } from '../components/AppIcon';
 import styles from './Editor.module.css';
 
 interface EditorProps {
@@ -220,9 +220,11 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
     const currentTime = currentTimeRef.current;
     const { width, height } = store.timeline;
 
-    // 找到第一条视觉轨道
-    const visualTrack = store.timeline.tracks.find((t) => t.kind === 'visual');
-    const trackId = visualTrack?.id ?? DEFAULT_VISUAL_TRACK_ID;
+    // 找到最顶层（order 最高）的视觉轨道，确保文字渲染在最前面
+    const visualTracks = store.timeline.tracks
+      .filter((t) => t.kind === 'visual')
+      .sort((a, b) => b.order - a.order);
+    const trackId = visualTracks[0]?.id ?? DEFAULT_VISUAL_TRACK_ID;
 
     const overlayId = store.addOverlay({
       type: 'text',
@@ -367,7 +369,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                     )}
                     onClick={() => setActivePanel('assets')}
                   >
-                    <FolderOpen size={13} className={styles.topTabIcon} />
+                    <AppIcon name="folder-open" size={13} className={styles.topTabIcon} />
                     <span>素材</span>
                   </Button>
                   <Button
@@ -381,7 +383,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                     )}
                     onClick={() => setActivePanel('ai')}
                   >
-                    <Sparkles size={13} className={styles.topTabIcon} />
+                    <AppIcon name="sparkles" size={13} className={styles.topTabIcon} />
                     <span>AI 助手</span>
                   </Button>
                 </div>

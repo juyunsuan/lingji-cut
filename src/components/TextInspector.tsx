@@ -1,15 +1,4 @@
 import { useCallback, useState } from 'react';
-import {
-  AlignCenter,
-  AlignLeft,
-  AlignRight,
-  Bold,
-  ChevronDown,
-  ChevronRight,
-  Italic,
-  Trash2,
-  Underline,
-} from 'lucide-react';
 import type {
   TextEnterAnimation,
   TextExitAnimation,
@@ -18,6 +7,7 @@ import type {
 } from '../types';
 import { useTimelineStore } from '../store/timeline';
 import { TEXT_TEMPLATES } from '../lib/text-templates';
+import { AppIcon } from './AppIcon';
 import { Button } from '../ui';
 import styles from './TextInspector.module.css';
 
@@ -212,7 +202,7 @@ function BasicTab({
               onClick={() => updateTextData({ bold: !textData.bold })}
               title="加粗"
             >
-              <Bold size={14} />
+              <AppIcon name="bold" size={14} />
             </button>
             <button
               className={[styles.toggleBtn, textData.italic ? styles.active : '']
@@ -221,7 +211,7 @@ function BasicTab({
               onClick={() => updateTextData({ italic: !textData.italic })}
               title="斜体"
             >
-              <Italic size={14} />
+              <AppIcon name="italic" size={14} />
             </button>
             <button
               className={[styles.toggleBtn, textData.underline ? styles.active : '']
@@ -230,7 +220,7 @@ function BasicTab({
               onClick={() => updateTextData({ underline: !textData.underline })}
               title="下划线"
             >
-              <Underline size={14} />
+              <AppIcon name="underline" size={14} />
             </button>
           </div>
           <div className={styles.toggleGroup}>
@@ -244,7 +234,7 @@ function BasicTab({
               onClick={() => updateTextData({ textAlign: 'left' })}
               title="左对齐"
             >
-              <AlignLeft size={14} />
+              <AppIcon name="align-left" size={14} />
             </button>
             <button
               className={[
@@ -256,7 +246,7 @@ function BasicTab({
               onClick={() => updateTextData({ textAlign: 'center' })}
               title="居中"
             >
-              <AlignCenter size={14} />
+              <AppIcon name="align-center" size={14} />
             </button>
             <button
               className={[
@@ -268,7 +258,7 @@ function BasicTab({
               onClick={() => updateTextData({ textAlign: 'right' })}
               title="右对齐"
             >
-              <AlignRight size={14} />
+              <AppIcon name="align-right" size={14} />
             </button>
           </div>
         </div>
@@ -454,7 +444,7 @@ function BasicTab({
           className={styles.deleteButton}
           onClick={onDelete}
         >
-          <Trash2 size={14} />
+          <AppIcon name="trash-2" size={14} />
           删除文字
         </Button>
       </section>
@@ -560,7 +550,10 @@ function AnimationTab({
           className={styles.advancedToggle}
           onClick={() => setAdvancedOpen(!advancedOpen)}
         >
-          {advancedOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {advancedOpen
+            ? <AppIcon name="chevron-down" size={14} />
+            : <AppIcon name="chevron-right" size={14} />
+          }
           <span>高级设置</span>
         </button>
         {advancedOpen && (

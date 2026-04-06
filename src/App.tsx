@@ -348,6 +348,8 @@ export default function App() {
           page="setup"
           projectName={projectName}
           saveStatus={saveStatus}
+          canUndo={canUndo}
+          canRedo={canRedo}
           onCommand={(command) => {
             void handleCommand(command);
           }}
@@ -388,6 +390,8 @@ export default function App() {
         page={page}
         projectName={projectName}
         saveStatus={saveStatus}
+        canUndo={canUndo}
+        canRedo={canRedo}
         onCommand={(command) => {
           void handleCommand(command);
         }}

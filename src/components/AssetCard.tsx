@@ -1,7 +1,7 @@
 import type { DragEventHandler } from 'react';
-import { Film, ImageIcon, Music, FileText, Type, Play, Plus } from 'lucide-react';
 import type { AssetItem, AssetType } from '../types';
 import { useThumbnail } from '../hooks/useThumbnail';
+import { AppIcon, type AppIconName } from './AppIcon';
 import { Button } from '../ui';
 import styles from './AssetCard.module.css';
 
@@ -17,30 +17,30 @@ interface AssetCardProps {
 /** 每种类型的视觉配置 */
 const TYPE_META: Record<
   AssetType,
-  { Icon: React.ElementType; iconColor: string; className: string }
+  { icon: AppIconName; iconColor: string; className: string }
 > = {
   video: {
-    Icon: Film,
+    icon: 'film',
     iconColor: 'color-mix(in srgb, var(--color-selection-blue-hover) 75%, transparent)',
     className: styles.typeVideo,
   },
   image: {
-    Icon: ImageIcon,
+    icon: 'image',
     iconColor: 'color-mix(in srgb, var(--color-success) 75%, transparent)',
     className: styles.typeImage,
   },
   audio: {
-    Icon: Music,
+    icon: 'music',
     iconColor: 'color-mix(in srgb, var(--color-brand-warm) 75%, transparent)',
     className: styles.typeAudio,
   },
   srt: {
-    Icon: FileText,
+    icon: 'file-text',
     iconColor: 'color-mix(in srgb, #B48CFF 75%, transparent)',
     className: styles.typeSrt,
   },
   text: {
-    Icon: Type,
+    icon: 'type',
     iconColor: 'color-mix(in srgb, #10b981 75%, transparent)',
     className: styles.typeText,
   },
@@ -55,7 +55,7 @@ export function AssetImportCard({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="导入素材"
     >
-      <Plus size={18} color="var(--color-text-muted)" strokeWidth={1.5} />
+      <AppIcon name="plus" size={18} color="var(--color-text-muted)" />
       <span className={styles.ghostLabel}>导入</span>
     </Button>
   );
@@ -86,12 +86,12 @@ export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart
             <img src={thumbnail} alt={asset.name} className={styles.thumbnail} draggable={false} />
             {asset.type === 'video' && (
               <div className={styles.playBadge}>
-                <Play size={10} fill="white" color="white" strokeWidth={0} />
+                <AppIcon name="play" size={10} color="white" />
               </div>
             )}
           </>
         ) : (
-          <meta.Icon size={20} color={meta.iconColor} strokeWidth={1.5} />
+          <AppIcon name={meta.icon} size={20} color={meta.iconColor} />
         )}
       </div>
 

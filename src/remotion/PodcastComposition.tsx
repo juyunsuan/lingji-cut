@@ -18,11 +18,8 @@ export function PodcastComposition({ timeline, srtEntries }: PodcastCompositionP
   const { width, height } = useVideoConfig();
   const previewScale = Math.min(width / timeline.width, height / timeline.height);
   const renderableOverlays = getRenderableOverlays(timeline);
-  const mediaOverlays = renderableOverlays.filter(
-    (overlay) => overlay.overlayType !== 'ai-card' && overlay.type !== 'text',
-  );
-  const textOverlays = renderableOverlays.filter((overlay) => overlay.type === 'text');
-  const aiCardOverlays = renderableOverlays.filter((overlay) => overlay.overlayType === 'ai-card');
+  // AI 卡片需要独立计数以显示章节序号
+  let aiCardIndex = 0;
 
   return (
     <AbsoluteFill style={{ background: '#04060a', overflow: 'hidden' }}>
@@ -43,20 +40,23 @@ export function PodcastComposition({ timeline, srtEntries }: PodcastCompositionP
             transformOrigin: 'top left',
           }}
         >
-          {mediaOverlays.map((overlay) => (
-            <MediaOverlay key={overlay.id} overlay={overlay} fps={timeline.fps} />
-          ))}
-          {aiCardOverlays.map((overlay, index) => (
-            <AICardOverlay
-              key={overlay.id}
-              overlay={overlay}
-              fps={timeline.fps}
-              chapterIndex={index + 1}
-            />
-          ))}
-          {textOverlays.map((overlay) => (
-            <TextOverlay key={overlay.id} overlay={overlay} fps={timeline.fps} />
-          ))}
+          {renderableOverlays.map((overlay) => {
+            if (overlay.overlayType === 'ai-card') {
+              aiCardIndex += 1;
+              return (
+                <AICardOverlay
+                  key={overlay.id}
+                  overlay={overlay}
+                  fps={timeline.fps}
+                  chapterIndex={aiCardIndex}
+                />
+              );
+            }
+            if (overlay.type === 'text') {
+              return <TextOverlay key={overlay.id} overlay={overlay} fps={timeline.fps} />;
+            }
+            return <MediaOverlay key={overlay.id} overlay={overlay} fps={timeline.fps} />;
+          })}
 
           <SubtitleTrack
             entries={srtEntries}

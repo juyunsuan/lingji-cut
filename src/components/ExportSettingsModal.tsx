@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { FolderOpen } from 'lucide-react';
 import {
   buildExportRenderConfig,
   EXPORT_QUALITY_OPTIONS,
@@ -24,6 +23,7 @@ import {
   Eyebrow,
   Select,
 } from "../ui";
+import { AppIcon } from "./AppIcon";
 import styles from "./ExportSettingsModal.module.css";
 
 interface ExportSettingsModalProps {
@@ -127,7 +127,7 @@ export function ExportSettingsModal({
         <DialogBody className={styles.body}>
           <Card className={styles.pathCard}>
             <div className={styles.pathMeta}>
-              <FolderOpen size={18} className={styles.pathIcon} />
+              <AppIcon name="folder-open" size={18} className={styles.pathIcon} />
               <div
                 className={[styles.pathValue, outputPath ? styles.pathValueFilled : '']
                   .filter(Boolean)

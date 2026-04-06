@@ -81,12 +81,12 @@ describe('Timeline', () => {
     expect(html).toContain('这是一段特别长特别长特别长的字幕内容');
   });
 
-  it('shows the subtitle inspector entry and the missing-highlight hint', () => {
+  it('shows the subtitle track and the missing-highlight hint', () => {
     const html = renderToStaticMarkup(
       <Timeline currentTimeMs={0} onSeek={() => undefined} compact={false} />,
     );
 
-    expect(html).toContain('字幕配置');
+    expect(html).toContain('data-subtitle-entry="subtitle-1"');
     expect(html).toContain('未生成高亮');
   });
 

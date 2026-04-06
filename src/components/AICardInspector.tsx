@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Eye, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { getAICardOverlayPosition } from '../lib/ai-card-layout';
 import type { AICard, AICardType } from '../types/ai';
 import { Button, Input, NumberField, PillGroup, type PillGroupItem, Textarea } from '../ui';
+import { AppIcon } from './AppIcon';
 import { WebCardPreview } from './WebCardPreview';
 import styles from './AICardInspector.module.css';
 
@@ -232,7 +232,7 @@ export function AICardInspector({
             </div>
           ) : (
             <div className={styles.previewPlaceholder}>
-              <Eye size={20} className={styles.previewIcon} />
+              <AppIcon name="eye" size={20} className={styles.previewIcon} />
               <span className={styles.previewHint}>卡片预览区</span>
               <span className={styles.previewBadge}>
                 {displayMode === 'fullscreen' ? '全屏模式' : '画中画模式'}
@@ -252,7 +252,13 @@ export function AICardInspector({
             variant="secondary"
             size="sm"
             className={styles.secondaryAction}
-            leftIcon={<RefreshCw size={12} className={isRegenerating ? styles.spin : undefined} />}
+            leftIcon={
+              <AppIcon
+                name="refresh-cw"
+                size={12}
+                className={isRegenerating ? styles.spin : undefined}
+              />
+            }
             onClick={() => {
               void handleRegenerateClick();
             }}
@@ -265,7 +271,7 @@ export function AICardInspector({
             variant="primary"
             size="sm"
             className={styles.primaryAction}
-            leftIcon={<Save size={12} />}
+            leftIcon={<AppIcon name="save" size={12} />}
             onClick={() => {
               onSave(card.id, draftUpdates);
             }}
@@ -281,7 +287,7 @@ export function AICardInspector({
           variant="destructive"
           size="sm"
           className={styles.dangerButton}
-          leftIcon={<Trash2 size={13} />}
+          leftIcon={<AppIcon name="trash-2" size={13} />}
           onClick={() => onDelete?.()}
         >
           删除此卡片

@@ -10,6 +10,7 @@ const HANDLES: ResizeHandle[] = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'];
 interface CanvasInteractionLayerProps {
   overlays: OverlayItem[];
   selectedOverlayId: string | null;
+  currentTimeMs: number;
   canvasWidth: number;
   canvasHeight: number;
   stageRect: DOMRect | null;
@@ -29,13 +30,20 @@ function overlayToPercent(pos: OverlayPosition, cw: number, ch: number) {
 export function CanvasInteractionLayer({
   overlays,
   selectedOverlayId,
+  currentTimeMs,
   canvasWidth,
   canvasHeight,
   stageRect,
   onSelect,
   onUpdatePosition,
 }: CanvasInteractionLayerProps) {
-  const textOverlays = overlays.filter((o) => o.type === 'text');
+  // 只显示当前播放时间范围内的文字 overlay
+  const textOverlays = overlays.filter(
+    (o) =>
+      o.type === 'text' &&
+      currentTimeMs >= o.startMs &&
+      currentTimeMs < o.startMs + o.durationMs,
+  );
   const selectedOverlay = textOverlays.find((o) => o.id === selectedOverlayId);
 
   const {

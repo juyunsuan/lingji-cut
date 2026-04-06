@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   clampTimelineZoom,
+  getContinuousTimelineZoom,
   getAnchoredTimelineScrollLeft,
   getFitTimelineZoom,
   getNextTimelineZoom,
   getTimelineTrackWidth,
+  getTimelineWheelZoomMode,
   getWheelTimelineZoom,
 } from '../src/lib/timeline-view';
 
@@ -32,6 +34,39 @@ describe('getWheelTimelineZoom', () => {
   it('clamps wheel zoom changes to the supported bounds', () => {
     expect(getWheelTimelineZoom(4, -24)).toBe(4);
     expect(getWheelTimelineZoom(0.02, 24)).toBe(0.02);
+  });
+});
+
+describe('getTimelineWheelZoomMode', () => {
+  it('recognizes command + wheel as legacy zoom', () => {
+    expect(getTimelineWheelZoomMode({ metaKey: true, ctrlKey: false })).toBe('legacy');
+  });
+
+  it('recognizes ctrl + wheel as pinch zoom', () => {
+    expect(getTimelineWheelZoomMode({ metaKey: false, ctrlKey: true })).toBe('pinch');
+  });
+
+  it('does not treat plain wheel as zoom', () => {
+    expect(getTimelineWheelZoomMode({ metaKey: false, ctrlKey: false })).toBeNull();
+  });
+});
+
+describe('getContinuousTimelineZoom', () => {
+  it('zooms in continuously for pinch-out input', () => {
+    expect(getContinuousTimelineZoom(1, -40, 0)).toBeGreaterThan(1);
+  });
+
+  it('zooms out continuously for pinch-in input', () => {
+    expect(getContinuousTimelineZoom(1, 40, 0)).toBeLessThan(1);
+  });
+
+  it('ignores tiny pinch jitter', () => {
+    expect(getContinuousTimelineZoom(1, 0.2, 0)).toBe(1);
+  });
+
+  it('clamps continuous zoom to the supported bounds', () => {
+    expect(getContinuousTimelineZoom(4, -10_000, 0)).toBe(4);
+    expect(getContinuousTimelineZoom(0.02, 10_000, 0)).toBe(0.02);
   });
 });
 

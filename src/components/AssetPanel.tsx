@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Type } from 'lucide-react';
 import type { AssetItem, AssetType } from '../types';
 import { useTimelineStore } from '../store/timeline';
 import type { PillGroupItem } from '../ui';
@@ -16,6 +15,7 @@ import {
   PillGroup,
   SearchInput,
 } from '../ui';
+import { AppIcon } from './AppIcon';
 import { AssetCard, AssetImportCard } from './AssetCard';
 import styles from './AssetPanel.module.css';
 
@@ -146,7 +146,7 @@ export function AssetPanel({
         {activeFilter === 'text' ? (
           /* 文字 tab — 仅显示添加按钮 */
           <button className={styles.addTextButton} onClick={onAddTextOverlay}>
-            <Type size={20} color="#10b981" />
+            <AppIcon name="type" size={20} color="#10b981" />
             <span>添加文字</span>
             <span className={styles.addTextHint}>在时间轴当前位置添加</span>
           </button>

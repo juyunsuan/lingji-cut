@@ -17,10 +17,46 @@
   padding: 0 12px;
 }
 
+.leadingCluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 168px;
+  z-index: 1;
+}
+
 /* macOS hiddenInset：为系统原生红绿灯预留空间 */
 .trafficLightSpacer {
   width: 68px;
   flex-shrink: 0;
+}
+
+.historyActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--color-border-subtle) 72%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-titlebar-bg) 84%, white 16%) 0%,
+      color-mix(in srgb, var(--color-titlebar-bg) 96%, black 4%) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, white 10%, transparent),
+    0 8px 24px color-mix(in srgb, black 28%, transparent);
+  -webkit-app-region: no-drag;
+}
+
+.historyButton {
+  color: color-mix(in srgb, var(--color-text-primary) 82%, transparent);
+  background: transparent;
+}
+
+.historyButton[data-enabled='false'] {
+  color: color-mix(in srgb, var(--color-text-tertiary) 72%, transparent);
 }
 
 /* ── 居中标题（absolute，不影响 flex 两端） ── */
@@ -59,7 +95,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 168px;
+  justify-content: flex-end;
   z-index: 1;
   -webkit-app-region: no-drag;
 }
-

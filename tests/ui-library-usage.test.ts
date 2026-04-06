@@ -26,8 +26,8 @@ describe('AI assistant business components use the shared UI library', () => {
     const assetPanelCss = readSource('src/components/AssetPanel.module.css');
 
     expect(editorCss).toMatch(/\.topTabButton\s*{[^}]*font-size:\s*12px;/s);
-    expect(editorSource).toContain('<FolderOpen size={13}');
-    expect(editorSource).toContain('<Sparkles size={13}');
+    expect(editorSource).toContain('<AppIcon name="folder-open" size={13}');
+    expect(editorSource).toContain('<AppIcon name="sparkles" size={13}');
     expect(assetCardCss).toMatch(
       /\.root\s*{[^}]*width:\s*64px;[^}]*height:\s*64px;[^}]*border-radius:\s*6px;/s,
     );

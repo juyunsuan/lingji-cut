@@ -3,8 +3,18 @@ const MIN_TIMELINE_TRACK_WIDTH = 960;
 const MIN_TIMELINE_ZOOM = 0.02;
 const MAX_TIMELINE_ZOOM = 4;
 const TIMELINE_ZOOM_STEP = 1.25;
+const CONTINUOUS_ZOOM_SENSITIVITY = 100;
+const TIMELINE_WHEEL_LINE_HEIGHT = 16;
+const TIMELINE_WHEEL_PAGE_HEIGHT = 800;
+const MIN_CONTINUOUS_ZOOM_DELTA = 0.5;
 
 type ZoomDirection = 'in' | 'out';
+type TimelineWheelZoomMode = 'legacy' | 'pinch';
+
+interface TimelineWheelGestureLike {
+  metaKey: boolean;
+  ctrlKey: boolean;
+}
 
 function roundZoom(value: number): number {
   return Math.round(value * 100) / 100;
@@ -35,6 +45,47 @@ export function getWheelTimelineZoom(zoomLevel: number, deltaY: number): number 
   }
 
   return getNextTimelineZoom(zoomLevel, deltaY < 0 ? 'in' : 'out');
+}
+
+export function getTimelineWheelZoomMode(
+  event: TimelineWheelGestureLike,
+): TimelineWheelZoomMode | null {
+  if (event.ctrlKey) {
+    return 'pinch';
+  }
+
+  if (event.metaKey) {
+    return 'legacy';
+  }
+
+  return null;
+}
+
+export function normalizeTimelineWheelDelta(deltaY: number, deltaMode = 0): number {
+  if (deltaMode === 1) {
+    return deltaY * TIMELINE_WHEEL_LINE_HEIGHT;
+  }
+
+  if (deltaMode === 2) {
+    return deltaY * TIMELINE_WHEEL_PAGE_HEIGHT;
+  }
+
+  return deltaY;
+}
+
+export function getContinuousTimelineZoom(
+  zoomLevel: number,
+  deltaY: number,
+  deltaMode = 0,
+  sensitivity = CONTINUOUS_ZOOM_SENSITIVITY,
+): number {
+  const normalizedDelta = normalizeTimelineWheelDelta(deltaY, deltaMode);
+  if (Math.abs(normalizedDelta) < MIN_CONTINUOUS_ZOOM_DELTA) {
+    return clampTimelineZoom(zoomLevel);
+  }
+
+  const nextZoom = zoomLevel * Math.exp(-normalizedDelta / Math.max(1, sensitivity));
+  return clampTimelineZoom(nextZoom);
 }
 
 export function getFitTimelineZoom(durationMs: number, viewportWidth: number): number {

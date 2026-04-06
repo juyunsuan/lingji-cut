@@ -1,6 +1,5 @@
-import type { CSSProperties, DragEvent, MouseEvent, ReactNode, WheelEvent } from 'react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
+import type { CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
 import { getRenderableVisualTracks, getVisualTracks } from '../lib/timeline-tracks';
@@ -8,12 +7,15 @@ import { filterValidSubtitleHighlights } from '../lib/subtitle-highlights';
 import { formatTime } from '../lib/utils';
 import {
   getAnchoredTimelineScrollLeft,
+  getContinuousTimelineZoom,
   getTimelineTrackWidth,
+  getTimelineWheelZoomMode,
   getWheelTimelineZoom,
 } from '../lib/timeline-view';
 import type { TimelineTrack } from '../types';
 import { getTextTemplateById } from '../lib/text-templates';
 import { useTimelineStore } from '../store/timeline';
+import { AppIcon } from './AppIcon';
 import { OverlayBlock } from './OverlayBlock';
 import { TimelineAudioWaveform } from './TimelineAudioWaveform';
 import { TimelineSubtitleBlocks } from './TimelineSubtitleBlocks';
@@ -47,11 +49,13 @@ export function Timeline({
   const pendingScrollLeftRef = useRef<number | null>(null);
   const trackLaneRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [hoverTrackId, setHoverTrackId] = useState<string | null>(null);
+  const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
   const {
     addOverlay,
     addTrack,
+    removeTrack,
     setGlobalBackground,
     srtEntries,
     timeline,
@@ -233,6 +237,12 @@ export function Timeline({
   };
 
   const handleSeekClick = (event: MouseEvent<HTMLDivElement>) => {
+    // 点击轨道空白区域时取消选中
+    const target = event.target as HTMLElement;
+    if (!target.closest(`.${styles.overlayRow} [data-overlay-block]`)) {
+      setSelectedOverlayId(null);
+    }
+
     const offsetX = resolveTimelineOffset(event.clientX);
 
     if (offsetX === null || offsetX < 0) {
@@ -242,8 +252,9 @@ export function Timeline({
     onSeek(Math.max(0, Math.min(durationMs, Math.round(offsetX / pxPerMs))));
   };
 
-  const handleWheelZoom = (event: WheelEvent<HTMLDivElement>) => {
-    if (!event.metaKey) {
+  const handleWheelZoom = useCallback((event: WheelEvent) => {
+    const zoomMode = getTimelineWheelZoomMode(event);
+    if (!zoomMode) {
       return;
     }
 
@@ -254,13 +265,23 @@ export function Timeline({
 
     event.preventDefault();
 
-    const nextZoom = getWheelTimelineZoom(zoomLevel, event.deltaY);
+    const nextZoom =
+      zoomMode === 'pinch'
+        ? getContinuousTimelineZoom(zoomLevel, event.deltaY, event.deltaMode)
+        : getWheelTimelineZoom(zoomLevel, event.deltaY);
     if (nextZoom === zoomLevel) {
       return;
     }
 
     const rect = container.getBoundingClientRect();
-    const pointerX = Math.max(0, event.clientX - rect.left - sidebarWidth);
+    const visibleTrackWidth = Math.max(1, container.clientWidth - sidebarWidth - outerPadding * 2);
+    const hasValidClientX = event.clientX >= rect.left && event.clientX <= rect.right;
+    const pointerX = hasValidClientX
+      ? Math.max(
+          0,
+          Math.min(visibleTrackWidth, event.clientX - rect.left - sidebarWidth - outerPadding),
+        )
+      : visibleTrackWidth / 2;
     const nextTrackWidth = getTimelineTrackWidth(
       durationMs,
       nextZoom,
@@ -275,7 +296,26 @@ export function Timeline({
     });
 
     setZoomLevel(nextZoom);
-  };
+  }, [durationMs, outerPadding, sidebarWidth, trackWidth, viewportWidth, zoomLevel]);
+
+  // 通过 ref 保持最新版本的 handler，避免 native listener 中的 stale closure
+  const handleWheelZoomRef = useRef(handleWheelZoom);
+  useEffect(() => {
+    handleWheelZoomRef.current = handleWheelZoom;
+  });
+
+  // 使用 non-passive 原生监听器，确保 event.preventDefault() 生效，
+  // 防止浏览器 page-level zoom 干扰触摸板 pinch 缩放
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const handler = (event: WheelEvent) => handleWheelZoomRef.current(event);
+    container.addEventListener('wheel', handler, { passive: false });
+    return () => container.removeEventListener('wheel', handler);
+  }, []);
 
   const placeAssetOnTrack = (trackId: string, asset: AssetLike, clientX: number) => {
     if (asset.overlayRole === 'default-background') {
@@ -372,6 +412,7 @@ export function Timeline({
         </div>
         <div className={styles.trackNameLine}>{options.subtitle}</div>
       </div>
+      {options.actions ?? null}
     </div>
   );
 
@@ -422,7 +463,7 @@ export function Timeline({
           aria-label="添加轨道"
           title="添加轨道"
         >
-          <Plus size={12} className={styles.addTrackIcon} />
+          <AppIcon name="plus" size={12} className={styles.addTrackIcon} />
           <span className={styles.addTrackLabel}>添加轨道</span>
         </Button>
       </div>
@@ -430,7 +471,6 @@ export function Timeline({
       <div
         ref={containerRef}
         onClick={handleSeekClick}
-        onWheel={handleWheelZoom}
         className={styles.scrollArea}
       >
         <div
@@ -543,6 +583,19 @@ export function Timeline({
                     label: `V${visualTracks.length - index}`,
                     title: '视频',
                     subtitle: `轨道 ${visualTracks.length - index}`,
+                    actions: (
+                      <button
+                        className={styles.trackDeleteButton}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          removeTrack(track.id);
+                        }}
+                        aria-label={`删除${track.label}`}
+                        title="删除轨道"
+                      >
+                        <AppIcon name="trash-2" size={12} />
+                      </button>
+                    ),
                   })}
                   <div
                     ref={(node) => {
@@ -576,9 +629,11 @@ export function Timeline({
                         overlay={overlay}
                         pxPerMs={pxPerMs}
                         trackHeight={overlayTrackHeight}
+                        selected={selectedOverlayId === overlay.id}
                         getTrackDragZones={getTrackDragZones}
                         onTrackHoverChange={setHoverTrackId}
                         onSelect={() => {
+                          setSelectedOverlayId(overlay.id);
                           if (overlay.type === 'text') {
                             onOpenTextInspector?.(overlay.id);
                             return;

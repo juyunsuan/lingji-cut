@@ -10,13 +10,16 @@ interface TextOverlayProps {
 }
 
 export function TextOverlay({ overlay, fps }: TextOverlayProps) {
-  const frame = useCurrentFrame();
+  const globalFrame = useCurrentFrame();
   const { textData } = overlay;
   if (!textData) return null;
 
+  const startFrame = msToFrame(overlay.startMs, fps);
   const durationFrames = Math.max(1, msToFrame(overlay.durationMs, fps));
+  // useCurrentFrame() 在 Sequence 外调用，返回全局帧号，需要转换为本地帧号
+  const localFrame = Math.max(0, globalFrame - startFrame);
   const { style: animStyle, visibleText } = getTextAnimationStyle({
-    frame,
+    frame: localFrame,
     fps,
     durationFrames,
     animation: textData.animation,

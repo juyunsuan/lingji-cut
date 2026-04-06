@@ -1,6 +1,6 @@
-import { X } from 'lucide-react';
 import { Button, EmptyState } from '../ui';
 import { AICardInspector } from './AICardInspector';
+import { AppIcon } from './AppIcon';
 import { SubtitleInspector } from './SubtitleInspector';
 import { TextInspector } from './TextInspector';
 import { useAICardInspector } from '../hooks/useAICardInspector';
@@ -130,7 +130,7 @@ export function EditorInspector({
               onClick={onClose}
               className={styles.closeButton}
             >
-              <X size={14} />
+              <AppIcon name="x" size={14} />
             </Button.Icon>
           </>
         ) : (
@@ -146,7 +146,7 @@ export function EditorInspector({
                 onClick={onClose}
                 className={styles.closeButton}
               >
-                <X size={14} />
+                <AppIcon name="x" size={14} />
               </Button.Icon>
             ) : null}
           </div>

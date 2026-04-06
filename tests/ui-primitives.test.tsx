@@ -260,7 +260,9 @@ describe('ui primitives', () => {
     expect(html).not.toContain('backdrop-blur');
     expect(html).not.toContain('dark:bg-zinc-900');
     expect(html).not.toContain('bg-white/80');
-    expect(html).toContain('bg-card');
+    expect(html).toContain('bg-mac-control');
+    expect(html).toContain('bg-mac-elevated');
     expect(html).toContain('border-border');
+    expect(html).toContain('border-mac-border');
   });
 });

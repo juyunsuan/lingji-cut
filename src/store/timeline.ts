@@ -43,6 +43,7 @@ export interface TimelineStore {
   addAsset: (path: string, type: 'video' | 'image' | 'text', durationMs?: number) => void;
   removeAsset: (path: string) => void;
   addTrack: () => string;
+  removeTrack: (id: string) => void;
   addOverlay: (overlay: OverlayDraft) => string;
   addAICardsToTimeline: (cards: AICardTimelineDraft[]) => void;
   removeAICardOverlaysBySourceIds: (sourceCardIds: string[]) => void;
@@ -390,6 +391,22 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
     return track.id;
   },
+  removeTrack: (id) =>
+    set((state) => {
+      const target = state.timeline.tracks.find((track) => track.id === id);
+      // 音频轨和字幕轨禁止删除
+      if (!target || target.locked || target.kind === 'audio' || target.kind === 'subtitle') {
+        return {};
+      }
+
+      const nextTimeline = normalizeTimeline({
+        ...state.timeline,
+        tracks: state.timeline.tracks.filter((track) => track.id !== id),
+        overlays: state.timeline.overlays.filter((overlay) => overlay.trackId !== id),
+      });
+
+      return buildCommittedTimelineState(state, nextTimeline);
+    }),
   addOverlay: (overlay) => {
     const id = uuid();
     set((state) => {

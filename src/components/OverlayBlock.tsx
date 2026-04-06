@@ -3,6 +3,7 @@ import { getOverlayMoveDraft, type TrackDragZone } from '../lib/overlay-drag';
 import type { OverlayItem } from '../types';
 import { clamp, getFileNameFromPath } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
+import { AppIcon } from './AppIcon';
 import { AssetThumbnail } from './AssetThumbnail';
 import styles from './OverlayBlock.module.css';
 
@@ -10,6 +11,7 @@ interface OverlayBlockProps {
   overlay: OverlayItem;
   pxPerMs: number;
   trackHeight?: number;
+  selected?: boolean;
   getTrackDragZones?: () => TrackDragZone[];
   onTrackHoverChange?: (trackId: string | null) => void;
   onSelect?: () => void;
@@ -19,6 +21,7 @@ export function OverlayBlock({
   overlay,
   pxPerMs,
   trackHeight = 48,
+  selected = false,
   getTrackDragZones,
   onTrackHoverChange,
   onSelect,
@@ -160,6 +163,7 @@ export function OverlayBlock({
 
   return (
     <div
+      data-overlay-block="true"
       onMouseDown={handleMoveMouseDown}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -168,6 +172,7 @@ export function OverlayBlock({
       className={[
         styles.root,
         isDefaultBackground ? styles.locked : '',
+        selected ? styles.selected : '',
       ].filter(Boolean).join(' ')}
       style={{
         left,
@@ -197,6 +202,23 @@ export function OverlayBlock({
         <span className={styles.badge}>{badge}</span>
         {label}
       </div>
+
+      {!isDefaultBackground && selected ? (
+        <button
+          className={styles.deleteButton}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            removeOverlay(overlay.id);
+          }}
+          aria-label="删除"
+          title="删除"
+        >
+          <AppIcon name="trash-2" size={11} />
+        </button>
+      ) : null}
 
       {isDefaultBackground ? null : (
         <div

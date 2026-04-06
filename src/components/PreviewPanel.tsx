@@ -1,20 +1,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
-import {
-  Maximize2,
-  Minimize2,
-  Monitor,
-  Pause,
-  Play,
-  SkipBack,
-  SkipForward,
-  Volume2,
-} from 'lucide-react';
 import { fitPreviewStage } from '../lib/preview';
 import { formatTime, msToFrame } from '../lib/utils';
 import { PodcastComposition } from '../remotion/PodcastComposition';
 import { useTimelineStore } from '../store/timeline';
 import { Button, Card } from '../ui';
+import { AppIcon } from './AppIcon';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import type { OverlayPosition } from '../types';
 import styles from './PreviewPanel.module.css';
@@ -118,7 +109,7 @@ function PreviewPanelComponent({
           className={styles.resolutionPill}
           title={`分辨率: ${timeline.width}×${timeline.height} · ${fps}fps`}
         >
-          <Monitor size={12} />
+          <AppIcon name="monitor" size={12} />
           <span>{timeline.width}×{timeline.height}</span>
         </Button>
       </div>
@@ -157,6 +148,7 @@ function PreviewPanelComponent({
             <CanvasInteractionLayer
               overlays={timeline.overlays}
               selectedOverlayId={selectedOverlayId ?? null}
+              currentTimeMs={currentTimeMs}
               canvasWidth={timeline.width}
               canvasHeight={timeline.height}
               stageRect={stageFrameRect}
@@ -171,7 +163,7 @@ function PreviewPanelComponent({
       <div className={styles.footer}>
         {/* 左段 — 时间组 */}
         <div className={styles.footerLeft}>
-          <Volume2 size={14} className={styles.volumeIcon} />
+          <AppIcon name="volume-2" size={14} className={styles.volumeIcon} />
           <span className={styles.timeCurrentLabel}>{formatTime(currentTimeMs)}</span>
           <span className={styles.timeSeparator}>/</span>
           <span className={styles.timeTotalLabel}>{formatTime(durationMs)}</span>
@@ -180,7 +172,7 @@ function PreviewPanelComponent({
         {/* 中段 — 播放控件 */}
         <div className={styles.footerCenter}>
           <Button variant="ghost" size="icon" className={styles.skipButton} title="上一段" aria-label="上一段">
-            <SkipBack size={18} />
+            <AppIcon name="skip-back" size={18} />
           </Button>
           <Button
             variant="ghost"
@@ -191,12 +183,12 @@ function PreviewPanelComponent({
             aria-label={isPlaying ? '暂停' : '播放'}
           >
             {isPlaying
-              ? <Pause size={16} className={styles.playIcon} />
-              : <Play size={16} className={styles.playIcon} />
+              ? <AppIcon name="pause" size={16} className={styles.playIcon} />
+              : <AppIcon name="play" size={16} className={styles.playIcon} />
             }
           </Button>
           <Button variant="ghost" size="icon" className={styles.skipButton} title="下一段" aria-label="下一段">
-            <SkipForward size={18} />
+            <AppIcon name="skip-forward" size={18} />
           </Button>
         </div>
 
@@ -213,7 +205,10 @@ function PreviewPanelComponent({
             aria-label={isFullscreen ? '退出全屏' : '全屏'}
             onClick={handleToggleFullscreen}
           >
-            {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            {isFullscreen
+              ? <AppIcon name="minimize-2" size={14} />
+              : <AppIcon name="maximize-2" size={14} />
+            }
           </Button>
         </div>
       </div>

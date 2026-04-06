@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useState } from "react";
-import { FileText, Sparkles } from "lucide-react";
 import { getAISettingsIssue } from "../lib/ai-settings";
 import { generateSubtitleHighlights } from "../lib/subtitle-highlight-runner";
 import { filterValidSubtitleHighlights } from "../lib/subtitle-highlights";
@@ -8,6 +7,7 @@ import type { SubtitleStyle } from "../types";
 import { loadAISettings } from "../store/ai";
 import { useTimelineStore } from "../store/timeline";
 import { Button, ColorField, NumberField, Select, Switch } from "../ui";
+import { AppIcon } from "./AppIcon";
 import styles from "./SubtitleInspector.module.css";
 
 const HIGHLIGHT_ANIMATION_OPTIONS: Array<{
@@ -122,7 +122,7 @@ export function SubtitleInspector() {
         <h3 className={styles.sectionTitle}>关键词高亮</h3>
 
         <div className={styles.statusCard}>
-          <FileText size={14} className={styles.statusIcon} />
+          <AppIcon name="file-text" size={14} className={styles.statusIcon} />
           <div className={styles.statusInfo}>
             <span className={styles.statusFile}>{srtFileName}</span>
             <span
@@ -142,7 +142,7 @@ export function SubtitleInspector() {
 
         <Button
           className={styles.primaryAction}
-          leftIcon={<Sparkles size={12} />}
+          leftIcon={<AppIcon name="sparkles" size={12} />}
           onClick={() => void handleGenerateSubtitleHighlights()}
           disabled={!timeline.podcast.srtPath || isGeneratingHighlights}
         >
