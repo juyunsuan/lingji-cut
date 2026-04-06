@@ -2,13 +2,16 @@ import { X } from 'lucide-react';
 import { Button, EmptyState } from '../ui';
 import { AICardInspector } from './AICardInspector';
 import { SubtitleInspector } from './SubtitleInspector';
+import { TextInspector } from './TextInspector';
 import { useAICardInspector } from '../hooks/useAICardInspector';
+import { useTimelineStore } from '../store/timeline';
 import styles from './EditorInspector.module.css';
 
 export type InspectorSelection =
   | { type: 'empty' }
   | { type: 'ai-card'; cardId: string }
-  | { type: 'subtitle-style' };
+  | { type: 'subtitle-style' }
+  | { type: 'text-overlay'; overlayId: string };
 
 interface EditorInspectorProps {
   selection: InspectorSelection;
@@ -39,6 +42,8 @@ export function EditorInspector({
       ? 'SUBTITLE'
       : selection.type === 'ai-card'
       ? 'AI CARD'
+      : selection.type === 'text-overlay'
+      ? 'TEXT'
       : 'INSPECTOR';
 
   /* ── 右侧索引/状态标签 ── */
@@ -75,6 +80,18 @@ export function EditorInspector({
           }}
           onRegenerate={regenerateCard}
           onSave={saveCard}
+        />
+      );
+    }
+
+    if (selection.type === 'text-overlay') {
+      return (
+        <TextInspector
+          overlayId={selection.overlayId}
+          onDelete={() => {
+            useTimelineStore.getState().removeOverlay(selection.overlayId);
+            onClose();
+          }}
         />
       );
     }

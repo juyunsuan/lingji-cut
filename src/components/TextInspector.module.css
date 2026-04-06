@@ -1,0 +1,143 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.section:last-child {
+  border-bottom: none;
+}
+
+.label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  letter-spacing: 0.5px;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  resize: vertical;
+}
+
+.select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.numberInput {
+  width: 70px;
+  padding: 6px 8px;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+
+.colorInput {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 2px solid var(--color-border-subtle);
+  border-radius: 6px;
+  cursor: pointer;
+  background: none;
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 2px;
+}
+
+.toggleBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-secondary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.toggleBtn.active {
+  background: var(--color-selection-blue);
+  color: #fff;
+  border-color: var(--color-selection-blue);
+}
+
+.sliderRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sliderLabel {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  min-width: 44px;
+}
+
+.sliderValue {
+  font-size: 12px;
+  color: var(--color-text-primary);
+  min-width: 40px;
+  text-align: right;
+}
+
+.sliderRow input[type='range'] {
+  flex: 1;
+}
+
+.animRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.animRow .select {
+  flex: 1;
+}
+
+.deleteButton {
+  width: 100%;
+}
