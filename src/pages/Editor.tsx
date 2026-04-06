@@ -14,7 +14,8 @@ import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
 import { shouldUpdatePlaybackTime } from '../lib/playback';
 import { frameToMs, msToFrame } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
-import { Card, Tabs, TabsList, TabsTrigger } from '../ui';
+import { Button } from '../ui';
+import { FolderOpen, Sparkles } from 'lucide-react';
 import styles from './Editor.module.css';
 
 interface EditorProps {
@@ -254,7 +255,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
         style={{
           gridTemplateColumns: layout.stackSidebar
             ? 'minmax(0, 1fr)'
-            : '224px minmax(0, 1fr) 256px',
+            : '224px minmax(0, 1fr) 260px',
           gridTemplateRows: layout.stackSidebar
             ? `minmax(0, 1fr) ${layout.sidebarRailHeight}px`
             : 'minmax(0, 1fr)',
@@ -284,24 +285,43 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
           </>
         ) : (
           <>
-            <Card
+            <div
               className={styles.sidebarShell}
               data-editor-region="sidebar-shell"
+              data-editor-sidebar-style="flat-panel"
+              data-editor-sidebar-width="224"
             >
               <div className={styles.tabStrip}>
-                <Tabs
-                  value={activePanel}
-                  onValueChange={(value) => setActivePanel(value as 'assets' | 'ai')}
-                >
-                  <TabsList className={styles.tabList}>
-                    <TabsTrigger value="assets" className={styles.tabTrigger}>
-                      素材
-                    </TabsTrigger>
-                    <TabsTrigger value="ai" className={styles.tabTrigger}>
-                      AI 助手
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <div className={styles.topTabBar} role="tablist" aria-label="侧边栏面板切换">
+                  <Button
+                    role="tab"
+                    aria-selected={activePanel === 'assets'}
+                    variant="ghost"
+                    size="sm"
+                    className={joinClassNames(
+                      styles.topTabButton,
+                      activePanel === 'assets' ? styles.topTabButtonActive : '',
+                    )}
+                    onClick={() => setActivePanel('assets')}
+                  >
+                    <FolderOpen size={13} className={styles.topTabIcon} />
+                    <span>素材</span>
+                  </Button>
+                  <Button
+                    role="tab"
+                    aria-selected={activePanel === 'ai'}
+                    variant="ghost"
+                    size="sm"
+                    className={joinClassNames(
+                      styles.topTabButton,
+                      activePanel === 'ai' ? styles.topTabButtonActive : '',
+                    )}
+                    onClick={() => setActivePanel('ai')}
+                  >
+                    <Sparkles size={13} className={styles.topTabIcon} />
+                    <span>AI 助手</span>
+                  </Button>
+                </div>
               </div>
               <div className={styles.panelBody}>
                 {activePanel === 'assets' ? (
@@ -309,6 +329,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                     compact={layout.stackSidebar}
                     railHeight={layout.sidebarRailHeight}
                     onAddAsset={onAddAsset}
+                    onOpenSubtitleInspector={handleOpenSubtitleInspector}
                   />
                 ) : (
                   <AIPanel
@@ -320,7 +341,7 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
                   />
                 )}
               </div>
-            </Card>
+            </div>
             <div className={styles.previewWrap}>
               <PreviewPanel
                 playerRef={playerRef}
@@ -387,4 +408,8 @@ export function Editor({ onAddAsset, exportRequestToken }: EditorProps) {
       />
     </div>
   );
+}
+
+function joinClassNames(...values: Array<string | undefined>): string {
+  return values.filter(Boolean).join(' ');
 }

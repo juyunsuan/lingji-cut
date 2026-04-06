@@ -23,12 +23,24 @@ export type BadgeVariant =
 
 interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
 	variant?: BadgeVariant;
+	/** Badge size: xs = 9px compact rounded, sm = 10px pill (default) */
+	size?: "xs" | "sm";
+	/** Custom color (hex). Overrides variant — sets text color and 10% tinted background. */
+	color?: string;
 	children: React.ReactNode;
 }
 
+const SIZE_CLASSES = {
+	xs: "px-1.5 py-0.5 text-[9px] rounded",
+	sm: "px-2 py-0.5 text-[10px] rounded-full",
+} as const;
+
 export function Badge({
 	variant = "default",
+	size = "sm",
+	color,
 	className,
+	style,
 	children,
 	...props
 }: BadgeProps) {
@@ -49,15 +61,26 @@ export function Badge({
 		archived: "border-transparent bg-muted text-muted-foreground",
 	};
 
+	const hasCustomColor = !!color;
+	const colorStyle: React.CSSProperties | undefined = hasCustomColor
+		? {
+				color,
+				backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`,
+				...style,
+			}
+		: style;
+
 	return (
 		<motion.span
 			initial={{ opacity: 0 }}
 			animate={{ opacity: 1 }}
 			transition={{ duration: getDuration("normal") }}
 			{...(props as any)}
+			style={colorStyle}
 			className={cn(
-				"inline-flex items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold tracking-[0.02em] focus:outline-none focus:ring-1 focus:ring-ring/50",
-				variants[variant],
+				"inline-flex items-center justify-center gap-1 border font-semibold tracking-[0.02em] leading-tight focus:outline-none focus:ring-1 focus:ring-ring/50",
+				SIZE_CLASSES[size],
+				hasCustomColor ? "border-transparent" : variants[variant],
 				className,
 			)}
 		>

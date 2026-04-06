@@ -9,6 +9,7 @@ interface TimelineSubtitleBlocksProps {
   pxPerMs: number;
   trackHeight: number;
   highlightHint?: string;
+  onClickBlock?: () => void;
 }
 
 interface SubtitleBlockLayout {
@@ -46,6 +47,7 @@ export function TimelineSubtitleBlocks({
   pxPerMs,
   trackHeight,
   highlightHint,
+  onClickBlock,
 }: TimelineSubtitleBlocksProps) {
   const layouts = useMemo(
     () => buildSubtitleLayouts(entries, durationMs, pxPerMs),
@@ -60,10 +62,14 @@ export function TimelineSubtitleBlocks({
           key={entry.id}
           data-subtitle-entry={entry.id}
           className={styles.block}
+          role="button"
+          tabIndex={0}
+          onClick={onClickBlock}
           style={{
             left: entry.left,
             top: Math.max(4, Math.round((trackHeight - 22) / 2)),
             width: entry.width,
+            cursor: onClickBlock ? 'pointer' : undefined,
           }}
         >
           <span

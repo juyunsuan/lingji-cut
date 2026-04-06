@@ -1,259 +1,342 @@
 .root {
-  --ai-panel-padding: 10px;
-  --ai-panel-gap: 8px;
-  --ai-footer-button-height: 30px;
-  --ai-header-icon-size: 20px;
-  flex: 1;
-  min-height: 0;
   display: flex;
+  flex: 1;
   flex-direction: column;
-  gap: 6px;
-  max-height: 100%;
-  overflow: hidden;
-  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   padding: 8px;
-  background: transparent;
+  background: var(--color-panel-bg);
+  box-sizing: border-box;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  padding: 0 0 6px;
+}
+
+.headerMain {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
 .headerIcon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: var(--ai-header-icon-size);
-  height: var(--ai-header-icon-size);
-  border-radius: 999px;
-  border: 1px solid var(--color-separator);
-  background: var(--color-control-bg);
-  color: var(--color-text-secondary);
+  color: var(--color-selection-blue);
 }
 
-.tabList {
-  width: 100%;
+.headerTitle {
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.tabTrigger {
+.headerBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 10px;
+  background: rgba(10, 132, 255, 0.2);
+  color: var(--color-selection-blue);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.iconButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.iconButton:hover {
+  color: var(--color-text-primary);
+}
+
+.subTabs {
+  display: flex;
+  align-items: stretch;
+  height: 28px;
+  border-bottom: 1px solid var(--color-separator);
+}
+
+.subTab {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 8px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.subTabActive {
+  border-bottom-color: var(--color-selection-blue);
+  color: var(--color-text-primary);
+  font-weight: 600;
 }
 
 .body {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-right: 2px;
-  padding-bottom: 2px;
+  padding-top: 8px;
 }
 
 .promptSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   margin-bottom: 8px;
-  transition: opacity 180ms ease;
 }
 
-.promptSectionBusy {
-  opacity: 0.86;
+.promptLabel {
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+
+.promptCard {
+  display: flex;
+  min-width: 0;
+  min-height: 56px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background: var(--color-panel-elevated);
 }
 
 .promptTextarea {
   width: 100%;
-  resize: vertical;
+  min-width: 0;
+  min-height: 38px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: none;
+  outline: none;
+}
+
+.promptTextarea::placeholder {
+  color: var(--color-text-disabled);
+}
+
+.errorWrap {
+  margin-bottom: 8px;
 }
 
 .emptyState {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 8px;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  background: rgba(44, 44, 46, 0.5);
-  text-align: center;
+  padding: 10px 12px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background: var(--color-panel-elevated);
 }
 
-.emptyStateBusy {
-  padding: 14px;
+.stateBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: rgba(58, 58, 60, 0.9);
+  color: var(--color-text-primary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.emptyStateText {
-  max-width: 240px;
-  color: rgba(235, 235, 245, 0.5);
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
-  letter-spacing: 0.01em;
-}
-
-.hintText {
-  color: color-mix(in srgb, var(--color-warning) 78%, white 12%);
-  font-size: var(--font-size-sm);
+.emptyStateText,
+.hintText,
+.analysisStatusText,
+.analysisBannerText {
+  color: var(--color-text-secondary);
+  font-size: 10px;
   line-height: 1.5;
 }
 
-.primaryActionContent {
+.primaryButton,
+.footerButton,
+.actionButton {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-}
-
-.analysisNotice {
-  width: 100%;
-  margin-top: 8px;
-  padding: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
-  background: rgba(44, 44, 46, 0.5);
-  box-sizing: border-box;
-}
-
-.analysisNoticeHeader {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   gap: 6px;
-  margin-bottom: 6px;
+  border: none;
+  cursor: pointer;
 }
 
-.analysisNoticeTitle {
+.primaryButton {
+  width: 100%;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--color-selection-blue);
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: -0.01em;
 }
 
-.analysisNoticeText {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
-  text-align: center;
-}
-
-.analysisBanner {
-  margin-bottom: 8px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
-  background: rgba(58, 58, 60, 0.45);
-}
-
-.analysisBannerHeader {
+.analysisStatus {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-bottom: 6px;
-}
-
-.analysisBannerBadge {
-  display: inline-flex;
-  align-items: center;
+  flex-direction: column;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--color-window-bg);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-xs);
-  font-weight: 700;
 }
 
+.analysisStatusTitle,
 .analysisBannerTitle {
   color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
-.analysisBannerText {
+.cardsSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.actionBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+.actionButton {
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 5px;
+  background: var(--color-control-bg);
   color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
 }
 
-.analysisWorkspace {
-  position: relative;
-  min-height: 180px;
+.actionButton:hover {
+  color: var(--color-text-primary);
 }
 
-.workspaceContent {
-  transition: opacity 180ms ease;
-}
-
-.workspaceContentDimmed {
-  opacity: 0.38;
+.deleteButton {
+  background: transparent;
+  color: var(--color-danger);
 }
 
 .selectionSummary {
   flex: 1;
   min-width: 0;
   color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.analysisOverlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--color-overlay) 74%, transparent);
-  cursor: wait;
-}
-
-.analysisOverlayCard {
-  width: 100%;
-  max-width: 340px;
-  padding: 14px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 12px;
-  background: rgba(28, 28, 30, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.44);
-  box-sizing: border-box;
+  font-size: 10px;
+  line-height: 1.2;
   text-align: center;
 }
 
-.analysisOverlayTitle {
-  margin-top: 8px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+.analysisWorkspace {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 
-.analysisOverlayText {
-  margin-top: 6px;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: 1.6;
+.workspaceContent {
+  min-width: 0;
+  transition: opacity var(--motion-fast);
+}
+
+.workspaceContentDimmed {
+  opacity: 0.52;
+}
+
+.analysisBanner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background: rgba(58, 58, 60, 0.38);
+}
+
+.analysisBannerBadge {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .footer {
-  display: flex;
   flex-shrink: 0;
-  padding-top: 4px;
-  padding-bottom: 2px;
-  border-top: 1px solid var(--color-separator);
-  background: transparent;
+  padding-top: 8px;
 }
 
 .footerButton {
-  min-height: var(--ai-footer-button-height);
-  height: var(--ai-footer-button-height);
+  width: 100%;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--color-selection-blue);
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
 }
 
-.countBadge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 15px;
-  height: 15px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--color-control-bg);
-  color: var(--color-text-primary);
-  font-size: 9px;
-  line-height: 1;
-  flex-shrink: 0;
+.iconButton:disabled,
+.primaryButton:disabled,
+.actionButton:disabled,
+.footerButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }

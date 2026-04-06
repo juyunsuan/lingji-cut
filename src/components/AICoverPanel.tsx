@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CoverCandidate } from '../types/ai';
 import { toFileSrc } from '../lib/utils';
-import { Button, Card, EmptyState, Field, Textarea } from '../ui';
+import { Button, Textarea } from '../ui';
 import { AppIcon } from './AppIcon';
 import styles from './AICoverPanel.module.css';
 
@@ -43,151 +43,156 @@ export function AICoverPanel({
 
   if (coverPrompts.length === 0 && candidates.length === 0) {
     return (
-      <EmptyState
-        title="还没有封面提示词"
-        description="先在「内容卡片」tab 中分析 SRT，AI 会自动生成封面提示词。"
-      />
+      <div className={styles.emptyState} data-ai-cover-root="true">
+        <div className={styles.emptyTitle}>还没有封面提示词</div>
+        <div className={styles.emptyText}>先在「内容卡片」tab 中分析 SRT，AI 会自动生成封面提示词。</div>
+      </div>
     );
   }
 
-  const prompt = isEditing ? editablePrompt : (coverPrompts[0] ?? '');
+  const prompt = isEditing ? editablePrompt : coverPrompts[0] ?? '';
   const prompts = prompt.trim() ? [prompt.trim()] : [];
 
   return (
-    <div className={styles.root}>
-      <div className={styles.sectionHeader}>
-        <div className={styles.sectionTitleRow}>
-          <div className={styles.sectionTitle}>提示词</div>
-          {!isEditing ? (
-            <Button
-              onClick={() => setIsEditing(true)}
-              variant="ghost"
-              iconOnly
-              title="编辑提示词"
-              aria-label="编辑提示词"
-            >
-              <AppIcon name="pencil-line" size={14} />
-            </Button>
-          ) : null}
+    <div className={styles.root} data-ai-cover-root="true">
+      <section className={styles.promptSection} data-ai-cover-prompt="true">
+        <div className={styles.promptHeader}>
+          <div className={styles.promptTitle}>提示词</div>
+          <Button.Icon
+            variant="ghost"
+            className={styles.headerAction}
+            onClick={() => setIsEditing((current) => !current)}
+            aria-label={isEditing ? '完成提示词编辑' : '编辑提示词'}
+            title={isEditing ? '完成提示词编辑' : '编辑提示词'}
+          >
+            <AppIcon name="pencil-line" size={14} />
+          </Button.Icon>
         </div>
-      </div>
 
-      <div className={styles.promptCard}>
-        {isEditing ? (
-          <Field label="封面提示词">
+        <div className={styles.promptCard}>
+          {isEditing ? (
             <Textarea
               value={editablePrompt}
               onChange={(event) => setEditablePrompt(event.target.value)}
-              rows={3}
+              rows={4}
+              size="sm"
+              resize="vertical"
+              className={styles.promptTextarea}
+              placeholder="描述你想生成的封面氛围和构图方向…"
             />
-          </Field>
-        ) : (
-          <>
-            <div className={styles.promptText}>{prompt}</div>
-            <Button
-              onClick={onRegeneratePrompt}
-              disabled={isRegeneratingPrompt || isGenerating}
-              loading={isRegeneratingPrompt}
-              variant="accent"
-              iconOnly
-              className={styles.promptRegenerateButton}
-              title="AI 重新生成提示词"
-              aria-label="AI 重新生成提示词"
-            >
-              <AppIcon name="sparkles" size={14} />
-            </Button>
-          </>
-        )}
-      </div>
+          ) : (
+            <>
+              <div className={styles.promptText}>{prompt}</div>
+              <div className={styles.promptActions}>
+                <Button
+                  variant="link"
+                  size="sm"
+                  className={styles.inlineAction}
+                  onClick={onRegeneratePrompt}
+                  disabled={isRegeneratingPrompt || isGenerating}
+                  aria-label="AI 重新生成提示词"
+                  title="AI 重新生成提示词"
+                >
+                  <AppIcon name="sparkles" size={12} />
+                  {isRegeneratingPrompt ? '生成中...' : '重新生成'}
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
-      <div className={styles.actions}>
-        <Button
-          onClick={() => {
-            onGenerateCovers(prompts);
-            setIsEditing(false);
-          }}
-          disabled={isGenerating}
-          loading={isGenerating}
-          variant="primary"
-          size="sm"
-          fullWidth
-          leftIcon={isGenerating ? undefined : <AppIcon name="image" size={14} />}
-        >
-          {isGenerating ? '生成中...' : candidates.length > 0 ? '重新生成' : '生成封面'}
-        </Button>
-      </div>
+      <Button
+        variant="primary"
+        size="sm"
+        className={styles.generateButton}
+        onClick={() => {
+          onGenerateCovers(prompts);
+          setIsEditing(false);
+        }}
+        disabled={isGenerating || prompts.length === 0}
+      >
+        <AppIcon name="image" size={14} />
+        <span>{isGenerating ? '生成中...' : '重新生成'}</span>
+      </Button>
 
       {candidates.length > 0 ? (
         <>
-          <div className={styles.candidateHeader}>
-            <div className={styles.sectionTitle}>候选封面</div>
-            <div className={styles.hint}>可直接拖到时间轴，也可以一键设为整期背景。</div>
-          </div>
+          <section className={styles.candidateSection}>
+            <div className={styles.candidateHeader}>
+              <div className={styles.candidateTitle}>候选封面</div>
+              <div className={styles.candidateHint}>可直接拖到时间轴，也可以一键设为整期背景。</div>
+            </div>
 
-          <div className={styles.grid}>
-            {candidates.map((candidate) => {
-              const isSelected = candidate.id === selectedCandidate?.id;
+            <div className={styles.grid} data-ai-cover-grid="true">
+              {candidates.map((candidate) => {
+                const isSelected = candidate.id === selectedCandidate?.id;
 
-              return (
-                <Card
-                  key={candidate.id}
-                  draggable={Boolean(candidate.imageUrl)}
-                  onClick={() => onSelectCover(candidate.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      onSelectCover(candidate.id);
-                    }
-                  }}
-                  onDragStart={(event) => {
-                    if (!candidate.imageUrl) {
-                      event.preventDefault();
-                      return;
-                    }
+                return (
+                  <div
+                    key={candidate.id}
+                    draggable={Boolean(candidate.imageUrl)}
+                    onClick={() => onSelectCover(candidate.id)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        onSelectCover(candidate.id);
+                      }
+                    }}
+                    onDragStart={(event) => {
+                      if (!candidate.imageUrl) {
+                        event.preventDefault();
+                        return;
+                      }
 
-                    event.dataTransfer.effectAllowed = 'copy';
-                    event.dataTransfer.setData(
-                      'application/json',
-                      JSON.stringify({
-                        path: candidate.imageUrl,
-                        type: 'image',
-                        durationMs: 0,
-                        overlayRole: 'default-background',
-                      }),
-                    );
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  aria-pressed={isSelected}
-                  data-draggable={Boolean(candidate.imageUrl)}
-                  className={joinClassNames(
-                    styles.candidateCard,
-                    isSelected ? styles.candidateSelected : '',
-                  )}
-                >
-                  {candidate.imageUrl ? (
-                    <img
-                      src={toFileSrc(candidate.imageUrl)}
-                      alt=""
-                      className={styles.candidateImage}
-                    />
-                  ) : (
-                    <div className={styles.candidateFallback}>{candidate.error ?? '生成失败'}</div>
-                  )}
-                </Card>
-              );
-            })}
-          </div>
+                      event.dataTransfer.effectAllowed = 'copy';
+                      event.dataTransfer.setData(
+                        'application/json',
+                        JSON.stringify({
+                          path: candidate.imageUrl,
+                          type: 'image',
+                          durationMs: 0,
+                          overlayRole: 'default-background',
+                        }),
+                      );
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isSelected}
+                    className={joinClassNames(
+                      styles.candidateCard,
+                      isSelected ? styles.candidateSelected : '',
+                    )}
+                    data-ai-cover-selected={isSelected ? 'true' : undefined}
+                    data-draggable={Boolean(candidate.imageUrl)}
+                  >
+                    {candidate.imageUrl ? (
+                      <img
+                        src={toFileSrc(candidate.imageUrl)}
+                        alt=""
+                        className={styles.candidateImage}
+                      />
+                    ) : (
+                      <div className={styles.candidateFallback}>
+                        <AppIcon name="alert-circle" size={16} />
+                        <span>{candidate.error ?? '生成失败'}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
 
           {selectedCandidate?.imageUrl ? (
             <Button
-              onClick={() => onAddToTimeline(selectedCandidate.id)}
-              variant="accent"
+              variant="primary"
               size="sm"
-              fullWidth
-              leftIcon={<AppIcon name="send-horizontal" size={14} />}
+              className={styles.footerButton}
+              onClick={() => onAddToTimeline(selectedCandidate.id)}
             >
-              设为整期背景
+              <AppIcon name="send-horizontal" size={14} />
+              <span>设为整期背景</span>
             </Button>
           ) : null}
         </>

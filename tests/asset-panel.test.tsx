@@ -47,17 +47,20 @@ vi.mock('../src/store/timeline', () => ({
 }));
 
 describe('AssetPanel', () => {
-  it('renders compact asset cards with search and media previews', () => {
+  it('renders the design-aligned asset library search, filters and cards', () => {
     const html = renderToStaticMarkup(<AssetPanel compact={false} />);
 
     expect(html).toContain(`<img`);
     expect(html).toContain(`src="${toFileSrc('/tmp/cover.png')}"`);
-    expect(html).toContain(`<video`);
-    expect(html).toContain(`src="${toFileSrc('/tmp/intro.mp4')}"`);
-    expect(html).toContain('placeholder="搜索文件名"');
+    expect(html).not.toContain(`<video`);
+    expect(html).toContain('placeholder="搜索素材…"');
     expect(html).toContain('全部');
-    expect(html).toContain('默认素材');
-    expect(html).toContain('AUDIO');
-    expect(html).toContain('SRT');
+    expect(html).toContain('视频');
+    expect(html).toContain('音频');
+    expect(html).toContain('podcast.mp3');
+    expect(html).toContain('subtitles.srt');
+    expect(html).toContain('cover.png');
+    expect(html).toContain('intro.mp4');
+    expect(html).toContain('导入');
   });
 });

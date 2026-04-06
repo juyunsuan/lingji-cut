@@ -17,10 +17,14 @@ interface PillGroupProps<T extends string> {
   size?: ButtonSize;
   fullWidth?: boolean;
   wrap?: boolean;
+  className?: string;
+  itemClassName?: string;
 }
 
 export function PillGroup<T extends string>({
+  className,
   fullWidth = false,
+  itemClassName,
   items,
   onChange,
   size = 'sm',
@@ -33,6 +37,7 @@ export function PillGroup<T extends string>({
         styles.root,
         wrap ? styles.wrap : styles.noWrap,
         fullWidth ? styles.fullWidth : '',
+        className,
       )}
     >
       {items.map((item) => {
@@ -44,7 +49,7 @@ export function PillGroup<T extends string>({
             onClick={() => onChange(item.value)}
             variant={isActive ? 'primary' : 'secondary'}
             size={size === 'md' ? 'default' : size}
-            className={styles.item}
+            className={joinClassNames(styles.item, itemClassName)}
             aria-pressed={isActive}
             disabled={item.disabled}
           >

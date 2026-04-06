@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { FileText, Sparkles, Palette, SlidersHorizontal } from "lucide-react";
+import { FileText, Sparkles } from "lucide-react";
 import { getAISettingsIssue } from "../lib/ai-settings";
 import { generateSubtitleHighlights } from "../lib/subtitle-highlight-runner";
 import { filterValidSubtitleHighlights } from "../lib/subtitle-highlights";
@@ -7,8 +7,17 @@ import { getFileNameFromPath } from "../lib/utils";
 import type { SubtitleStyle } from "../types";
 import { loadAISettings } from "../store/ai";
 import { useTimelineStore } from "../store/timeline";
-import { Button, Switch, NumberField, Select, ColorField, Alert, Badge } from "../ui";
+import { Button, ColorField, NumberField, Select, Switch } from "../ui";
 import styles from "./SubtitleInspector.module.css";
+
+const HIGHLIGHT_ANIMATION_OPTIONS: Array<{
+  value: SubtitleStyle["highlightAnimation"];
+  label: string;
+}> = [
+  { value: "pop", label: "弹入 (pop)" },
+  { value: "wipe", label: "擦入 (wipe)" },
+  { value: "none", label: "无动画 (none)" },
+];
 
 export function SubtitleInspector() {
   const [isGeneratingHighlights, setIsGeneratingHighlights] = useState(false);
@@ -71,69 +80,108 @@ export function SubtitleInspector() {
   const srtFileName = timeline.podcast.srtPath
     ? getFileNameFromPath(timeline.podcast.srtPath)
     : "等待导入字幕";
+  const validHighlightCount = validSubtitleHighlights.length;
+  const highlightStatus = useMemo(() => {
+    if (!timeline.podcast.srtPath) {
+      return { text: "等待导入字幕后生成高亮", tone: "muted" as const };
+    }
+
+    if (validHighlightCount > 0) {
+      return {
+        text: `高亮已生成 · ${validHighlightCount} 个关键词`,
+        tone: "success" as const,
+      };
+    }
+
+    if (expiredSubtitleHighlightCount > 0) {
+      return {
+        text: `已有 ${expiredSubtitleHighlightCount} 条高亮失效，请重新生成`,
+        tone: "warning" as const,
+      };
+    }
+
+    return { text: "尚未生成高亮", tone: "muted" as const };
+  }, [
+    expiredSubtitleHighlightCount,
+    timeline.podcast.srtPath,
+    validHighlightCount,
+  ]);
+
+  const handleAnimationChange = useCallback(
+    (event: { target: { value: string } }) => {
+      handleSubtitleStyleUpdate({
+        highlightAnimation: event.target.value as SubtitleStyle["highlightAnimation"],
+      });
+    },
+    [handleSubtitleStyleUpdate],
+  );
 
   return (
     <div className={styles.root}>
-      {/* Section 1 — 关键词高亮 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <Sparkles size={12} className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>关键词高亮</span>
-        </div>
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>关键词高亮</h3>
 
-        {/* 状态 chip */}
-        <div className={styles.statusChip}>
-          <FileText size={12} className={styles.statusChipIcon} />
-          <span className={styles.statusChipName}>{srtFileName}</span>
-          {validSubtitleHighlights.length > 0 && (
-            <Badge variant="default" className={styles.statusChipBadge}>
-              {validSubtitleHighlights.length} 处高亮
-            </Badge>
-          )}
+        <div className={styles.statusCard}>
+          <FileText size={14} className={styles.statusIcon} />
+          <div className={styles.statusInfo}>
+            <span className={styles.statusFile}>{srtFileName}</span>
+            <span
+              className={styles.statusState}
+              data-tone={highlightStatus.tone}
+            >
+              {highlightStatus.text}
+            </span>
+          </div>
         </div>
 
         {subtitleHighlightError ? (
-          <Alert variant="destructive">{subtitleHighlightError}</Alert>
+          <div className={styles.errorBanner} role="alert">
+            {subtitleHighlightError}
+          </div>
         ) : null}
 
         <Button
+          className={styles.primaryAction}
+          leftIcon={<Sparkles size={12} />}
           onClick={() => void handleGenerateSubtitleHighlights()}
-          loading={isGeneratingHighlights}
-          disabled={!timeline.podcast.srtPath}
-          variant="primary"
-          fullWidth
+          disabled={!timeline.podcast.srtPath || isGeneratingHighlights}
         >
-          <Sparkles size={13} />
-          {storedSubtitleHighlightCount > 0 ? '重新生成高亮' : '生成高亮'}
+          {isGeneratingHighlights
+            ? "正在生成高亮…"
+            : storedSubtitleHighlightCount > 0
+              ? "重新生成高亮"
+              : "生成高亮"}
         </Button>
 
-        <div className={styles.switchRow}>
-          <span className={styles.switchLabel}>启用关键词高亮</span>
+        <div className={styles.inlineRow}>
+          <span className={styles.inlineLabel}>启用高亮</span>
+          <div className={styles.rowSpacer} />
           <Switch
-            label=""
             checked={timeline.subtitle.highlightEnabled}
             onChange={(checked) =>
               handleSubtitleStyleUpdate({ highlightEnabled: checked })
             }
+            className={styles.switchControl}
           />
         </div>
-      </div>
+      </section>
 
-      {/* Section 2 — 颜色与圆角 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <Palette size={12} className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>颜色与圆角</span>
-        </div>
+      <div className={styles.separator} />
 
-        {/* 颜色行 */}
-        <div className={styles.colorRow}>
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>颜色与圆角</h3>
+
+        <div className={styles.dualRow}>
           <ColorField
             label="底色"
             value={timeline.subtitle.highlightBackgroundColor}
             onChange={(value) =>
               handleSubtitleStyleUpdate({ highlightBackgroundColor: value })
             }
+            showValue
+            formatValue={(value) => value.toUpperCase()}
+            className={styles.compactColorField}
+            labelClassName={styles.fieldCaption}
           />
           <ColorField
             label="文字"
@@ -141,85 +189,84 @@ export function SubtitleInspector() {
             onChange={(value) =>
               handleSubtitleStyleUpdate({ highlightTextColor: value })
             }
+            showValue
+            formatValue={(value) => value.toUpperCase()}
+            className={styles.compactColorField}
+            labelClassName={styles.fieldCaption}
           />
         </div>
 
-        {/* 圆角与留白行 */}
-        <div className={styles.numberRow}>
-          <NumberField
-            label="圆角 (px)"
-            value={timeline.subtitle.highlightRadius}
-            min={0}
-            max={24}
-            onChange={(value) =>
-              handleSubtitleStyleUpdate({ highlightRadius: value })
-            }
-          />
-          <NumberField
-            label="横留白 (px)"
-            value={timeline.subtitle.highlightPaddingX}
-            min={0}
-            max={24}
-            onChange={(value) =>
-              handleSubtitleStyleUpdate({ highlightPaddingX: value })
-            }
-          />
-        </div>
-
-        <NumberField
-          label="纵留白 (px)"
-          value={timeline.subtitle.highlightPaddingY}
-          min={0}
-          max={16}
-          onChange={(value) =>
-            handleSubtitleStyleUpdate({ highlightPaddingY: value })
-          }
-        />
-      </div>
-
-      {/* Section 3 — 动画与预览 */}
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <SlidersHorizontal size={12} className={styles.sectionIcon} />
-          <span className={styles.sectionTitle}>动画与预览</span>
-        </div>
-
-        {/* 动画选择 */}
-        <div className={styles.fieldRow}>
-          <span className={styles.fieldLabel}>动画</span>
-          <div className={styles.fieldControl}>
-            <Select
-              value={timeline.subtitle.highlightAnimation}
-              options={[
-                { value: "pop", label: "弹入" },
-                { value: "wipe", label: "擦入" },
-                { value: "none", label: "无动画" },
-              ]}
-              onChange={(event) =>
-                handleSubtitleStyleUpdate({
-                  highlightAnimation: event.target.value as SubtitleStyle["highlightAnimation"],
-                })
-              }
+        <div className={styles.dualRow}>
+          <div className={styles.compactNumberField}>
+            <span className={styles.fieldCaption}>圆角 (px)</span>
+            <NumberField
+              value={timeline.subtitle.highlightRadius}
+              min={0}
+              max={24}
+              onChange={(value) => handleSubtitleStyleUpdate({ highlightRadius: value })}
+              className={styles.numberFieldControl}
+            />
+          </div>
+          <div className={styles.compactNumberField}>
+            <span className={styles.fieldCaption}>横留白 (px)</span>
+            <NumberField
+              value={timeline.subtitle.highlightPaddingX}
+              min={0}
+              max={24}
+              onChange={(value) => handleSubtitleStyleUpdate({ highlightPaddingX: value })}
+              className={styles.numberFieldControl}
             />
           </div>
         </div>
 
-        {/* 效果预览 */}
-        <div className={styles.preview}>
-          <span className={styles.previewPrefix}>这一句真正的重点是</span>
+        <div className={styles.dualRow}>
+          <div className={styles.compactNumberField}>
+            <span className={styles.fieldCaption}>纵留白 (px)</span>
+            <NumberField
+              value={timeline.subtitle.highlightPaddingY}
+              min={0}
+              max={16}
+              onChange={(value) => handleSubtitleStyleUpdate({ highlightPaddingY: value })}
+              className={styles.numberFieldControl}
+            />
+          </div>
+          <div className={styles.fieldSpacer} aria-hidden="true" />
+        </div>
+      </section>
+
+      <div className={styles.separator} />
+
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}>动画与预览</h3>
+
+        <div className={styles.inlineRow}>
+          <span className={styles.inlineLabel}>动画效果</span>
+          <div className={styles.rowSpacer} />
+          <Select
+            value={timeline.subtitle.highlightAnimation}
+            onChange={handleAnimationChange}
+            options={HIGHLIGHT_ANIMATION_OPTIONS}
+            aria-label="高亮动画效果"
+            controlClassName={styles.selectControl}
+          />
+        </div>
+
+        <span className={styles.supportingLabel}>实时预览</span>
+
+        <div className={styles.previewStage}>
           <span
             className={styles.previewChip}
             style={{
               background: timeline.subtitle.highlightBackgroundColor,
               color: timeline.subtitle.highlightTextColor,
-              borderRadius: timeline.subtitle.highlightRadius,
+              borderRadius: `${timeline.subtitle.highlightRadius}px`,
               padding: `${timeline.subtitle.highlightPaddingY}px ${timeline.subtitle.highlightPaddingX}px`,
             }}
           >
-            世界冠军
+            关键词高亮
           </span>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

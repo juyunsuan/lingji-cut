@@ -451,6 +451,12 @@ ipcMain.handle(
   },
 );
 
+// 开发模式下让 Ctrl+C 能正常退出 Electron
+if (process.env.NODE_ENV_ELECTRON_VITE === 'development') {
+  process.on('SIGINT', () => app.quit());
+  process.on('SIGTERM', () => app.quit());
+}
+
 app.whenReady().then(createWindow);
 
 app.on('activate', () => {

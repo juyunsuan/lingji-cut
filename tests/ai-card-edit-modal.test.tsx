@@ -37,16 +37,14 @@ describe('AICardEditModal', () => {
     );
 
     expect(html).toContain('编辑卡片');
-    expect(html).toContain('展示时长（秒）');
-    expect(html).toContain('展示方式');
-    expect(html).toContain('单卡追加提示词');
+    expect(html).toContain('文字内容');
+    expect(html).toContain('展示设置');
     expect(html).toContain('网页卡片预览');
-    expect(html).toContain('全屏位置预览');
-    expect(html).toContain('重新生成此卡');
-    expect(html).toContain('aspect-ratio:1080 / 1920');
+    expect(html).toContain('危险操作');
+    expect(html).toContain('重新生成');
+    expect(html).toContain('data-ai-card-preview-frame="true"');
     expect(html).toContain('data-web-card-normalized=&quot;true&quot;');
-    expect(html).toContain('width: 100%');
-    expect(html).toContain('height: 100%');
+    expect(html).toContain('删除此卡片');
   });
 
   it('shows a loading mask over the web-card preview while regenerating', () => {

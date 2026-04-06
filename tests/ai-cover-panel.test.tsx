@@ -25,11 +25,16 @@ describe('AICoverPanel', () => {
       />,
     );
 
+    expect(html).toContain('data-ai-cover-root="true"');
+    expect(html).toContain('data-ai-cover-prompt="true"');
     expect(html).toContain('提示词');
     expect(html).toContain('一张科技感播客封面');
     expect(html).not.toContain('第二条不应显示');
     expect(html).toContain('AI 重新生成提示词');
     expect(html).toContain('候选封面');
+    expect(html).toContain('可直接拖到时间轴，也可以一键设为整期背景。');
+    expect(html).toContain('data-ai-cover-grid="true"');
+    expect(html).toContain('data-ai-cover-selected="true"');
     expect(html).toContain('设为整期背景');
     expect(html).toContain('draggable="true"');
   });

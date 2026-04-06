@@ -492,6 +492,7 @@ export function Timeline({
                 pxPerMs={pxPerMs}
                 trackHeight={subtitleTrackHeight}
                 highlightHint={subtitleHighlightHint}
+                onClickBlock={onOpenSubtitleInspector}
               />
             </div>
 

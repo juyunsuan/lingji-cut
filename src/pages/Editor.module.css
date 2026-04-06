@@ -47,6 +47,7 @@
 .sidebarShell {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   border-radius: 0;
@@ -55,26 +56,72 @@
 }
 
 .tabStrip {
-  border-bottom: 1px solid var(--color-separator);
   flex-shrink: 0;
-  padding: 6px 6px 0;
-  background: transparent;
+  padding: 6px 8px 0;
+  background: var(--color-panel-bg);
+  border-bottom: 1px solid var(--color-separator);
 }
 
-.tabList {
-  width: 100%;
-  padding: 1px;
+.topTabBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 33px;
 }
 
-.tabTrigger {
+.topTabButton {
   flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 27px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast);
+  cursor: pointer;
+}
+
+.topTabButton:hover {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-control-bg) 64%, transparent);
+}
+
+.topTabButtonActive {
+  background: var(--color-control-bg);
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.topTabIcon {
+  flex-shrink: 0;
+  width: 13px;
+  height: 13px;
 }
 
 .panelBody {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   overflow: hidden;
   display: flex;
+}
+
+/* 兼容旧 class，避免其他测试或未迁移节点引用时失效 */
+.tabList {
+  border-bottom: 1px solid var(--color-separator);
+  width: 100%;
+}
+
+.tabTrigger {
+  flex: 1;
 }
 
 .resizeHandle {

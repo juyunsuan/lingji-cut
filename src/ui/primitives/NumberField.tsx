@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useState, type ChangeEvent, type FocusEvent } from 'react';
 import { Minus, Plus } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { Field } from './Field';
 import styles from './NumberField.module.css';
 
@@ -15,6 +16,8 @@ export interface NumberFieldProps {
   unit?: string;
   /** 禁用状态 */
   disabled?: boolean;
+  className?: string;
+  stepperClassName?: string;
 }
 
 export function NumberField({
@@ -26,6 +29,8 @@ export function NumberField({
   unit,
   value,
   disabled = false,
+  className,
+  stepperClassName,
 }: NumberFieldProps) {
   const fieldId = useId();
   const [draftValue, setDraftValue] = useState(() => formatNumber(value));
@@ -101,7 +106,7 @@ export function NumberField({
   const isAtMax = typeof max === 'number' && value >= max;
 
   const stepper = (
-    <div className={styles.stepper}>
+    <div className={cn(styles.stepper, stepperClassName)}>
       <button
         type="button"
         className={`${styles.stepBtn} ${styles.stepBtnDec}`}
@@ -143,13 +148,13 @@ export function NumberField({
   if (!label) {
     if (unit) {
       return (
-        <div className={`${styles.root} ${styles.rootInline}`}>
+        <div className={cn(styles.root, styles.rootInline, className)}>
           {stepper}
           <span className={styles.unit}>{unit}</span>
         </div>
       );
     }
-    return stepper;
+    return <div className={cn(styles.root, className)}>{stepper}</div>;
   }
 
   /* 有 label — 包裹在 Field 中 */
@@ -164,7 +169,7 @@ export function NumberField({
 
   return (
     <Field label={<label htmlFor={fieldId}>{label}</label>}>
-      {control}
+      <div className={className}>{control}</div>
     </Field>
   );
 }

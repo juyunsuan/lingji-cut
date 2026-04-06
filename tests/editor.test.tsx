@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { Editor } from '../src/pages/Editor';
 
 vi.mock('../src/hooks/useViewportSize', () => ({
   useViewportSize: () => ({ width: 1440, height: 900 }),
@@ -47,22 +46,28 @@ vi.mock('../src/store/timeline', () => ({
   }),
 }));
 
-describe('Editor', () => {
-  it('renders a three-pane workspace with left tabs and a right inspector shell on wide screens', () => {
-    const html = renderToStaticMarkup(
-      <Editor onAddAsset={async () => undefined} exportRequestToken={0} />,
-    );
+async function renderEditor() {
+  const { Editor } = await import('../src/pages/Editor');
 
+  return renderToStaticMarkup(
+    <Editor onAddAsset={async () => undefined} exportRequestToken={0} />,
+  );
+}
+
+describe('Editor', () => {
+  it('renders a three-pane workspace with left tabs and a right inspector shell on wide screens', async () => {
+    const html = await renderEditor();
+
+    expect(html).toContain('data-editor-sidebar-style="flat-panel"');
+    expect(html).toContain('data-editor-sidebar-width="224"');
     expect(html).toContain('素材');
     expect(html).toContain('AI 助手');
     expect(html).toContain('data-editor-region="inspector-shell"');
-    expect(html).toContain('minmax(228px, 264px) minmax(0, 1fr) minmax(248px, 288px)');
+    expect(html).toContain('224px minmax(0, 1fr) 260px');
   });
 
-  it('clips the timeline row so the lower panel shadow cannot overlap the sidebar footer', () => {
-    const html = renderToStaticMarkup(
-      <Editor onAddAsset={async () => undefined} exportRequestToken={0} />,
-    );
+  it('clips the timeline row so the lower panel shadow cannot overlap the sidebar footer', async () => {
+    const html = await renderEditor();
 
     expect(html).toContain('data-editor-region="timeline-wrap"');
     expect(html).toContain('data-editor-region="sidebar-shell"');

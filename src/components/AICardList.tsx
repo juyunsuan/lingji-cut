@@ -1,8 +1,5 @@
-import type { CSSProperties } from 'react';
-import { Trash2 } from 'lucide-react';
 import type { AICard, AICardType } from '../types/ai';
-import { Button, Card } from '../ui';
-import { AppIcon, type AppIconName } from './AppIcon';
+import { Badge, Checkbox } from '../ui';
 import styles from './AICardList.module.css';
 
 export interface AICardPlacement {
@@ -20,92 +17,68 @@ interface AICardListProps {
 
 function getPreviewText(content: AICard['content']): string {
   const text = typeof content === 'string' ? content : JSON.stringify(content);
-  return text.length > 80 ? text.slice(0, 80) + '…' : text;
+  return text.length > 74 ? `${text.slice(0, 74)}…` : text;
 }
 
-const CARD_TYPE_META: Record<AICardType, { label: string; color: string; icon: AppIconName }> = {
-  summary: { label: '摘要', color: 'var(--color-selection-blue)', icon: 'file-text' },
-  data: { label: '数据', color: 'var(--color-success)', icon: 'chart-column' },
-  insight: { label: '观点', color: 'var(--color-warning)', icon: 'lightbulb' },
-  chapter: { label: '章节', color: 'var(--color-brand-accent)', icon: 'book-open-text' },
-  quote: { label: '金句', color: 'var(--color-danger)', icon: 'quote' },
+const CARD_TYPE_META: Record<AICardType, { label: string; color: string; tone: string }> = {
+  summary: { label: '摘要', color: '#0A84FF', tone: 'blue' },
+  data: { label: '数据', color: '#32D74B', tone: 'green' },
+  insight: { label: '观点', color: '#FF9F0A', tone: 'orange' },
+  chapter: { label: '章节', color: '#BF5AF2', tone: 'purple' },
+  quote: { label: '金句', color: '#FFD60A', tone: 'yellow' },
 };
 
 export function AICardList({
   cards,
-  placements = {},
   onToggleEnabled,
-  onDeleteCard,
   onEditCard,
 }: AICardListProps) {
   return (
-    <div className={styles.list}>
+    <div className={styles.list} data-ai-card-list="true">
       {cards.map((card) => {
         const meta = CARD_TYPE_META[card.type];
-        const placement = placements[card.id];
-        const placementText = placement ? `已在${placement.trackLabel}` : '未上轨';
 
         return (
-          <Card
+          <article
             key={card.id}
-            onClick={() => onEditCard(card.id)}
             className={styles.card}
+            data-ai-card-type={card.type}
             data-enabled={card.enabled}
-            style={createCardAccentStyle(meta.color)}
+            onClick={() => onEditCard(card.id)}
           >
-            <div className={styles.cardRow}>
-              {/* Checkbox 圆圈 */}
-              <Button
-                aria-label={card.enabled ? `取消选择卡片 ${card.title}` : `选择卡片 ${card.title}`}
-                title={card.enabled ? '已选' : '未选'}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onToggleEnabled(card.id);
-                }}
-                variant={card.enabled ? 'accent' : 'ghost'}
-                iconOnly
-                className={styles.toggleButton}
-                data-enabled={card.enabled}
+            <div className={styles.cardHead}>
+              <div
+                className={styles.checkbox}
+                onClick={(event) => event.stopPropagation()}
               >
-                <AppIcon name={card.enabled ? 'circle-check-big' : 'circle'} size={15} />
-              </Button>
-
-              {/* 内容区 */}
-              <div className={styles.content}>
-                <span
-                  className={styles.typeBadge}
-                  style={{ '--badge-color': meta.color } as React.CSSProperties}
-                >
-                  {meta.label}
-                </span>
-                <div className={styles.title}>{card.title}</div>
-                <div className={styles.preview}>{getPreviewText(card.content)}</div>
+                <Checkbox
+                  checked={card.enabled}
+                  onChange={() => onToggleEnabled(card.id)}
+                  aria-label={`切换 ${card.title} 是否上轨`}
+                  size="sm"
+                  className={styles.checkboxControl}
+                  boxClassName={styles.checkboxVisual}
+                />
               </div>
 
-              {/* 删除按钮（hover 显示）*/}
-              <Button
-                aria-label={`删除卡片 ${card.title}`}
-                title="删除卡片"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onDeleteCard(card.id);
-                }}
-                variant="ghost"
-                iconOnly
-                className={styles.deleteButton}
+              <Badge
+                size="xs"
+                color={meta.color}
+                className={styles.badge}
+                data-tone={meta.tone}
               >
-                <Trash2 size={13} />
-              </Button>
+                {meta.label}
+              </Badge>
+
+              <span className={styles.title}>{card.title}</span>
             </div>
-          </Card>
+
+            <p className={styles.body} data-ai-card-copy="true">
+              {getPreviewText(card.content)}
+            </p>
+          </article>
         );
       })}
     </div>
   );
-}
-
-function createCardAccentStyle(color: string): CSSProperties {
-  return {
-    ['--card-accent' as string]: color,
-  };
 }

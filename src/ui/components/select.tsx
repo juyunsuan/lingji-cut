@@ -24,6 +24,8 @@ interface BaseSelectProps {
 	disabled?: boolean;
 	/** Additional class for the container */
 	className?: string;
+	/** Additional class for the trigger button */
+	controlClassName?: string;
 	/** Max items to display as text before showing count */
 	maxDisplayCount?: number;
 	/** Enable frosted glass effect on dropdown */
@@ -113,6 +115,7 @@ function SelectBase(props: SelectProps) {
 function SingleSelectInternal({
 	children,
 	className,
+	controlClassName,
 	value,
 	defaultValue,
 	onChange,
@@ -178,7 +181,7 @@ function SingleSelectInternal({
 									minWidth: `${position.width}px`,
 								}}
 								className={cn(
-									"z-50 min-w-32 overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
+									"z-[10000] min-w-32 overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
 								)}
 							>
 								<ul role="listbox" className="py-1 px-1 flex flex-col gap-0.5">
@@ -230,6 +233,7 @@ function SingleSelectInternal({
 				onClick={() => setOpen((v) => !v)}
 				className={cn(
 					"flex h-9 w-full items-center justify-between rounded-lg border border-mac-border bg-mac-elevated px-3 py-2 text-sm text-foreground outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 hover:brightness-105 focus:border-mac-blue focus:shadow-[0_0_0_3px_rgba(10,132,255,0.2)]",
+					controlClassName,
 				)}
 			>
 				<span
@@ -264,6 +268,7 @@ function MultiSelectInternal({
 	placeholder = "Select...",
 	disabled = false,
 	className,
+	controlClassName,
 	maxDisplayCount = 2,
 	showTags = true,
 	glass: _glass = false,
@@ -312,7 +317,7 @@ function MultiSelectInternal({
 									minWidth: `${position.width}px`,
 								}}
 								className={cn(
-									"z-50 min-w-32 overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
+									"z-[10000] min-w-32 overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
 								)}
 							>
 								<ul role="listbox" className="p-1">
@@ -381,6 +386,7 @@ function MultiSelectInternal({
 				onClick={() => setOpen((v) => !v)}
 				className={cn(
 					"flex h-9 w-full items-center justify-between rounded-lg border border-mac-border bg-mac-elevated px-3 py-2 text-sm text-foreground outline-none transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 hover:brightness-105 focus:border-mac-blue focus:shadow-[0_0_0_3px_rgba(10,132,255,0.2)]",
+					controlClassName,
 				)}
 			>
 				<span

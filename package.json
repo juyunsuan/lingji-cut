@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "electron-vite dev --watch",
     "build": "electron-vite build",
     "test": "vitest run",
     "test:watch": "vitest"

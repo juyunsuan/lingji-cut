@@ -1,6 +1,7 @@
 import type { DragEventHandler } from 'react';
-import { Film, ImageIcon, Music, FileText, Plus } from 'lucide-react';
+import { Film, ImageIcon, Music, FileText, Play, Plus } from 'lucide-react';
 import type { AssetItem, AssetType } from '../types';
+import { useThumbnail } from '../hooks/useThumbnail';
 import { Button } from '../ui';
 import styles from './AssetCard.module.css';
 
@@ -10,6 +11,7 @@ interface AssetCardProps {
   usageCount: number;
   onDragStart: DragEventHandler<HTMLDivElement>;
   onRemove: (path: string) => void;
+  onClick?: () => void;
 }
 
 /** 每种类型的视觉配置 */
@@ -48,30 +50,44 @@ export function AssetImportCard({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="导入素材"
     >
-      <Plus size={20} color="var(--color-text-muted)" strokeWidth={1.5} />
+      <Plus size={18} color="var(--color-text-muted)" strokeWidth={1.5} />
       <span className={styles.ghostLabel}>导入</span>
     </Button>
   );
 }
 
-export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart, onRemove: _onRemove }: AssetCardProps) {
+export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart, onRemove: _onRemove, onClick }: AssetCardProps) {
   const meta = TYPE_META[asset.type];
   const isDraggable = !asset.locked && (asset.type === 'image' || asset.type === 'video');
+  const thumbnail = useThumbnail(asset.path, asset.type);
 
   return (
     <div
       draggable={isDraggable}
       onDragStart={onDragStart}
+      onClick={onClick}
       className={[
         styles.root,
         compact ? styles.compact : styles.regular,
         isDraggable ? styles.draggable : '',
-        meta.className,
+        onClick ? styles.clickable : '',
+        thumbnail ? styles.hasThumbnail : meta.className,
       ].filter(Boolean).join(' ')}
     >
-      {/* 顶部带色图标区 */}
+      {/* 顶部预览区 */}
       <div className={styles.iconArea}>
-        <meta.Icon size={24} color={meta.iconColor} strokeWidth={1.5} />
+        {thumbnail ? (
+          <>
+            <img src={thumbnail} alt={asset.name} className={styles.thumbnail} draggable={false} />
+            {asset.type === 'video' && (
+              <div className={styles.playBadge}>
+                <Play size={10} fill="white" color="white" strokeWidth={0} />
+              </div>
+            )}
+          </>
+        ) : (
+          <meta.Icon size={20} color={meta.iconColor} strokeWidth={1.5} />
+        )}
       </div>
 
       {/* 底部文件名 */}

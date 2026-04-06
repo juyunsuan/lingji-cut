@@ -25,8 +25,9 @@ export function EditorInspector({
 }: EditorInspectorProps) {
   const {
     card,
+    cardSequenceLabel,
+    deleteCard,
     errorMessage,
-    isPlacedOnTimeline,
     isRegeneratingCard,
     regenerateCard,
     saveCard,
@@ -37,16 +38,12 @@ export function EditorInspector({
     selection.type === 'subtitle-style'
       ? 'SUBTITLE'
       : selection.type === 'ai-card'
-      ? 'AI 卡片'
-      : '检查器';
+      ? 'AI CARD'
+      : 'INSPECTOR';
 
   /* ── 右侧索引/状态标签 ── */
-  const indexLabel =
-    selection.type === 'ai-card' && card
-      ? isPlacedOnTimeline
-        ? '已上轨'
-        : '仅素材'
-      : null;
+  const indexLabel = selection.type === 'ai-card' ? cardSequenceLabel : null;
+  const isSubtitleStyle = selection.type === 'subtitle-style';
 
   const renderBody = () => {
     if (selection.type === 'subtitle-style') {
@@ -72,6 +69,10 @@ export function EditorInspector({
           isRegenerating={isRegeneratingCard}
           previewWidth={timelineWidth}
           previewHeight={timelineHeight}
+          onDelete={() => {
+            deleteCard();
+            onClose();
+          }}
           onRegenerate={regenerateCard}
           onSave={saveCard}
         />
@@ -93,33 +94,48 @@ export function EditorInspector({
       className={styles.shell}
       data-editor-region="inspector-shell"
     >
-      {/* Header */}
       <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <span className={styles.eyebrowPill}>{eyebrowLabel}</span>
-          {selection.type === 'subtitle-style' && (
-            <span className={styles.headerLabel}>字幕样式</span>
-          )}
-        </div>
-        <div className={styles.headerRight}>
-          {indexLabel && (
-            <span className={styles.indexLabel}>{indexLabel}</span>
-          )}
-          {selection.type !== 'empty' && (
+        <span
+          className={styles.eyebrowPill}
+          data-variant={isSubtitleStyle ? 'subtitle' : 'default'}
+        >
+          {eyebrowLabel}
+        </span>
+
+        {isSubtitleStyle ? (
+          <>
+            <div className={styles.headerSpacer} />
+            <span className={styles.headerMeta}>字幕样式</span>
             <Button.Icon
               variant="ghost"
               aria-label="关闭右侧配置区"
               title="关闭右侧配置区"
               onClick={onClose}
-              className={styles.closeBtn}
+              className={styles.closeButton}
             >
               <X size={14} />
             </Button.Icon>
-          )}
-        </div>
+          </>
+        ) : (
+          <div className={styles.headerRight}>
+            {indexLabel ? (
+              <span className={styles.indexLabel}>{indexLabel}</span>
+            ) : null}
+            {selection.type !== 'empty' ? (
+              <Button.Icon
+                variant="ghost"
+                aria-label="关闭右侧配置区"
+                title="关闭右侧配置区"
+                onClick={onClose}
+                className={styles.closeButton}
+              >
+                <X size={14} />
+              </Button.Icon>
+            ) : null}
+          </div>
+        )}
       </div>
 
-      {/* Body */}
       <div className={styles.body}>{renderBody()}</div>
     </div>
   );

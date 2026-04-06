@@ -14,6 +14,8 @@ interface WebCardPreviewProps {
   stageHeight?: number;
   isLoading?: boolean;
   loadingLabel?: string;
+  className?: string;
+  preserveAspectRatio?: boolean;
 }
 
 export function WebCardPreview({
@@ -22,6 +24,8 @@ export function WebCardPreview({
   stageHeight = DEFAULT_STAGE_HEIGHT,
   isLoading = false,
   loadingLabel = '正在生成网页卡片...',
+  className,
+  preserveAspectRatio = true,
 }: WebCardPreviewProps) {
   const aspectRatio = useMemo(
     () => `${Math.max(1, stageWidth)} / ${Math.max(1, stageHeight)}`,
@@ -51,8 +55,8 @@ export function WebCardPreview({
 
   return (
     <div
-      className={styles.root}
-      style={{ aspectRatio }}
+      className={[styles.root, className].filter(Boolean).join(' ')}
+      style={preserveAspectRatio ? { aspectRatio } : undefined}
       aria-busy={showLoading || undefined}
     >
       {iframeSource ? (

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import fs from 'node:fs';
 import { AICardList } from '../src/components/AICardList';
 
 describe('AICardList', () => {
-  it('renders card titles and their source time ranges', () => {
+  it('renders design-aligned ai card rows for the left assistant panel', () => {
     const html = renderToStaticMarkup(
       <AICardList
         cards={[
@@ -37,11 +38,26 @@ describe('AICardList', () => {
       />,
     );
 
+    expect(html).toContain('data-ai-card-list="true"');
+    expect(html).toContain('data-ai-card-type="summary"');
     expect(html).toContain('本期要点');
-    expect(html).toContain('00:00 - 00:45');
-    expect(html).toContain('已在轨道 1');
-    expect(html).toContain('已选');
-    expect(html).toContain('删除');
-    expect(html).not.toContain('type="checkbox"');
+    expect(html).toContain('重点内容');
+    expect(html).toContain('type="checkbox"');
+    expect(html).toContain('摘要');
+    expect(html).toContain('data-ai-card-copy="true"');
+    expect(html).not.toContain('aria-label="删除 本期要点"');
+  });
+
+  it('keeps card copy constrained inside the outer container for long content', () => {
+    const css = fs.readFileSync(
+      new URL('../src/components/AICardList.module.css', import.meta.url),
+      'utf-8',
+    );
+
+    expect(css).toMatch(/\.card\s*\{[\s\S]*width:\s*100%/);
+    expect(css).toMatch(/\.card\s*\{[\s\S]*box-sizing:\s*border-box/);
+    expect(css).toMatch(/\.title\s*\{[\s\S]*flex:\s*1/);
+    expect(css).toMatch(/\.body\s*\{[\s\S]*min-width:\s*0/);
+    expect(css).toMatch(/\.body\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
   });
 });

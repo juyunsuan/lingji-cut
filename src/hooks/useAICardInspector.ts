@@ -3,8 +3,10 @@ import { getAISettingsIssue } from '../lib/ai-settings';
 import {
   createPersistedAIState,
   parsePersistedAIState,
+  removeCardInResult,
   updateCardInResult,
 } from '../lib/ai-persistence';
+import { getAICardSequenceLabel } from '../lib/ai-card-inspector';
 import { loadAISettings, useAIStore } from '../store/ai';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
 import { buildAICardTimelineDraft, type AICard, type CoverCandidate } from '../types/ai';
@@ -18,7 +20,7 @@ export function useAICardInspector(cardId: string | null) {
     setAnalysisResult,
     setCoverCandidates,
   } = useAIStore();
-  const { addAICardsToTimeline, srtEntries, timeline } = useTimelineStore();
+  const { addAICardsToTimeline, removeAICardOverlaysBySourceIds, srtEntries, timeline } = useTimelineStore();
   const [isRegeneratingCard, setIsRegeneratingCard] = useState(false);
 
   const card = useMemo(
@@ -35,6 +37,10 @@ export function useAICardInspector(cardId: string | null) {
           ),
       ),
     [cardId, timeline.overlays],
+  );
+  const cardSequenceLabel = useMemo(
+    () => getAICardSequenceLabel(analysisResult?.cards, cardId),
+    [analysisResult?.cards, cardId],
   );
 
   const persistAIState = useCallback(
@@ -175,8 +181,40 @@ export function useAICardInspector(cardId: string | null) {
     ],
   );
 
+  const deleteCard = useCallback(() => {
+    if (!card || !analysisResult) {
+      return;
+    }
+
+    const nextResult = removeCardInResult(analysisResult, card.id);
+    if (!nextResult) {
+      return;
+    }
+
+    setAnalysisError(null);
+    setAnalysisResult(nextResult);
+    removeAICardOverlaysBySourceIds([card.id]);
+
+    void persistAIState(nextResult, coverCandidates).then((persistedState) => {
+      const persistedResult = persistedState.analysisResult ?? nextResult;
+      setAnalysisResult(persistedResult);
+      setCoverCandidates(persistedState.coverCandidates);
+    });
+  }, [
+    analysisResult,
+    card,
+    coverCandidates,
+    persistAIState,
+    removeAICardOverlaysBySourceIds,
+    setAnalysisError,
+    setAnalysisResult,
+    setCoverCandidates,
+  ]);
+
   return {
     card,
+    cardSequenceLabel,
+    deleteCard,
     errorMessage: analysisError,
     isPlacedOnTimeline,
     isRegeneratingCard,

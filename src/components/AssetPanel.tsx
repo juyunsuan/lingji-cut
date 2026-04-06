@@ -44,10 +44,12 @@ export function AssetPanel({
   compact,
   railHeight,
   onAddAsset,
+  onOpenSubtitleInspector,
 }: {
   compact: boolean;
   railHeight?: number;
   onAddAsset?: () => Promise<void>;
+  onOpenSubtitleInspector?: () => void;
 }) {
   const { addAsset, assets, removeAsset, timeline } = useTimelineStore();
   const [keyword, setKeyword] = useState('');
@@ -103,6 +105,8 @@ export function AssetPanel({
             value={keyword}
             placeholder="搜索素材…"
             aria-label="搜索素材"
+            wrapperClassName={styles.searchInputWrap}
+            className={styles.searchInput}
             onChange={(e) => setKeyword(e.target.value)}
           />
         </div>
@@ -116,6 +120,9 @@ export function AssetPanel({
             value={activeFilter}
             onChange={setActiveFilter}
             size="sm"
+            wrap={false}
+            className={styles.filterGroup}
+            itemClassName={styles.filterPill}
           />
         </div>
       )}
@@ -140,6 +147,7 @@ export function AssetPanel({
               compact={compact}
               usageCount={getAssetUsageCount(asset.path)}
               onRemove={handleRemoveAsset}
+              onClick={asset.type === 'srt' ? onOpenSubtitleInspector : undefined}
               onDragStart={(event) => {
                 if (asset.locked || (asset.type !== 'image' && asset.type !== 'video')) {
                   event.preventDefault();
@@ -194,4 +202,3 @@ export function AssetPanel({
     </aside>
   );
 }
-

@@ -3,7 +3,6 @@
   flex-direction: column;
 }
 
-/* ── Section ── */
 .section {
   display: flex;
   flex-direction: column;
@@ -11,137 +10,191 @@
   padding: 12px;
 }
 
-.section + .section {
-  border-top: 1px solid var(--color-panel-elevated);
-}
-
-/* Section Header */
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.sectionIcon {
-  color: rgba(235, 235, 245, 0.3);
-  flex-shrink: 0;
+.separator {
+  height: 1px;
+  background: var(--color-panel-elevated);
 }
 
 .sectionTitle {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 11px;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 12px;
   font-weight: 600;
   line-height: 1;
 }
 
-
-/* ── 字段行 (label + control) ── */
-.fieldRow {
+.statusCard {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-panel-elevated);
 }
 
-.fieldLabel {
+.statusIcon {
   flex-shrink: 0;
-  width: 48px;
-  color: rgba(235, 235, 245, 0.3);
+  color: var(--color-text-secondary);
+}
+
+.statusInfo {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statusFile {
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statusState {
+  color: var(--color-text-muted);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.statusState[data-tone="success"] {
+  color: var(--color-success);
+}
+
+.statusState[data-tone="warning"] {
+  color: var(--color-brand-warm);
+}
+
+.errorBanner {
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--color-danger) 28%, var(--color-border-subtle));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--color-bg-error) 86%, var(--color-panel-bg));
+  color: var(--color-danger);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.primaryAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 28px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--color-selection-blue);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--motion-fast), opacity var(--motion-fast);
+}
+
+.primaryAction:hover:not(:disabled) {
+  background: var(--color-selection-blue-hover);
+}
+
+.primaryAction:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inlineLabel {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
   font-size: 11px;
   line-height: 1;
 }
 
-.fieldControl {
+.rowSpacer {
   flex: 1;
   min-width: 0;
 }
 
-/* ── 颜色双列 ── */
-.colorRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
+.switchControl {
+  gap: 0;
 }
 
-/* ── 数字字段行 ── */
-.numberRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+.dualRow {
+  display: flex;
+  align-items: stretch;
   gap: 8px;
 }
 
-/* ── 单位文本 ── */
-.unitText {
-  color: rgba(235, 235, 245, 0.3);
-  font-size: 11px;
-  flex-shrink: 0;
+.fieldStack {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
 }
 
-/* ── 开关行 ── */
-.switchRow {
+.fieldSpacer {
+  flex: 1;
+  min-width: 0;
+}
+
+.compactColorField,
+.compactNumberField {
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldCaption {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.numberFieldControl {
+  width: 100%;
+}
+
+.selectControl {
+  min-width: 132px;
+  min-height: 28px;
+  padding-inline: 10px;
+  font-size: 11px;
+}
+
+.supportingLabel {
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.previewStage {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.switchLabel {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 11px;
-}
-
-/* ── 预览区 ── */
-.preview {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 12px;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border-strong);
-  background: var(--color-panel-elevated);
-}
-
-.previewPrefix {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 12px;
-  font-weight: 500;
+  background: var(--color-preview-bg);
 }
 
 .previewChip {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-height: 26px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-/* ── 状态 chip ── */
-.statusChip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px;
-  background: var(--color-panel-elevated);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border-subtle);
-}
-
-.statusChipIcon {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-}
-
-.statusChipName {
-  flex: 1;
-  min-width: 0;
-  color: var(--color-text-secondary);
-  font-size: 11px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.statusChipBadge {
-  flex-shrink: 0;
+  color: #111827;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
 }

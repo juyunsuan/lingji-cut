@@ -1,108 +1,85 @@
 .list {
   display: flex;
   flex-direction: column;
-  gap: 3px;
-}
-
-.card {
-  --card-accent: var(--color-selection-blue);
-  cursor: pointer;
-  padding: 8px 10px;
-  border-left: 2px solid transparent;
-  /* 覆盖 Card 组件默认背景，使禁用态卡片透明 */
-  background: transparent !important;
-  opacity: 0.52;
-  transition:
-    opacity var(--motion-base),
-    border-color var(--motion-base),
-    background var(--motion-base);
-}
-
-.card:hover {
-  opacity: 0.72;
-  background: rgba(255, 255, 255, 0.04) !important;
-}
-
-.card[data-enabled='true'] {
-  opacity: 1;
-  border-left-color: var(--card-accent);
-  background: color-mix(in srgb, var(--card-accent) 9%, var(--color-window-bg)) !important;
-}
-
-.card[data-enabled='true']:hover {
-  background: color-mix(in srgb, var(--card-accent) 13%, var(--color-window-bg)) !important;
-}
-
-.cardRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-
-.content {
-  flex: 1;
+  gap: 6px;
   min-width: 0;
 }
 
-.toggleButton {
-  flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  padding: 0;
-}
-
-.toggleButton[data-enabled='true'] {
-  color: var(--color-success);
-}
-
-/* 标题 — SF Pro 紧缩字间距 */
-.title {
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-}
-
-.deleteButton {
-  flex-shrink: 0;
-  color: var(--color-text-muted);
-  opacity: 0;
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-separator);
+  border-radius: 8px;
+  background: var(--color-panel-elevated);
+  box-sizing: border-box;
+  overflow: hidden;
+  cursor: pointer;
   transition:
-    color var(--motion-fast),
-    opacity var(--motion-fast);
+    border-color var(--motion-fast),
+    background var(--motion-fast);
 }
 
-.deleteButton:hover {
-  color: var(--color-danger);
+.card:hover {
+  background: color-mix(in srgb, var(--color-panel-elevated) 94%, white 6%);
 }
 
-.card:hover .deleteButton {
-  opacity: 1;
+.card[data-enabled='true'] {
+  border-color: rgba(10, 132, 255, 0.25);
 }
 
-/* 类型 badge pill */
-.typeBadge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  padding: 1px 6px;
-  border-radius: 3px;
-  margin-bottom: 3px;
-  background: color-mix(in srgb, var(--badge-color) 18%, transparent);
-  color: var(--badge-color);
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
 
-/* 预览文本 — 两行截断 */
-.preview {
-  margin-top: 2px;
+.checkbox {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkboxControl {
+  gap: 0;
+}
+
+.checkboxVisual {
+  border-color: #5c5c60;
+  background: transparent;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-size: 9px;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  color: var(--color-text-primary);
   font-size: 11px;
-  color: var(--color-text-tertiary);
-  line-height: 1.4;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.body {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
 }

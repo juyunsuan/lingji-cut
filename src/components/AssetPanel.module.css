@@ -26,27 +26,87 @@
   flex-shrink: 0;
 }
 
+.searchInputWrap {
+  width: 100%;
+}
+
+.searchInputWrap > span {
+  left: 10px;
+  width: 14px;
+  height: 14px;
+}
+
+.searchInput {
+  height: 30px !important;
+  border-radius: 8px !important;
+  border-color: var(--color-separator) !important;
+  background: var(--color-panel-elevated) !important;
+  padding-inline: 10px !important;
+  padding-left: 30px !important;
+  font-size: 12px !important;
+  color: var(--color-text-secondary) !important;
+}
+
+.searchInput::placeholder {
+  color: var(--color-text-muted) !important;
+}
+
+.searchInput:hover {
+  filter: none;
+}
+
+.searchInput:focus {
+  border-color: var(--color-separator) !important;
+  box-shadow: none !important;
+}
+
 /* ── 筛选 pill 行 ── */
 .filterRow {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 8px 0;
+  padding: 10px 8px 0;
   flex-shrink: 0;
+}
+
+.filterGroup {
+  width: 100%;
+}
+
+.filterPill {
+  min-height: 22px !important;
+  border-radius: 5px !important;
+  padding: 3px 8px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  color: var(--color-text-secondary) !important;
+  background: var(--color-control-bg) !important;
+  box-shadow: none !important;
+}
+
+.filterPill:hover {
+  filter: none;
+  color: var(--color-text-primary) !important;
+}
+
+.filterPill[aria-pressed='true'] {
+  color: var(--color-text-primary) !important;
+  background: var(--color-selection-blue) !important;
+  font-weight: 600 !important;
 }
 
 /* ── 内容网格 ── */
 .content {
   flex: 1;
   min-height: 0;
-  padding: 8px;
+  padding: 10px 8px 8px;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 65px);
+  grid-template-columns: repeat(3, 64px);
   gap: 4px;
   align-content: start;
 }

@@ -123,17 +123,20 @@ describe('AIPanel', () => {
   it('renders the assistant header, tabs and apply action', () => {
     const html = renderToStaticMarkup(<AIPanel compact={false} />);
 
-    expect(html).toContain('AI 助手');
-    expect(html).toContain('title="AI 分析与生成助手"');
+    expect(html).toContain('data-ai-panel-root="true"');
+    expect(html).toContain('data-ai-panel-tab="cards"');
+    expect(html).toContain('data-ai-panel-header="true"');
     expect(html).toContain('内容卡片');
     expect(html).toContain('封面');
-    expect(html).toContain('应用到时间线');
-    expect(html).toContain('重新分析');
-    expect(html).toContain('title="重新分析"');
-    expect(html).toContain('已在轨道 1');
+    expect(html).toContain('AI 分析');
+    expect(html).toContain('已选 1/1');
+    expect(html).toContain('data-ai-selection-summary="true"');
     expect(html).toContain('整体创作提示词');
+    expect(html).toContain('data-ai-action-bar="true"');
     expect(html).toContain('删除已选');
     expect(html).toContain('全选');
+    expect(html).toContain('data-ai-footer-button="true"');
+    expect(html).toContain('上轨 1');
   });
 
   it('shows explicit loading feedback while analyzing content', () => {
@@ -176,8 +179,10 @@ describe('AIPanel', () => {
   it('keeps the compact assistant footer action visible', () => {
     const html = renderToStaticMarkup(<AIPanel compact railHeight={154} />);
 
-    expect(html).toContain('AI 助手');
-    expect(html).toContain('应用到时间线');
+    expect(html).toContain('data-ai-panel-root="true"');
+    expect(html).toContain('AI 分析');
+    expect(html).toContain('data-ai-footer-button="true"');
+    expect(html).toContain('上轨 1');
     expect(html).toContain('卡片');
   });
 });
