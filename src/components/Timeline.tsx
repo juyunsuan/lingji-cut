@@ -12,6 +12,7 @@ import {
   getWheelTimelineZoom,
 } from '../lib/timeline-view';
 import type { TimelineTrack } from '../types';
+import { getTextTemplateById } from '../lib/text-templates';
 import { useTimelineStore } from '../store/timeline';
 import { OverlayBlock } from './OverlayBlock';
 import { TimelineAudioWaveform } from './TimelineAudioWaveform';
@@ -23,12 +24,13 @@ interface TimelineProps {
   onSeek: (ms: number) => void;
   compact: boolean;
   onOpenAICardInspector?: (cardId: string) => void;
+  onOpenTextInspector?: (overlayId: string) => void;
   onOpenSubtitleInspector?: () => void;
 }
 
 interface AssetLike {
   path: string;
-  type: 'video' | 'image';
+  type: 'video' | 'image' | 'text';
   durationMs: number;
   overlayRole?: 'default-background';
 }
@@ -38,6 +40,7 @@ export function Timeline({
   onSeek,
   compact,
   onOpenAICardInspector,
+  onOpenTextInspector,
   onOpenSubtitleInspector,
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -285,11 +288,34 @@ export function Timeline({
       return;
     }
 
+    const startMs = Math.max(0, Math.round(offsetX / pxPerMs));
+
+    // 文字模板处理
+    if (asset.type === 'text') {
+      const template = getTextTemplateById(asset.path);
+      if (!template) return;
+      addOverlay({
+        type: 'text',
+        assetPath: '',
+        trackId,
+        startMs,
+        durationMs: asset.durationMs,
+        position: {
+          x: (timeline.width - 800) / 2,
+          y: (timeline.height - 200) / 2,
+          width: 800,
+          height: 200,
+        },
+        textData: { ...template.textData },
+      });
+      return;
+    }
+
     addOverlay({
       type: asset.type,
       assetPath: asset.path,
       trackId,
-      startMs: Math.max(0, Math.round(offsetX / pxPerMs)),
+      startMs,
       durationMs: asset.durationMs,
       position: {
         x: 0,
@@ -553,6 +579,10 @@ export function Timeline({
                         getTrackDragZones={getTrackDragZones}
                         onTrackHoverChange={setHoverTrackId}
                         onSelect={() => {
+                          if (overlay.type === 'text') {
+                            onOpenTextInspector?.(overlay.id);
+                            return;
+                          }
                           const sourceCardId = overlay.aiCardData?.sourceCardId;
                           if (overlay.overlayType === 'ai-card' && sourceCardId) {
                             onOpenAICardInspector?.(sourceCardId);
