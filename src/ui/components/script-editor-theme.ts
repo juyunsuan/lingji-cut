@@ -48,6 +48,11 @@ const theme = EditorView.theme(
       cursor: 'pointer',
     },
     // hover tooltip
+    '.cm-tooltip': {
+      background: 'transparent',
+      border: 'none',
+      padding: '0',
+    },
     '.cm-annotation-tooltip': {
       backgroundColor: '#2C2C2E',
       border: '1px solid #48484A',

@@ -27,6 +27,7 @@ function buildDecorations(
     .filter(
       (a) =>
         a.status === 'pending' &&
+        a.startOffset < a.endOffset &&
         a.startOffset < docLength &&
         a.endOffset <= docLength,
     )

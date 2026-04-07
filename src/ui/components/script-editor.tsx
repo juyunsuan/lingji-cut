@@ -1,7 +1,7 @@
 // src/ui/components/script-editor.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { EditorState } from '@codemirror/state';
+import { EditorState, Compartment } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -184,6 +184,7 @@ export function ScriptEditor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const placeholderCompartment = useRef(new Compartment());
 
   const [clickInfo, setClickInfo] = useState<AnnotationClickInfo | null>(null);
 
@@ -199,7 +200,7 @@ export function ScriptEditor({
           markdown({ base: markdownLanguage, codeLanguages: languages }),
           history(),
           keymap.of([...defaultKeymap, ...historyKeymap]),
-          cmPlaceholder(placeholder ?? ''),
+          placeholderCompartment.current.of(cmPlaceholder(placeholder ?? '')),
           annotationField,
           annotationHoverTooltip,
           createAnnotationClickHandler(setClickInfo),
@@ -238,6 +239,17 @@ export function ScriptEditor({
     view.dispatch({ effects: setAnnotationsEffect.of(annotations) });
   }, [annotations]);
 
+  // React → CM6: sync placeholder text
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: placeholderCompartment.current.reconfigure(
+        cmPlaceholder(placeholder ?? ''),
+      ),
+    });
+  }, [placeholder]);
+
   // Close popover when the active annotation is no longer pending
   useEffect(() => {
     if (!clickInfo) return;
@@ -262,8 +274,8 @@ export function ScriptEditor({
       {clickInfo && (
         <AnnotationPopover
           info={clickInfo}
-          onAccept={() => onAcceptAnnotation?.(clickInfo.id)}
-          onDismiss={() => onDismissAnnotation?.(clickInfo.id)}
+          onAccept={() => { onAcceptAnnotation?.(clickInfo.id); handleClosePopover(); }}
+          onDismiss={() => { onDismissAnnotation?.(clickInfo.id); handleClosePopover(); }}
           onClose={handleClosePopover}
         />
       )}
