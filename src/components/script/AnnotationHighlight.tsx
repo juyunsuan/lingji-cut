@@ -2,9 +2,9 @@
 import type { Annotation } from '../../store/script';
 
 const SEVERITY_COLORS: Record<string, { bg: string; border: string }> = {
-  error: { bg: '#FF453A15', border: '#FF453A40' },
-  warning: { bg: '#FF9F0A15', border: '#FF9F0A40' },
-  info: { bg: '#0A84FF15', border: '#0A84FF40' },
+  error: { bg: '#FF453A30', border: '#FF453A60' },
+  warning: { bg: '#FF9F0A30', border: '#FF9F0A60' },
+  info: { bg: '#0A84FF30', border: '#0A84FF60' },
 };
 
 export function applyAnnotationHighlights(

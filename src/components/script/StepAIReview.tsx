@@ -1,5 +1,6 @@
 // src/components/script/StepAIReview.tsx
 import {
+  ArrowLeft,
   ArrowRight,
   CheckCheck,
   CircleX,
@@ -227,6 +228,24 @@ export function StepAIReview() {
           >
             {reviewing ? '审查中…' : '开始 AI 审查'}
           </button>
+          {!reviewing && (
+            <button
+              type="button"
+              onClick={() => setCurrentStep(5)}
+              style={{
+                padding: '8px 20px',
+                borderRadius: 8,
+                border: '1px solid #48484A',
+                background: 'transparent',
+                color: '#EBEBF599',
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              跳过审查，直接下一步 →
+            </button>
+          )}
         </div>
       ) : (
         <div
@@ -253,58 +272,79 @@ export function StepAIReview() {
 
       <div style={{ flex: hasAnnotations ? 0 : 1 }} />
 
+      <div style={{ borderTop: '1px solid #38383A' }} />
+
       {hasAnnotations && (
-        <>
-          <div style={{ borderTop: '1px solid #38383A' }} />
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button
-              type="button"
-              disabled={pendingCount === 0}
-              onClick={acceptAllAnnotations}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '10px 0',
-                borderRadius: 8,
-                border: 'none',
-                background: '#3A3A3C',
-                color: pendingCount > 0 ? '#EBEBF599' : '#EBEBF54D',
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: pendingCount > 0 ? 'pointer' : 'default',
-              }}
-            >
-              <CheckCheck size={14} />
-              全部采纳
-            </button>
-            <button
-              type="button"
-              onClick={() => setCurrentStep(5)}
-              style={{
-                flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                padding: '10px 0',
-                borderRadius: 8,
-                border: 'none',
-                background: '#0A84FF',
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              完成审查
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            disabled={pendingCount === 0}
+            onClick={acceptAllAnnotations}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '10px 0',
+              borderRadius: 8,
+              border: 'none',
+              background: '#3A3A3C',
+              color: pendingCount > 0 ? '#EBEBF599' : '#EBEBF54D',
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: pendingCount > 0 ? 'pointer' : 'default',
+            }}
+          >
+            <CheckCheck size={14} />
+            全部采纳
+          </button>
+          <button
+            type="button"
+            onClick={() => setCurrentStep(5)}
+            style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              padding: '10px 0',
+              borderRadius: 8,
+              border: 'none',
+              background: '#0A84FF',
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            完成审查
+            <ArrowRight size={14} />
+          </button>
+        </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setCurrentStep(3)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '8px 0',
+          borderRadius: 8,
+          border: '1px solid #48484A',
+          background: 'transparent',
+          color: '#EBEBF599',
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        <ArrowLeft size={14} />
+        上一步
+      </button>
     </div>
   );
 }

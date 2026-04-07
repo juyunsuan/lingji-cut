@@ -140,13 +140,19 @@ function ContextMenuTrigger({
 	};
 
 	if (asChild && React.isValidElement(children)) {
+		const child = children as React.ReactElement<{
+			onContextMenu?: (e: React.MouseEvent) => void;
+			className?: string;
+		}>;
+
 		return React.cloneElement(
-			children as React.ReactElement<{
-				onContextMenu?: (e: React.MouseEvent) => void;
-				className?: string;
-			}>,
+			child,
 			{
-				onContextMenu: handleContextMenu,
+				onContextMenu: (event) => {
+					handleContextMenu(event);
+					child.props.onContextMenu?.(event);
+				},
+				className: cn(child.props.className, className),
 			},
 		);
 	}
@@ -189,7 +195,7 @@ function ContextMenuContent({ children, className, glass = false }: ContextMenuC
 					role="menu"
 					aria-orientation="vertical"
 					className={cn(
-						"fixed min-w-[220px] overflow-hidden rounded-xl border border-mac-border p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
+						"fixed w-[148px] overflow-hidden rounded-[9px] border border-mac-border p-[3px] shadow-[0_8px_18px_rgba(0,0,0,0.44)]",
 						glass
 							? "bg-mac-elevated border-mac-border"
 							: "bg-mac-elevated border-mac-border",
@@ -254,7 +260,7 @@ function ContextMenuItem({
 			onClick={handleClick}
 			onKeyDown={handleKeyDown}
 			className={cn(
-				"flex w-full items-center rounded-lg px-2 py-1.5 text-sm text-foreground outline-none transition-colors hover:bg-mac-blue hover:text-white focus:bg-mac-blue focus:text-white",
+				"flex w-full items-center rounded-[7px] px-1.5 py-[3px] text-[10px] font-medium leading-none text-foreground outline-none transition-colors hover:bg-mac-blue hover:text-white focus:bg-mac-blue focus:text-white",
 				disabled && "pointer-events-none opacity-50",
 				destructive &&
 					"text-mac-red hover:text-white hover:bg-mac-red focus:bg-mac-red",
@@ -301,7 +307,7 @@ function ContextMenuCheckboxItem({
 			onClick={() => onCheckedChange?.(!checked)}
 			onKeyDown={handleKeyDown}
 			className={cn(
-				"flex w-full items-center rounded-lg px-2 py-1.5 text-sm text-foreground outline-none transition-colors hover:bg-mac-blue hover:text-white focus:bg-mac-blue focus:text-white",
+				"flex w-full items-center rounded-[7px] px-1.5 py-[3px] text-[10px] font-medium leading-none text-foreground outline-none transition-colors hover:bg-mac-blue hover:text-white focus:bg-mac-blue focus:text-white",
 				disabled && "pointer-events-none opacity-50",
 				className,
 			)}
@@ -327,7 +333,7 @@ function ContextMenuLabel({ children, className }: ContextMenuLabelProps) {
 	return (
 		<div
 			className={cn(
-				"px-2 py-1.5 text-xs font-semibold text-mac-text-muted",
+				"px-1.5 py-[3px] text-[9px] font-semibold tracking-[0.08em] text-mac-text-muted",
 				className,
 			)}
 		>
@@ -347,7 +353,7 @@ interface ContextMenuSeparatorProps {
 function ContextMenuSeparator({ className }: ContextMenuSeparatorProps) {
 	return (
 		<div
-			className={cn("-mx-1 my-1 h-px bg-mac-separator", className)}
+			className={cn("-mx-[3px] my-0.5 h-px bg-mac-separator", className)}
 		/>
 	);
 }
@@ -368,7 +374,7 @@ function ContextMenuShortcut({
 	return (
 		<span
 			className={cn(
-				"ml-auto text-xs tracking-widest text-mac-text-muted",
+				"ml-auto text-[9px] font-medium tracking-[0.06em] text-mac-text-muted",
 				className,
 			)}
 		>

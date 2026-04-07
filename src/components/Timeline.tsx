@@ -1,7 +1,11 @@
 import type { CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '../ui';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Button, ContextMenu } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
+import {
+  getTimelineContextMenuItems,
+  type TimelineContextMenuActionKey,
+} from '../lib/timeline-context-menu';
 import { getRenderableVisualTracks, getVisualTracks } from '../lib/timeline-tracks';
 import { filterValidSubtitleHighlights } from '../lib/subtitle-highlights';
 import { formatTime } from '../lib/utils';
@@ -37,6 +41,19 @@ interface AssetLike {
   overlayRole?: 'default-background';
 }
 
+type TimelineContextTarget =
+  | {
+      kind: 'track';
+      trackId: string;
+      startMs: number;
+    }
+  | {
+      kind: 'overlay';
+      overlayId: string;
+      trackId: string;
+      startMs: number;
+    };
+
 export function Timeline({
   currentTimeMs,
   onSeek,
@@ -50,11 +67,17 @@ export function Timeline({
   const trackLaneRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [hoverTrackId, setHoverTrackId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
+  const [contextTarget, setContextTarget] = useState<TimelineContextTarget | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
   const {
     addOverlay,
     addTrack,
+    copyOverlay,
+    cutOverlay,
+    overlayClipboard,
+    pasteOverlay,
+    removeOverlay,
     removeTrack,
     setGlobalBackground,
     srtEntries,
@@ -235,6 +258,123 @@ export function Timeline({
 
     return offsetX;
   };
+
+  const resolveContextMenuStartMs = useCallback(
+    (clientX: number) => {
+      const offsetX = resolveTimelineOffset(clientX);
+      if (offsetX === null) {
+        return 0;
+      }
+
+      return Math.max(0, Math.min(durationMs, Math.round(offsetX / pxPerMs)));
+    },
+    [durationMs, pxPerMs],
+  );
+
+  const canPasteOverlay = Boolean(overlayClipboard);
+
+  const handleOverlayContextMenu = useCallback(
+    (overlayId: string, trackId: string, clientX: number) => {
+      setSelectedOverlayId(overlayId);
+      setContextTarget({
+        kind: 'overlay',
+        overlayId,
+        trackId,
+        startMs: resolveContextMenuStartMs(clientX),
+      });
+    },
+    [resolveContextMenuStartMs],
+  );
+
+  const handleTrackContextMenu = useCallback(
+    (trackId: string, clientX: number) => {
+      setSelectedOverlayId(null);
+      setContextTarget({
+        kind: 'track',
+        trackId,
+        startMs: resolveContextMenuStartMs(clientX),
+      });
+    },
+    [resolveContextMenuStartMs],
+  );
+
+  const handleContextMenuAction = useCallback(
+    (
+      action: TimelineContextMenuActionKey,
+      options: {
+        overlayId?: string;
+        trackId: string;
+        startMs: number;
+      },
+    ) => {
+      if (action === 'copy') {
+        if (options.overlayId) {
+          copyOverlay(options.overlayId);
+        }
+        return;
+      }
+
+      if (action === 'cut') {
+        if (!options.overlayId) {
+          return;
+        }
+        if (cutOverlay(options.overlayId) && selectedOverlayId === options.overlayId) {
+          setSelectedOverlayId(null);
+        }
+        return;
+      }
+
+      if (action === 'paste') {
+        const pastedOverlayId = pasteOverlay({
+          trackId: options.trackId,
+          startMs: options.startMs,
+        });
+
+        if (pastedOverlayId) {
+          setSelectedOverlayId(pastedOverlayId);
+        }
+        return;
+      }
+
+      if (!options.overlayId) {
+        return;
+      }
+
+      removeOverlay(options.overlayId);
+      if (selectedOverlayId === options.overlayId) {
+        setSelectedOverlayId(null);
+      }
+    },
+    [copyOverlay, cutOverlay, pasteOverlay, removeOverlay, selectedOverlayId],
+  );
+
+  const renderContextMenuItems = useCallback(
+    (
+      items: ReturnType<typeof getTimelineContextMenuItems>,
+      options: {
+        overlayId?: string;
+        trackId: string;
+        startMs: number;
+      },
+    ) =>
+      items.map((item) => (
+        <Fragment key={item.key}>
+          {item.separatorBefore ? <ContextMenu.Separator /> : null}
+          <ContextMenu.Item
+            disabled={item.disabled}
+            destructive={item.destructive}
+            onSelect={() => handleContextMenuAction(item.key, options)}
+          >
+            <div className={styles.contextMenuItem}>
+              <AppIcon name={item.icon} size={14} className={styles.contextMenuIcon} />
+              <span className={styles.contextMenuLabel}>{item.label}</span>
+              <ContextMenu.Shortcut>{item.shortcut}</ContextMenu.Shortcut>
+            </div>
+          </ContextMenu.Item>
+        </Fragment>
+      )),
+    [handleContextMenuAction],
+  );
 
   const handleSeekClick = (event: MouseEvent<HTMLDivElement>) => {
     // 点击轨道空白区域时取消选中
@@ -559,6 +699,14 @@ export function Timeline({
               const overlays = overlaysByTrack.get(track.id) ?? [];
               const isHover = hoverTrackId === track.id;
               const isTopLayer = index === 0;
+              const trackMenuItems = getTimelineContextMenuItems({
+                target: 'track',
+                canPaste: canPasteOverlay,
+              });
+              const trackMenuStartMs =
+                contextTarget?.kind === 'track' && contextTarget.trackId === track.id
+                  ? contextTarget.startMs
+                  : 0;
 
               return (
                 <div
@@ -593,65 +741,113 @@ export function Timeline({
                       </button>
                     ),
                   })}
-                  <div
-                    ref={(node) => {
-                      trackLaneRefs.current[track.id] = node;
-                    }}
-                    onDragOver={(event) => {
-                      event.preventDefault();
-                      event.dataTransfer.dropEffect = 'copy';
-                      if (hoverTrackId !== track.id) {
-                        setHoverTrackId(track.id);
-                      }
-                    }}
-                    onDragLeave={() => {
-                      if (hoverTrackId === track.id) {
-                        setHoverTrackId(null);
-                      }
-                    }}
-                    onDrop={handleTrackDrop(track.id)}
-                    className={joinClassNames(
-                      styles.trackDropLane,
-                      isHover ? styles.trackDropLaneHover : '',
-                    )}
-                    style={{
-                      height: overlayTrackHeight,
-                      ...gridBackground,
-                    }}
-                  >
-                    {overlays.map((overlay) => (
-                      <OverlayBlock
-                        key={overlay.id}
-                        overlay={overlay}
-                        pxPerMs={pxPerMs}
-                        trackHeight={overlayTrackHeight}
-                        selected={selectedOverlayId === overlay.id}
-                        getTrackDragZones={getTrackDragZones}
-                        onTrackHoverChange={setHoverTrackId}
-                        onSelect={() => {
-                          setSelectedOverlayId(overlay.id);
-                          const sourceCardId = overlay.aiCardData?.sourceCardId;
-                          if (overlay.overlayType === 'ai-card' && sourceCardId) {
-                            onOpenAICardInspector?.(sourceCardId);
-                            return;
-                          }
-                          // 所有视觉 overlay（文字/图片/视频）统一打开 Inspector
-                          onOpenOverlayInspector?.(overlay.id);
-                        }}
-                      />
-                    ))}
-
-                    {overlays.length === 0 ? (
+                  <ContextMenu>
+                    <ContextMenu.Trigger asChild>
                       <div
-                        className={[
-                          styles.emptyHint,
-                          isHover ? styles.emptyHintHover : '',
-                        ].filter(Boolean).join(' ')}
+                        ref={(node) => {
+                          trackLaneRefs.current[track.id] = node;
+                        }}
+                        onContextMenu={(event) => {
+                          handleTrackContextMenu(track.id, event.clientX);
+                        }}
+                        onDragOver={(event) => {
+                          event.preventDefault();
+                          event.dataTransfer.dropEffect = 'copy';
+                          if (hoverTrackId !== track.id) {
+                            setHoverTrackId(track.id);
+                          }
+                        }}
+                        onDragLeave={() => {
+                          if (hoverTrackId === track.id) {
+                            setHoverTrackId(null);
+                          }
+                        }}
+                        onDrop={handleTrackDrop(track.id)}
+                        className={joinClassNames(
+                          styles.trackDropLane,
+                          isHover ? styles.trackDropLaneHover : '',
+                        )}
+                        style={{
+                          height: overlayTrackHeight,
+                          ...gridBackground,
+                        }}
                       >
-                        拖入图片或视频到 {track.label}
+                        {overlays.map((overlay) => {
+                          const overlayBlock = (
+                            <OverlayBlock
+                              overlay={overlay}
+                              pxPerMs={pxPerMs}
+                              trackHeight={overlayTrackHeight}
+                              selected={selectedOverlayId === overlay.id}
+                              getTrackDragZones={getTrackDragZones}
+                              onTrackHoverChange={setHoverTrackId}
+                              onContextMenu={(event) => {
+                                handleOverlayContextMenu(overlay.id, overlay.trackId, event.clientX);
+                              }}
+                              onSelect={() => {
+                                setSelectedOverlayId(overlay.id);
+                                const sourceCardId = overlay.aiCardData?.sourceCardId;
+                                if (overlay.overlayType === 'ai-card' && sourceCardId) {
+                                  onOpenAICardInspector?.(sourceCardId);
+                                  return;
+                                }
+                                // 所有视觉 overlay（文字/图片/视频）统一打开 Inspector
+                                onOpenOverlayInspector?.(overlay.id);
+                              }}
+                            />
+                          );
+
+                          if (overlay.overlayRole === 'default-background') {
+                            return (
+                              <Fragment key={overlay.id}>
+                                {overlayBlock}
+                              </Fragment>
+                            );
+                          }
+
+                          const overlayMenuItems = getTimelineContextMenuItems({
+                            target: 'overlay',
+                            canPaste: canPasteOverlay,
+                          });
+                          const overlayMenuStartMs =
+                            contextTarget?.kind === 'overlay' &&
+                            contextTarget.overlayId === overlay.id
+                              ? contextTarget.startMs
+                              : overlay.startMs;
+
+                          return (
+                            <ContextMenu key={overlay.id}>
+                              <ContextMenu.Trigger asChild>{overlayBlock}</ContextMenu.Trigger>
+                              <ContextMenu.Content glass>
+                                {renderContextMenuItems(overlayMenuItems, {
+                                  overlayId: overlay.id,
+                                  trackId: overlay.trackId,
+                                  startMs: overlayMenuStartMs,
+                                })}
+                              </ContextMenu.Content>
+                            </ContextMenu>
+                          );
+                        })}
+
+                        {overlays.length === 0 ? (
+                          <div
+                            className={[
+                              styles.emptyHint,
+                              isHover ? styles.emptyHintHover : '',
+                            ].filter(Boolean).join(' ')}
+                          >
+                            拖入图片或视频到 {track.label}
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-                  </div>
+                    </ContextMenu.Trigger>
+                    <ContextMenu.Content glass>
+                      {renderContextMenuItems(trackMenuItems, {
+                        trackId: track.id,
+                        startMs: trackMenuStartMs,
+                      })}
+                    </ContextMenu.Content>
+                  </ContextMenu>
                 </div>
               );
             })}

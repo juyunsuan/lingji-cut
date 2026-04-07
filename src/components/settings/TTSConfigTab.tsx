@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { loadTTSSettings, saveTTSSettings } from '../../lib/settings-storage';
-import { Field, Input } from '../../ui';
+import { Field, Input, Slider } from '../../ui';
 
 const VOICE_OPTIONS = [
   { id: 'male-qn-qingse', label: '男声 · 青涩' },
@@ -59,11 +59,11 @@ export function TTSConfigTab() {
         </Field>
 
         <Field label={`语速：${speed.toFixed(1)}x`}>
-          <input
-            type="range" min="0.5" max="2.0" step="0.1"
+          <Slider
+            min={0.5} max={2.0} step={0.1}
             value={speed}
-            onChange={(e) => setSpeed(parseFloat(e.target.value))}
-            style={{ width: '100%' }}
+            onChange={setSpeed}
+            size="md"
           />
         </Field>
       </div>

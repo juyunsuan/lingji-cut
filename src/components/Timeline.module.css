@@ -246,6 +246,23 @@
   color: var(--color-brand-accent);
 }
 
+.contextMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.contextMenuIcon {
+  flex-shrink: 0;
+}
+
+.contextMenuLabel {
+  flex: 1;
+  min-width: 0;
+}
+
 .playhead {
   position: absolute;
   top: 0;

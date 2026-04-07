@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
+import { AgentSidebar } from './components/agent/AgentSidebar';
+import { AppStatusBar } from './components/AppStatusBar';
 import { Toolbar } from './components/Toolbar';
-import type { MenuAction } from './lib/electron-api';
+import type { AppPage, MenuAction, MenuEvent } from './lib/electron-api';
+import { useAgentStore } from './store/agent';
 import { parsePersistedAIState } from './lib/ai-persistence';
 import { useViewportSize } from './hooks/useViewportSize';
 import { getAppShortcutCommand, isTextEditingTarget } from './lib/native-shortcuts';
@@ -22,8 +25,6 @@ import {
   useTimelineStore,
 } from './store/timeline';
 
-type Page = 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings';
-
 const APP_FONT_STACK =
   '"SF Pro Text", "SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif';
 const APP_LOADING_BACKGROUND = 'var(--color-window-bg)';
@@ -31,7 +32,18 @@ const APP_WINDOW_BACKGROUND = 'var(--color-window-bg)';
 
 export default function App() {
   const viewport = useViewportSize();
-  const [page, setPage] = useState<Page>('welcome');
+  const [page, setPageRaw] = useState<AppPage>('welcome');
+  const [previousPage, setPreviousPage] = useState<AppPage>('welcome');
+
+  const setPage = useCallback(
+    (next: AppPage) => {
+      setPageRaw((current) => {
+        setPreviousPage(current);
+        return next;
+      });
+    },
+    [],
+  );
   const [isHydrating, setIsHydrating] = useState(() => Boolean(getCurrentProjectDir()));
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [setupError, setSetupError] = useState<string | null>(null);
@@ -153,6 +165,17 @@ export default function App() {
 
   useEffect(() => subscribeToSaveStatus(setSaveStatus), []);
 
+  useEffect(() => {
+    void window.electronAPI.setMenuContext({
+      activePage: page,
+      hasProject: Boolean(currentProjectDir),
+      recentProjects: recentProjects.map((project) => ({
+        path: project.path,
+        name: project.name,
+      })),
+    });
+  }, [currentProjectDir, page, recentProjects]);
+
   const handleNewProject = useCallback(async () => {
     const projectDir = await window.electronAPI.selectProjectDirectory();
     if (!projectDir) {
@@ -219,8 +242,11 @@ export default function App() {
         case 'open-project':
           await handleOpenProject();
           return;
+        case 'open-settings':
+          setPage('settings');
+          return;
         case 'close-project':
-          if (page === 'editor') {
+          if (currentProjectDir) {
             handleCloseProject();
           }
           return;
@@ -277,16 +303,35 @@ export default function App() {
     ],
   );
 
+  const handleMenuEvent = useCallback(
+    async (event: MenuEvent) => {
+      if (event.type === 'open-recent-project') {
+        await openProject(event.projectDir);
+        return;
+      }
+
+      await handleCommand(event.action);
+    },
+    [handleCommand, openProject],
+  );
+
   useEffect(() => {
-    const unsubscribe = window.electronAPI.onMenuAction((action) => {
-      void handleCommand(action);
+    const unsubscribe = window.electronAPI.onMenuAction((event) => {
+      void handleMenuEvent(event);
     });
 
     return unsubscribe;
-  }, [handleCommand]);
+  }, [handleMenuEvent]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Cmd+Shift+A 切换 Agent 侧边栏
+      if (event.metaKey && event.shiftKey && event.key === 'a') {
+        event.preventDefault();
+        useAgentStore.getState().toggleSidebar();
+        return;
+      }
+
       if (isTextEditingTarget(event.target)) {
         return;
       }
@@ -333,6 +378,7 @@ export default function App() {
     }
   };
 
+  const agentSidebarOpen = useAgentStore((s) => s.sidebarOpen);
   const projectName = currentProjectDir ? getFileNameFromPath(currentProjectDir) : '';
 
   if (isHydrating) {
@@ -342,7 +388,7 @@ export default function App() {
           width: '100%',
           height: '100%',
           display: 'grid',
-          gridTemplateRows: 'auto minmax(0, 1fr)',
+          gridTemplateRows: 'auto minmax(0, 1fr) auto',
           background: APP_LOADING_BACKGROUND,
           color: 'var(--color-text-primary)',
           fontFamily: APP_FONT_STACK,
@@ -350,7 +396,7 @@ export default function App() {
       >
         <Toolbar
           compact={viewport.width < 960}
-          page="setup"
+          page={page}
           projectName={projectName}
           saveStatus={saveStatus}
           canUndo={canUndo}
@@ -387,12 +433,12 @@ export default function App() {
         overflow: 'hidden',
         fontFamily: APP_FONT_STACK,
         display: 'grid',
-        gridTemplateRows: 'auto minmax(0, 1fr)',
+        gridTemplateRows: 'auto minmax(0, 1fr) auto',
       }}
     >
       <Toolbar
         compact={viewport.width < 960}
-        page={page === 'editor' ? 'editor' : 'setup'}
+        page={page}
         projectName={projectName}
         saveStatus={saveStatus}
         canUndo={canUndo}
@@ -401,29 +447,33 @@ export default function App() {
           void handleCommand(command);
         }}
       />
-      <div style={{ minHeight: 0 }}>
-        {page === 'welcome' || page === 'setup' ? (
-          <Setup
-            busy={isSettingUp}
-            errorMessage={setupError}
-            recentProjects={recentProjects}
-            onComplete={handleSetupComplete}
-            onOpenRecentProject={openProject}
-            onStartScriptWorkbench={() => setPage('script-workbench')}
-            onOpenSettings={() => setPage('settings')}
-          />
-        ) : page === 'script-workbench' ? (
-          <ScriptWorkbench onBack={() => setPage('welcome')} />
-        ) : page === 'settings' ? (
-          <Settings onBack={() => setPage('welcome')} />
-        ) : (
-          <Editor
-            onAddAsset={handleAddAsset}
-            exportRequestToken={exportRequestToken}
-            projectDir={currentProjectDir}
-          />
-        )}
+      <div style={{ minHeight: 0, display: 'flex', overflow: 'hidden' }}>
+        <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+          {page === 'welcome' || page === 'setup' ? (
+            <Setup
+              busy={isSettingUp}
+              errorMessage={setupError}
+              recentProjects={recentProjects}
+              onComplete={handleSetupComplete}
+              onOpenRecentProject={openProject}
+              onStartScriptWorkbench={() => setPage('script-workbench')}
+              onOpenSettings={() => setPage('settings')}
+            />
+          ) : page === 'script-workbench' ? (
+            <ScriptWorkbench onBack={() => setPage('welcome')} />
+          ) : page === 'settings' ? (
+            <Settings onBack={() => setPage(previousPage)} />
+          ) : (
+            <Editor
+              onAddAsset={handleAddAsset}
+              exportRequestToken={exportRequestToken}
+              projectDir={currentProjectDir}
+            />
+          )}
+        </div>
+        {agentSidebarOpen && <AgentSidebar />}
       </div>
+      <AppStatusBar />
     </div>
   );
 }

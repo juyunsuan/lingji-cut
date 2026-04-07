@@ -42,6 +42,24 @@ export function parsePersistedScriptState(raw: unknown): PersistedScriptState | 
   };
 }
 
+// --- projectDir 持久化 (localStorage) ---
+
+const SCRIPT_PROJECT_DIR_KEY = 'podcast-editor-script-project-dir';
+
+export function persistScriptProjectDir(dir: string | null): void {
+  if (dir) {
+    localStorage.setItem(SCRIPT_PROJECT_DIR_KEY, dir);
+  } else {
+    localStorage.removeItem(SCRIPT_PROJECT_DIR_KEY);
+  }
+}
+
+export function loadPersistedScriptProjectDir(): string | null {
+  return localStorage.getItem(SCRIPT_PROJECT_DIR_KEY);
+}
+
+// --- 文件防抖保存 ---
+
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function debouncedSaveFile(
@@ -53,6 +71,21 @@ export function debouncedSaveFile(
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     void window.electronAPI.saveScriptFile(projectDir, filename, content);
+  }, delayMs);
+}
+
+// --- script-state.json 防抖保存 ---
+
+let stateTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function debouncedSaveState(
+  projectDir: string,
+  state: PersistedScriptState,
+  delayMs = 300,
+): void {
+  if (stateTimer) clearTimeout(stateTimer);
+  stateTimer = setTimeout(() => {
+    void saveScriptState(projectDir, state);
   }, delayMs);
 }
 
@@ -74,4 +107,26 @@ export async function loadScriptState(
   } catch {
     return null;
   }
+}
+
+// --- 全量恢复：从磁盘加载状态 + 文本文件 ---
+
+export async function loadFullScriptState(projectDir: string): Promise<{
+  persisted: PersistedScriptState;
+  originalText: string;
+  scriptText: string;
+} | null> {
+  const persisted = await loadScriptState(projectDir);
+  if (!persisted) return null;
+
+  const [originalText, scriptText] = await Promise.all([
+    window.electronAPI.loadScriptFile(projectDir, 'original.md'),
+    window.electronAPI.loadScriptFile(projectDir, 'script.md'),
+  ]);
+
+  return {
+    persisted,
+    originalText: originalText ?? '',
+    scriptText: scriptText ?? '',
+  };
 }

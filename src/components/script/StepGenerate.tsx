@@ -1,5 +1,5 @@
 // src/components/script/StepGenerate.tsx
-import { ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, RefreshCw, Sparkles } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useScriptStore } from '../../store/script';
 import { getAllTemplates, getAnyTemplateById } from '../../lib/script-templates';
@@ -146,36 +146,14 @@ export function StepGenerate() {
       <div style={{ flex: 1 }} />
 
       {/* 操作按钮 */}
-      <div style={{ display: 'flex', gap: 10 }}>
-        <button
-          type="button"
-          disabled={generating}
-          onClick={() => {
-            void handleGenerate();
-          }}
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            padding: '10px 0',
-            borderRadius: 8,
-            border: 'none',
-            background: hasScript ? '#3A3A3C' : '#0A84FF',
-            color: hasScript ? '#EBEBF599' : '#fff',
-            fontSize: 13,
-            fontWeight: hasScript ? 500 : 600,
-            cursor: generating ? 'wait' : 'pointer',
-          }}
-        >
-          <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
-          {generating ? '生成中…' : hasScript ? '重新生成' : '生成口播稿'}
-        </button>
-        {hasScript && (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           <button
             type="button"
-            onClick={() => setCurrentStep(4)}
+            disabled={generating}
+            onClick={() => {
+              void handleGenerate();
+            }}
             style={{
               flex: 1,
               display: 'flex',
@@ -185,17 +163,62 @@ export function StepGenerate() {
               padding: '10px 0',
               borderRadius: 8,
               border: 'none',
-              background: '#0A84FF',
-              color: '#fff',
+              background: hasScript ? '#3A3A3C' : '#0A84FF',
+              color: hasScript ? '#EBEBF599' : '#fff',
               fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
+              fontWeight: hasScript ? 500 : 600,
+              cursor: generating ? 'wait' : 'pointer',
             }}
           >
-            下一步
-            <ArrowRight size={14} />
+            <RefreshCw size={14} className={generating ? 'animate-spin' : ''} />
+            {generating ? '生成中…' : hasScript ? '重新生成' : '生成口播稿'}
           </button>
-        )}
+          {hasScript && (
+            <button
+              type="button"
+              onClick={() => setCurrentStep(4)}
+              style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                padding: '10px 0',
+                borderRadius: 8,
+                border: 'none',
+                background: '#0A84FF',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              下一步
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={() => setCurrentStep(2)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '8px 0',
+            borderRadius: 8,
+            border: '1px solid #48484A',
+            background: 'transparent',
+            color: '#EBEBF599',
+            fontSize: 12,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          <ArrowLeft size={14} />
+          上一步
+        </button>
       </div>
     </div>
   );

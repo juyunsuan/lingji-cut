@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import type { MenuAction, ProjectMetadata } from '../src/lib/electron-api';
+import type { MenuContext, MenuEvent, ProjectMetadata } from '../src/lib/electron-api';
 import { addAppLog, getAppLogFilePath, getAppLogs } from './app-logger';
 import { analyzeSrt, regenerateAICard, regenerateCoverPrompt } from '../src/lib/ai-analysis';
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
@@ -16,12 +16,19 @@ import { parseSrt } from '../src/lib/srt-parser';
 import type { SrtEntry, TimelineData } from '../src/types';
 import type { AICard, AISettings } from '../src/types/ai';
 import { createApplicationMenuTemplate } from './app-menu';
+import { toRendererConsoleLog } from './console-message';
 import { materializePersistedAIState, materializeTimelineWebCards } from './web-card-storage';
+import { registerAgentIpc } from './acp/ipc';
 
 let mainWindow: BrowserWindow | null = null;
+let menuContext: MenuContext = {
+  activePage: 'welcome',
+  hasProject: false,
+  recentProjects: [],
+};
 
-function sendMenuAction(action: MenuAction) {
-  mainWindow?.webContents.send('menu-action', action);
+function sendMenuEvent(event: MenuEvent) {
+  mainWindow?.webContents.send('menu-action', event);
 }
 
 function writeAppLog(level: 'info' | 'warn' | 'error', scope: string, message: string, details?: string) {
@@ -30,7 +37,16 @@ function writeAppLog(level: 'info' | 'warn' | 'error', scope: string, message: s
 }
 
 function createApplicationMenu() {
-  return Menu.buildFromTemplate(createApplicationMenuTemplate(sendMenuAction));
+  return Menu.buildFromTemplate(
+    createApplicationMenuTemplate(sendMenuEvent, {
+      ...menuContext,
+      isDevelopment: !app.isPackaged,
+    }),
+  );
+}
+
+function refreshApplicationMenu() {
+  Menu.setApplicationMenu(createApplicationMenu());
 }
 
 function createWindow() {
@@ -64,14 +80,9 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    const normalizedLevel = level >= 3 ? 'error' : level === 2 ? 'warn' : 'info';
-    writeAppLog(
-      normalizedLevel,
-      'renderer-console',
-      message,
-      sourceId ? `${sourceId}:${line}` : undefined,
-    );
+  mainWindow.webContents.on('console-message', (details) => {
+    const logEntry = toRendererConsoleLog(details);
+    writeAppLog(logEntry.level, logEntry.scope, logEntry.message, logEntry.details);
   });
 
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
@@ -82,7 +93,7 @@ function createWindow() {
     writeAppLog('error', 'window', `渲染进程退出：${details.reason}`, String(details.exitCode));
   });
 
-  Menu.setApplicationMenu(createApplicationMenu());
+  refreshApplicationMenu();
   writeAppLog('info', 'app', '主窗口已创建');
 }
 
@@ -349,6 +360,23 @@ ipcMain.handle('get-project-metadata', async (_event, projectDir: string) => {
   return readProjectMetadata(projectDir);
 });
 
+ipcMain.handle('set-menu-context', async (_event, context: MenuContext) => {
+  menuContext = {
+    activePage: context.activePage,
+    hasProject: context.hasProject,
+    recentProjects: Array.isArray(context.recentProjects)
+      ? context.recentProjects
+          .filter((project) => Boolean(project?.path))
+          .map((project) => ({
+            path: project.path,
+            name: project.name || path.basename(project.path),
+          }))
+      : [],
+  };
+
+  refreshApplicationMenu();
+});
+
 ipcMain.handle('select-project-directory', async () => {
   const result = await dialog.showOpenDialog({
     properties: ['openDirectory', 'createDirectory'],
@@ -547,6 +575,8 @@ if (process.env.NODE_ENV_ELECTRON_VITE === 'development') {
   process.on('SIGINT', () => app.quit());
   process.on('SIGTERM', () => app.quit());
 }
+
+registerAgentIpc(() => mainWindow);
 
 app.whenReady().then(createWindow);
 

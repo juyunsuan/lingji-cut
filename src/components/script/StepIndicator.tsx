@@ -4,6 +4,7 @@ import type { ScriptStep } from '../../store/script';
 
 interface StepIndicatorProps {
   currentStep: ScriptStep;
+  onStepClick?: (step: ScriptStep) => void;
 }
 
 const STEPS = [
@@ -14,7 +15,7 @@ const STEPS = [
   { step: 5 as const, label: '确认保存' },
 ];
 
-export function StepIndicator({ currentStep }: StepIndicatorProps) {
+export function StepIndicator({ currentStep, onStepClick }: StepIndicatorProps) {
   return (
     <div
       style={{
@@ -31,10 +32,26 @@ export function StepIndicator({ currentStep }: StepIndicatorProps) {
       {STEPS.map(({ step, label }, index) => {
         const isCompleted = step < currentStep;
         const isActive = step === currentStep;
+        const canClick = isCompleted && onStepClick;
 
         return (
           <div key={step} style={{ display: 'contents' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div
+              role={canClick ? 'button' : undefined}
+              tabIndex={canClick ? 0 : undefined}
+              onClick={canClick ? () => onStepClick(step) : undefined}
+              onKeyDown={canClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onStepClick(step); } : undefined}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                cursor: canClick ? 'pointer' : 'default',
+                borderRadius: 8,
+                padding: '4px 8px',
+                transition: 'background 0.15s',
+                ...(canClick ? { ':hover': { background: '#ffffff10' } } : {}),
+              }}
+            >
               <div
                 style={{
                   width: 24,

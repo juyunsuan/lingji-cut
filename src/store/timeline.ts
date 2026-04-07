@@ -24,6 +24,8 @@ import {
 type OverlayDraft = Omit<OverlayItem, 'id'>;
 type TimelineSnapshot = TimelineData;
 type TimelineCommitState = Pick<TimelineStore, 'timeline' | 'assets' | 'historyPast'>;
+type OverlayClipboardMode = 'copy' | 'cut';
+type OverlayClipboardItem = OverlayDraft & { mode: OverlayClipboardMode };
 
 export interface RecentProject {
   path: string;
@@ -37,6 +39,7 @@ export interface TimelineStore {
   timeline: TimelineData;
   srtEntries: SrtEntry[];
   assets: AssetItem[];
+  overlayClipboard: OverlayClipboardItem | null;
   canUndo: boolean;
   canRedo: boolean;
   setTimeline: (timeline: TimelineData) => void;
@@ -53,6 +56,9 @@ export interface TimelineStore {
   addOverlay: (overlay: OverlayDraft) => string;
   addAICardsToTimeline: (cards: AICardTimelineDraft[]) => void;
   removeAICardOverlaysBySourceIds: (sourceCardIds: string[]) => void;
+  copyOverlay: (id: string) => boolean;
+  cutOverlay: (id: string) => boolean;
+  pasteOverlay: (options: { trackId: string; startMs: number }) => string | null;
   updateOverlay: (id: string, updates: Partial<OverlayItem>) => void;
   removeOverlay: (id: string) => void;
   undo: () => void;
@@ -192,6 +198,17 @@ const syncAssetsWithTimeline = (assets: AssetItem[], timeline: TimelineData): As
 const cloneTimeline = (timeline: TimelineData): TimelineData =>
   JSON.parse(JSON.stringify(timeline)) as TimelineData;
 
+const cloneOverlayDraft = <T extends OverlayDraft>(overlay: T): T =>
+  JSON.parse(JSON.stringify(overlay)) as T;
+
+function buildOverlayClipboardItem(overlay: OverlayItem): OverlayClipboardItem {
+  const { id: _id, ...draft } = overlay;
+  return {
+    ...cloneOverlayDraft(draft),
+    mode: 'copy',
+  };
+}
+
 const normalizeTimeline = (timeline: TimelineData): TimelineData =>
   normalizeTimelineData(cloneTimeline(normalizeDefaultBackgroundOverlays(timeline)));
 
@@ -205,6 +222,7 @@ function buildCommittedTimelineState(
   nextTimeline: TimelineData,
   options?: {
     assetSource?: AssetItem[];
+    overlayClipboard?: OverlayClipboardItem | null;
   },
 ) {
   const assetSource = options?.assetSource ?? state.assets;
@@ -216,6 +234,9 @@ function buildCommittedTimelineState(
     canRedo: false,
     timeline: nextTimeline,
     assets: syncAssetsWithTimeline(assetSource, nextTimeline),
+    ...(options && 'overlayClipboard' in options
+      ? { overlayClipboard: options.overlayClipboard ?? null }
+      : {}),
   };
 }
 
@@ -313,6 +334,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   timeline: createDefaultTimeline(),
   srtEntries: [],
   assets: [],
+  overlayClipboard: null,
   canUndo: false,
   canRedo: false,
   historyPast: [],
@@ -324,6 +346,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       return {
         timeline: normalizedTimeline,
         assets: syncAssetsWithTimeline([], normalizedTimeline),
+        overlayClipboard: null,
         historyPast: [],
         historyFuture: [],
         canUndo: false,
@@ -562,6 +585,81 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
 
       return buildCommittedTimelineState(state, nextTimeline);
     }),
+  copyOverlay: (id) => {
+    let copied = false;
+
+    set((state) => {
+      const current = state.timeline.overlays.find((overlay) => overlay.id === id);
+      if (!current || current.overlayRole === 'default-background') {
+        return {};
+      }
+
+      copied = true;
+      return {
+        overlayClipboard: {
+          ...buildOverlayClipboardItem(current),
+          mode: 'copy',
+        },
+      };
+    });
+
+    return copied;
+  },
+  cutOverlay: (id) => {
+    let cut = false;
+
+    set((state) => {
+      const current = state.timeline.overlays.find((overlay) => overlay.id === id);
+      if (!current || current.overlayRole === 'default-background') {
+        return {};
+      }
+
+      cut = true;
+      const nextTimeline = normalizeTimeline({
+        ...state.timeline,
+        overlays: state.timeline.overlays.filter((overlay) => overlay.id !== id),
+      });
+
+      return buildCommittedTimelineState(state, nextTimeline, {
+        overlayClipboard: {
+          ...buildOverlayClipboardItem(current),
+          mode: 'cut',
+        },
+      });
+    });
+
+    return cut;
+  },
+  pasteOverlay: ({ trackId, startMs }) => {
+    let pastedOverlayId: string | null = null;
+
+    set((state) => {
+      if (!state.overlayClipboard) {
+        return {};
+      }
+
+      const { mode, ...clipboardDraft } = state.overlayClipboard;
+      const draft: OverlayItem = {
+        ...cloneOverlayDraft(clipboardDraft),
+        id: uuid(),
+        trackId,
+        startMs,
+      };
+      const { overlay: resolved, createdTrack } = resolveOverlayInsert(state, draft);
+      pastedOverlayId = resolved.id;
+      const nextTimeline = normalizeTimeline({
+        ...state.timeline,
+        tracks: createdTrack ? [...state.timeline.tracks, createdTrack] : state.timeline.tracks,
+        overlays: [...state.timeline.overlays, resolved],
+      });
+
+      return buildCommittedTimelineState(state, nextTimeline, {
+        overlayClipboard: mode === 'copy' ? state.overlayClipboard : null,
+      });
+    });
+
+    return pastedOverlayId;
+  },
   updateOverlay: (id, updates) =>
     set((state) => {
       const current = state.timeline.overlays.find((o) => o.id === id);

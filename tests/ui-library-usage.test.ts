@@ -74,4 +74,14 @@ describe('AI assistant business components use the shared UI library', () => {
 
     expect(source).not.toContain('<button');
   });
+
+  it('keeps the timeline context menu typography aligned with the compact timeline scale', () => {
+    const source = readSource('src/ui/components/context-menu.tsx');
+
+    expect(source).toContain('w-[148px]');
+    expect(source).toContain('text-[10px]');
+    expect(source).toContain('text-[9px]');
+    expect(source).not.toContain('min-w-[176px]');
+    expect(source).not.toContain('text-[11px]');
+  });
 });

@@ -19,8 +19,12 @@ vi.mock('../src/store/timeline', () => ({
         durationMs: 20_000,
       },
     },
+    overlayClipboard: null,
     updateOverlay: () => undefined,
     removeOverlay: () => undefined,
+    copyOverlay: () => true,
+    cutOverlay: () => true,
+    pasteOverlay: () => null,
   }),
 }));
 

@@ -4,9 +4,12 @@ import type { SrtEntry } from '../types';
 import type { AICard, AISettings, CoverCandidate } from '../types/ai';
 import type { ImportKind } from './import-files';
 
+export type AppPage = 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings';
+
 export const MENU_ACTIONS = [
   'new-project',
   'open-project',
+  'open-settings',
   'close-project',
   'show-project-in-folder',
   'undo',
@@ -18,6 +21,27 @@ export const MENU_ACTIONS = [
 ] as const;
 
 export type MenuAction = (typeof MENU_ACTIONS)[number];
+
+export interface MenuRecentProject {
+  path: string;
+  name: string;
+}
+
+export interface MenuContext {
+  activePage: AppPage;
+  hasProject: boolean;
+  recentProjects: MenuRecentProject[];
+}
+
+export type MenuEvent =
+  | {
+      type: 'command';
+      action: MenuAction;
+    }
+  | {
+      type: 'open-recent-project';
+      projectDir: string;
+    };
 
 const PROJECT_REQUIRED_COMMANDS = new Set<MenuAction>([
   'close-project',
@@ -88,7 +112,7 @@ export interface ElectronAPI {
   getAppLogs: () => Promise<AppLogEntry[]>;
   getAppLogFilePath: () => Promise<string>;
   onRenderProgress: (callback: (progress: number) => void) => () => void;
-  onMenuAction: (callback: (action: MenuAction) => void) => () => void;
+  onMenuAction: (callback: (event: MenuEvent) => void) => () => void;
   onAppLog: (callback: (entry: AppLogEntry) => void) => () => void;
   toggleDevTools: () => Promise<void>;
   showItemInFolder: (filePath: string) => void;
@@ -98,6 +122,7 @@ export interface ElectronAPI {
   saveScriptState: (projectDir: string, state: string) => Promise<void>;
   loadScriptState: (projectDir: string) => Promise<string | null>;
   selectTextFile: () => Promise<{ path: string; content: string } | null>;
+  setMenuContext: (context: MenuContext) => Promise<void>;
 
   selectOutputPath: () => Promise<string | null>;
 }
@@ -107,5 +132,8 @@ declare global {
     electronAPI: ElectronAPI;
   }
 }
+
+// 引入 AgentAPI 类型声明
+import './agent-api';
 
 export {};

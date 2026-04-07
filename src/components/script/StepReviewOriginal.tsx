@@ -1,5 +1,5 @@
 // src/components/script/StepReviewOriginal.tsx
-import { FileText, ArrowRight } from 'lucide-react';
+import { FileText, ArrowRight, ArrowLeft } from 'lucide-react';
 import { useMemo } from 'react';
 import { useScriptStore } from '../../store/script';
 
@@ -54,27 +54,52 @@ export function StepReviewOriginal() {
 
       <div style={{ flex: 1 }} />
 
-      <button
-        type="button"
-        onClick={() => setCurrentStep(3)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          padding: '10px 0',
-          borderRadius: 8,
-          border: 'none',
-          background: '#0A84FF',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        下一步
-        <ArrowRight size={14} />
-      </button>
+      <div style={{ display: 'flex', gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => setCurrentStep(1)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '10px 0',
+            borderRadius: 8,
+            border: '1px solid #48484A',
+            background: 'transparent',
+            color: '#EBEBF599',
+            fontSize: 13,
+            fontWeight: 500,
+            cursor: 'pointer',
+          }}
+        >
+          <ArrowLeft size={14} />
+          上一步
+        </button>
+        <button
+          type="button"
+          onClick={() => setCurrentStep(3)}
+          style={{
+            flex: 1,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+            padding: '10px 0',
+            borderRadius: 8,
+            border: 'none',
+            background: '#0A84FF',
+            color: '#fff',
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: 'pointer',
+          }}
+        >
+          下一步
+          <ArrowRight size={14} />
+        </button>
+      </div>
     </div>
   );
 }

@@ -1,18 +1,20 @@
 import { useState } from 'react';
-import { ArrowLeft, Bot, FileText, MessageSquare, Volume2 } from 'lucide-react';
+import { ArrowLeft, Bot, Cpu, FileText, MessageSquare, Volume2 } from 'lucide-react';
 import { AIConfigTab } from '../components/settings/AIConfigTab';
 import { TemplateManagerTab } from '../components/settings/TemplateManagerTab';
 import { ReviewCriteriaTab } from '../components/settings/ReviewCriteriaTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
+import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import styles from './Settings.module.css';
 
-type SettingsTab = 'ai-config' | 'templates' | 'review' | 'tts';
+type SettingsTab = 'ai-config' | 'templates' | 'review' | 'tts' | 'agent';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'ai-config', label: 'AI 基础配置', icon: Bot },
   { id: 'templates', label: '口播模板管理', icon: FileText },
   { id: 'review', label: '审查规范配置', icon: MessageSquare },
   { id: 'tts', label: 'TTS 语音合成', icon: Volume2 },
+  { id: 'agent', label: 'AI Agent', icon: Cpu },
 ];
 
 interface SettingsProps {
@@ -28,6 +30,7 @@ export function Settings({ onBack }: SettingsProps) {
       case 'templates': return <TemplateManagerTab />;
       case 'review': return <ReviewCriteriaTab />;
       case 'tts': return <TTSConfigTab />;
+      case 'agent': return <AgentSettingsTab />;
     }
   };
 

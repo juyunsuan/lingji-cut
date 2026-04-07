@@ -63,6 +63,6 @@
   height: 100%;
 }
 
-.editorContainer .w-md-editor {
+.editorContainer :global(.w-md-editor) {
   height: 100% !important;
 }

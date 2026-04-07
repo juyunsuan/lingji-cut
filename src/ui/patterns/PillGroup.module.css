@@ -1,6 +1,15 @@
+/* PillGroup — macOS Dark Segmented Control */
+
 .root {
-  display: flex;
-  gap: var(--space-2);
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--color-mac-elevated);
+  border-radius: var(--radius);
+}
+
+.vertical {
+  flex-direction: column;
 }
 
 .wrap {
@@ -11,10 +20,69 @@
   flex-wrap: nowrap;
 }
 
+.fullWidth {
+  display: flex;
+}
+
 .fullWidth .item {
   flex: 1 1 0;
 }
 
+/* 单个 pill 按钮 */
 .item {
   min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: none;
+  cursor: pointer;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  color: var(--color-mac-text-sec);
+  background: transparent;
+  border-radius: var(--radius-lg);
+  padding: 5px 16px;
+  font-size: 12px;
+  line-height: 1.2;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.item:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(235, 235, 245, 0.8);
+}
+
+.item:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* 选中态 — macOS 系统蓝 */
+.active {
+  background: var(--color-mac-blue);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.active:hover {
+  background: var(--color-mac-blue-hover);
+}
+
+/* 尺寸变体 */
+.sm .item {
+  padding: 4px 12px;
+  font-size: 11px;
+  border-radius: var(--radius-md);
+}
+
+.sm {
+  border-radius: 8px;
+}
+
+.lg .item {
+  padding: 7px 18px;
+  font-size: 13px;
 }

@@ -11,6 +11,7 @@ describe('useTimelineStore', () => {
       timeline: createDefaultTimeline(),
       srtEntries: [],
       assets: [],
+      overlayClipboard: null,
     });
   });
 
@@ -102,6 +103,224 @@ describe('useTimelineStore', () => {
 
     store.removeOverlay(overlayId);
     expect(useTimelineStore.getState().timeline.overlays).toEqual([]);
+  });
+
+  it('copies an overlay into the timeline clipboard without changing the timeline', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    expect(store.copyOverlay(overlayId)).toBe(true);
+    expect(useTimelineStore.getState().timeline.overlays).toHaveLength(1);
+    expect(useTimelineStore.getState().overlayClipboard).toMatchObject({
+      mode: 'copy',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+    });
+  });
+
+  it('cuts an overlay into the timeline clipboard and removes the original item', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    expect(store.cutOverlay(overlayId)).toBe(true);
+    expect(useTimelineStore.getState().timeline.overlays).toEqual([]);
+    expect(useTimelineStore.getState().overlayClipboard).toMatchObject({
+      mode: 'cut',
+      assetPath: '/tmp/cover.png',
+      startMs: 0,
+    });
+  });
+
+  it('pastes a copied overlay onto the requested track and time with a new id', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+    const targetTrackId = store.addTrack();
+
+    store.copyOverlay(overlayId);
+    const pastedOverlayId = store.pasteOverlay({
+      trackId: targetTrackId,
+      startMs: 9000,
+    });
+
+    expect(pastedOverlayId).toBeTruthy();
+    expect(pastedOverlayId).not.toBe(overlayId);
+    expect(useTimelineStore.getState().timeline.overlays).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: pastedOverlayId,
+          assetPath: '/tmp/cover.png',
+          trackId: targetTrackId,
+          startMs: 9000,
+          durationMs: 5000,
+        }),
+      ]),
+    );
+    expect(useTimelineStore.getState().overlayClipboard?.mode).toBe('copy');
+  });
+
+  it('pastes a cut overlay once and then clears the clipboard', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    store.cutOverlay(overlayId);
+    const pastedOverlayId = store.pasteOverlay({
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 6500,
+    });
+
+    expect(pastedOverlayId).toBeTruthy();
+    expect(useTimelineStore.getState().timeline.overlays).toEqual([
+      expect.objectContaining({
+        id: pastedOverlayId,
+        trackId: DEFAULT_VISUAL_TRACK_ID,
+        startMs: 6500,
+      }),
+    ]);
+    expect(useTimelineStore.getState().overlayClipboard).toBeNull();
+    expect(
+      useTimelineStore.getState().pasteOverlay({
+        trackId: DEFAULT_VISUAL_TRACK_ID,
+        startMs: 12000,
+      }),
+    ).toBeNull();
+  });
+
+  it('copies an overlay into the timeline clipboard and pastes it onto the requested track', () => {
+    const store = useTimelineStore.getState();
+    const newTrackId = store.addTrack();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    expect(store.copyOverlay(overlayId)).toBe(true);
+    expect(useTimelineStore.getState().overlayClipboard).toMatchObject({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+    });
+
+    const pastedOverlayId = store.pasteOverlay({
+      trackId: newTrackId,
+      startMs: 2000,
+    });
+
+    expect(pastedOverlayId).toBeTruthy();
+    expect(pastedOverlayId).not.toBe(overlayId);
+
+    const pastedOverlay = useTimelineStore
+      .getState()
+      .timeline.overlays.find((overlay) => overlay.id === pastedOverlayId);
+
+    expect(pastedOverlay).toMatchObject({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: newTrackId,
+      startMs: 2000,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+  });
+
+  it('cuts an overlay into the timeline clipboard and pastes it back as a new overlay', () => {
+    const store = useTimelineStore.getState();
+    const overlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 1000,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    expect(store.cutOverlay(overlayId)).toBe(true);
+    expect(useTimelineStore.getState().timeline.overlays).toEqual([]);
+    expect(useTimelineStore.getState().overlayClipboard).toMatchObject({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 1000,
+      durationMs: 5000,
+    });
+
+    const pastedOverlayId = store.pasteOverlay({
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 3000,
+    });
+
+    expect(pastedOverlayId).toBeTruthy();
+    expect(pastedOverlayId).not.toBe(overlayId);
+    expect(useTimelineStore.getState().timeline.overlays).toHaveLength(1);
+    expect(useTimelineStore.getState().timeline.overlays[0]).toMatchObject({
+      id: pastedOverlayId,
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 3000,
+      durationMs: 5000,
+    });
+  });
+
+  it('reuses the existing placement rules when pasting into an occupied slot', () => {
+    const store = useTimelineStore.getState();
+    const firstOverlayId = store.addOverlay({
+      type: 'image',
+      assetPath: '/tmp/cover.png',
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+      durationMs: 5000,
+      position: { x: 10, y: 20, width: 300, height: 200 },
+    });
+
+    expect(store.copyOverlay(firstOverlayId)).toBe(true);
+
+    const pastedOverlayId = store.pasteOverlay({
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 0,
+    });
+
+    const pastedOverlay = useTimelineStore
+      .getState()
+      .timeline.overlays.find((overlay) => overlay.id === pastedOverlayId);
+
+    expect(pastedOverlay).toMatchObject({
+      trackId: DEFAULT_VISUAL_TRACK_ID,
+      startMs: 5000,
+      durationMs: 5000,
+    });
   });
 
   it('removes dependent overlays when deleting an imported asset', () => {

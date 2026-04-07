@@ -30,19 +30,19 @@ const theme = EditorView.theme(
     '.cm-placeholder': { color: '#48484A' },
     // annotation decoration styles
     '.cm-annotation-error': {
-      backgroundColor: '#FF453A15',
+      backgroundColor: '#FF453A30',
       borderBottom: '2px wavy #FF453A',
       borderRadius: '2px',
       cursor: 'pointer',
     },
     '.cm-annotation-warning': {
-      backgroundColor: '#FF9F0A15',
+      backgroundColor: '#FF9F0A30',
       borderBottom: '2px wavy #FF9F0A',
       borderRadius: '2px',
       cursor: 'pointer',
     },
     '.cm-annotation-info': {
-      backgroundColor: '#0A84FF15',
+      backgroundColor: '#0A84FF30',
       borderBottom: '2px wavy #0A84FF',
       borderRadius: '2px',
       cursor: 'pointer',

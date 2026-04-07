@@ -2,3 +2,5 @@ node_modules/
 dist/
 dist-electron/
 .superpowers/
+release/
+.DS_Store

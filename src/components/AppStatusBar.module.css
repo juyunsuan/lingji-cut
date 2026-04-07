@@ -1,0 +1,132 @@
+.statusBar {
+  height: 28px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--color-border-subtle, #38383A);
+  background: var(--color-panel-bg, #1C1C1E);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--color-text-tertiary, #EBEBF550);
+  user-select: none;
+  -webkit-app-region: no-drag;
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 上下文窗口用量 */
+.contextUsage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: default;
+  transition: color 0.15s;
+}
+
+.contextUsage:hover {
+  color: var(--color-text-secondary, #EBEBF599);
+}
+
+/* 连接状态 */
+.connectionStatus {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+  transition: color 0.15s;
+}
+
+.connectionStatus:hover {
+  color: var(--color-text-secondary, #EBEBF599);
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.statusDot[data-status="connected"],
+.statusDot[data-status="prompting"] {
+  background: #32D74B;
+}
+
+.statusDot[data-status="connecting"] {
+  background: #FFD60A;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.statusDot[data-status="disconnected"] {
+  background: #636366;
+}
+
+.statusDot[data-status="error"] {
+  background: #FF453A;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* 弹出面板 */
+.popover {
+  position: absolute;
+  bottom: 32px;
+  right: 12px;
+  z-index: 200;
+  background: var(--color-panel-bg, #2C2C2E);
+  border: 1px solid var(--color-border-subtle, #48484A);
+  border-radius: 8px;
+  padding: 12px;
+  min-width: 200px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  color: var(--color-text-secondary, #EBEBF599);
+}
+
+.popoverTitle {
+  font-weight: 600;
+  color: var(--color-text-primary, #EBEBF5);
+  margin-bottom: 8px;
+  font-size: 12px;
+}
+
+.progressBar {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border-subtle, #48484A);
+  overflow: hidden;
+  margin: 6px 0;
+}
+
+.progressFill {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--color-text-secondary, #EBEBF599);
+  transition: width 0.3s ease;
+}
+
+.popoverRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+

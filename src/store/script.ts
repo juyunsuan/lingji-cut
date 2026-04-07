@@ -1,4 +1,9 @@
 import { create } from 'zustand';
+import {
+  createPersistedScriptState,
+  debouncedSaveState,
+  persistScriptProjectDir,
+} from '../lib/script-persistence';
 
 export type ScriptStep = 1 | 2 | 3 | 4 | 5;
 
@@ -39,6 +44,14 @@ interface ScriptActions {
   acceptAnnotation: (id: string) => void;
   dismissAnnotation: (id: string) => void;
   acceptAllAnnotations: () => void;
+  restoreState: (params: {
+    projectDir: string;
+    currentStep: ScriptStep;
+    originalText: string;
+    scriptText: string;
+    selectedTemplate: string;
+    annotations: Annotation[];
+  }) => void;
   reset: () => void;
 }
 
@@ -56,7 +69,10 @@ const initialState: ScriptState = {
 export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => ({
   ...initialState,
 
-  setProjectDir: (dir) => set({ projectDir: dir }),
+  setProjectDir: (dir) => {
+    set({ projectDir: dir });
+    persistScriptProjectDir(dir);
+  },
   setCurrentStep: (step) => set({ currentStep: step }),
   setOriginalText: (text) => set({ originalText: text }),
   setScriptText: (text) => set({ scriptText: text }),
@@ -106,5 +122,41 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
     });
   },
 
-  reset: () => set(initialState),
+  restoreState: (params) =>
+    set({
+      projectDir: params.projectDir,
+      currentStep: params.currentStep,
+      originalText: params.originalText,
+      scriptText: params.scriptText,
+      selectedTemplate: params.selectedTemplate,
+      annotations: params.annotations,
+      generating: false,
+      reviewing: false,
+    }),
+
+  reset: () => {
+    set(initialState);
+    persistScriptProjectDir(null);
+  },
 }));
+
+// 自动保存：当 step / template / annotations 变化时，防抖写入 script-state.json
+useScriptStore.subscribe((state, prevState) => {
+  if (!state.projectDir) return;
+
+  const changed =
+    state.currentStep !== prevState.currentStep ||
+    state.selectedTemplate !== prevState.selectedTemplate ||
+    state.annotations !== prevState.annotations;
+
+  if (!changed) return;
+
+  debouncedSaveState(
+    state.projectDir,
+    createPersistedScriptState(
+      state.currentStep,
+      state.selectedTemplate,
+      state.annotations,
+    ),
+  );
+});

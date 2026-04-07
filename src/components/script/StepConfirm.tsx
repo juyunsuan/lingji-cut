@@ -1,5 +1,5 @@
 // src/components/script/StepConfirm.tsx
-import { CheckCircle, Save } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Save } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { useScriptStore } from '../../store/script';
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../lib/script-persistence';
 
 export function StepConfirm() {
-  const { projectDir, scriptText, selectedTemplate, annotations, currentStep } =
+  const { projectDir, scriptText, selectedTemplate, annotations, currentStep, setCurrentStep } =
     useScriptStore();
   const [saved, setSaved] = useState(false);
 
@@ -98,6 +98,28 @@ export function StepConfirm() {
       >
         <Save size={14} />
         {saved ? '已保存' : '保存口播稿'}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => setCurrentStep(4)}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          padding: '8px 0',
+          borderRadius: 8,
+          border: '1px solid #48484A',
+          background: 'transparent',
+          color: '#EBEBF599',
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >
+        <ArrowLeft size={14} />
+        上一步
       </button>
     </div>
   );

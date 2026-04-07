@@ -12,6 +12,7 @@ describe('Setup', () => {
         onComplete={async () => undefined}
         onOpenRecentProject={async () => undefined}
         onStartScriptWorkbench={() => undefined}
+        onOpenSettings={() => undefined}
       />,
     );
 
@@ -37,6 +38,7 @@ describe('Setup', () => {
         onComplete={async () => undefined}
         onOpenRecentProject={async () => undefined}
         onStartScriptWorkbench={() => undefined}
+        onOpenSettings={() => undefined}
       />,
     );
 

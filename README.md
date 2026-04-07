@@ -42,13 +42,36 @@ npm install
 npm run dev
 ```
 
-### 3. 构建桌面应用
+### 3. 构建桌面产物
 
 ```bash
 npm run build
 ```
 
-### 4. 运行测试
+### 4. 打包 macOS 应用
+
+```bash
+npm run package:mac
+```
+
+如果你想一步完成构建和打包：
+
+```bash
+npm run dist:mac
+```
+
+默认会在 `release/` 目录下生成：
+
+- `release/灵机剪影-darwin-arm64/灵机剪影.app`
+- 或 `release/灵机剪影-darwin-x64/灵机剪影.app`
+
+补充说明：
+
+- 当前产物是本地可运行的 `.app`
+- 还没有接入正式签名、notarization、DMG/PKG 分发
+- 当前导出链路依赖 `src/remotion/index.ts` 在包内可访问，打包时不要排除 `src/`
+
+### 5. 运行测试
 
 ```bash
 npm test
@@ -119,6 +142,8 @@ work/                    示例工程输出
 ```bash
 npm run dev
 npm run build
+npm run package:mac
+npm run dist:mac
 npm test
 ```
 

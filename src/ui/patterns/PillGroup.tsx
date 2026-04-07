@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Button } from '../components/button';
 import styles from './PillGroup.module.css';
 
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -15,6 +14,8 @@ interface PillGroupProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   size?: ButtonSize;
+  /** 排列方向，默认水平 */
+  direction?: 'horizontal' | 'vertical';
   fullWidth?: boolean;
   wrap?: boolean;
   className?: string;
@@ -23,6 +24,7 @@ interface PillGroupProps<T extends string> {
 
 export function PillGroup<T extends string>({
   className,
+  direction = 'horizontal',
   fullWidth = false,
   itemClassName,
   items,
@@ -35,8 +37,10 @@ export function PillGroup<T extends string>({
     <div
       className={joinClassNames(
         styles.root,
+        direction === 'vertical' ? styles.vertical : '',
         wrap ? styles.wrap : styles.noWrap,
         fullWidth ? styles.fullWidth : '',
+        size === 'sm' ? styles.sm : size === 'lg' ? styles.lg : '',
         className,
       )}
     >
@@ -44,17 +48,20 @@ export function PillGroup<T extends string>({
         const isActive = item.value === value;
 
         return (
-          <Button
+          <button
             key={item.value}
+            type="button"
             onClick={() => onChange(item.value)}
-            variant={isActive ? 'primary' : 'secondary'}
-            size={size === 'md' ? 'default' : size}
-            className={joinClassNames(styles.item, itemClassName)}
+            className={joinClassNames(
+              styles.item,
+              isActive ? styles.active : '',
+              itemClassName,
+            )}
             aria-pressed={isActive}
             disabled={item.disabled}
           >
             {item.label}
-          </Button>
+          </button>
         );
       })}
     </div>

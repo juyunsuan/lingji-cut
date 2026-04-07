@@ -14,6 +14,8 @@ import {
   Circle,
   CircleAlert,
   CircleCheckBig,
+  Clipboard,
+  Copy,
   Eye,
   FileText,
   Film,
@@ -64,6 +66,8 @@ export type AppIconName =
   | 'chevron-right'
   | 'circle'
   | 'circle-check-big'
+  | 'clipboard'
+  | 'copy'
   | 'eye'
   | 'file-text'
   | 'film'
@@ -122,6 +126,8 @@ const lucideIconMap: Partial<Record<AppIconName, LucideIcon>> = {
   'chevron-right': ChevronRight,
   circle: Circle,
   'circle-check-big': CircleCheckBig,
+  clipboard: Clipboard,
+  copy: Copy,
   eye: Eye,
   'file-text': FileText,
   film: Film,

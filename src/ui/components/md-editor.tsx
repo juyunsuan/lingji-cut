@@ -1,13 +1,13 @@
 "use client";
 
 import { lazy, Suspense, useRef } from "react";
-import remarkGfm from "remark-gfm";
 import { Skeleton } from "./skeleton";
 import {
 	cropAndResizeImage,
 	fileToBase64,
 	validateImageFile,
 } from "../lib/image-utils";
+import { buildSafeMarkdownPreviewOptions } from "../lib/markdown-preview";
 import type { ICommand } from "@uiw/react-md-editor";
 import { useAlert } from "./alert";
 
@@ -131,19 +131,19 @@ export function MdEditor({ value, onChange, placeholder }: MdEditorProps) {
 			/>
 			<div
 				data-color-mode="dark"
-				className="rounded-[6px] overflow-hidden border border-mac-separator bg-mac-control"
+				className="h-full rounded-[6px] overflow-hidden border border-mac-separator bg-mac-control"
 			>
 				<Suspense fallback={<EditorSkeleton />}>
 					<MDEditorLazy
 						id="md-editor"
 						value={value}
 						onChange={(v) => onChange(v || "")}
-						previewOptions={{ remarkPlugins: [remarkGfm] }}
+						previewOptions={buildSafeMarkdownPreviewOptions()}
 						textareaProps={{
 							placeholder:
 								placeholder || "Write your post content in Markdown...",
 						}}
-						height={466}
+						height="100%"
 						className="rounded-2xl! overflow-hidden"
 						extraCommands={[imageUploadCommand]}
 					/>

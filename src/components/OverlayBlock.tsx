@@ -1,8 +1,10 @@
 import type { MouseEvent as ReactMouseEvent } from 'react';
+import { Clipboard, Copy } from 'lucide-react';
 import { getOverlayMoveDraft, type TrackDragZone } from '../lib/overlay-drag';
 import type { OverlayItem } from '../types';
 import { clamp, getFileNameFromPath } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
+import { ContextMenu } from '../ui';
 import { AppIcon } from './AppIcon';
 import { AssetThumbnail } from './AssetThumbnail';
 import styles from './OverlayBlock.module.css';
@@ -15,6 +17,7 @@ interface OverlayBlockProps {
   getTrackDragZones?: () => TrackDragZone[];
   onTrackHoverChange?: (trackId: string | null) => void;
   onSelect?: () => void;
+  onContextMenu?: (event: ReactMouseEvent<HTMLDivElement>) => void;
 }
 
 export function OverlayBlock({
@@ -25,8 +28,18 @@ export function OverlayBlock({
   getTrackDragZones,
   onTrackHoverChange,
   onSelect,
+  onContextMenu,
 }: OverlayBlockProps) {
-  const { assets, removeOverlay, timeline, updateOverlay } = useTimelineStore();
+  const {
+    assets,
+    copyOverlay,
+    cutOverlay,
+    overlayClipboard,
+    pasteOverlay,
+    removeOverlay,
+    timeline,
+    updateOverlay,
+  } = useTimelineStore();
   const asset = assets.find((item) => item.path === overlay.assetPath);
   const isAICard = overlay.overlayType === 'ai-card';
   const isDefaultBackground = overlay.overlayRole === 'default-background';
@@ -74,8 +87,14 @@ export function OverlayBlock({
         : overlay.type === 'video'
           ? 'VID'
           : 'IMG';
+  const canManageOverlay = !isDefaultBackground;
+  const canPaste = Boolean(overlayClipboard);
 
   const handleMoveMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
     if (isDefaultBackground) {
       return;
     }
@@ -132,6 +151,10 @@ export function OverlayBlock({
   };
 
   const handleResizeMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) {
+      return;
+    }
+
     if (isDefaultBackground) {
       return;
     }
@@ -161,13 +184,13 @@ export function OverlayBlock({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  return (
+  const block = (
     <div
       data-overlay-block="true"
       onMouseDown={handleMoveMouseDown}
       onContextMenu={(event) => {
-        event.preventDefault();
-        removeOverlay(overlay.id);
+        onSelect?.();
+        onContextMenu?.(event);
       }}
       className={[
         styles.root,
@@ -228,5 +251,63 @@ export function OverlayBlock({
         />
       )}
     </div>
+  );
+
+  if (!canManageOverlay) {
+    return block;
+  }
+
+  return (
+    <ContextMenu>
+      <ContextMenu.Trigger asChild>{block}</ContextMenu.Trigger>
+      <ContextMenu.Content>
+        <ContextMenu.Item
+          onSelect={() => {
+            copyOverlay(overlay.id);
+          }}
+        >
+          <Copy size={11} className="mr-1 shrink-0" />
+          <span>复制</span>
+          <ContextMenu.Shortcut>⌘C</ContextMenu.Shortcut>
+        </ContextMenu.Item>
+
+        <ContextMenu.Item
+          onSelect={() => {
+            cutOverlay(overlay.id);
+          }}
+        >
+          <AppIcon name="scissors" size={11} className="mr-1 shrink-0" />
+          <span>剪切</span>
+          <ContextMenu.Shortcut>⌘X</ContextMenu.Shortcut>
+        </ContextMenu.Item>
+
+        <ContextMenu.Item
+          disabled={!canPaste}
+          onSelect={() => {
+            pasteOverlay({
+              trackId: overlay.trackId,
+              startMs: overlay.startMs + overlay.durationMs,
+            });
+          }}
+        >
+          <Clipboard size={11} className="mr-1 shrink-0" />
+          <span>粘贴</span>
+          <ContextMenu.Shortcut>⌘V</ContextMenu.Shortcut>
+        </ContextMenu.Item>
+
+        <ContextMenu.Separator />
+
+        <ContextMenu.Item
+          destructive
+          onSelect={() => {
+            removeOverlay(overlay.id);
+          }}
+        >
+          <AppIcon name="trash-2" size={11} className="mr-1 shrink-0" />
+          <span>删除</span>
+          <ContextMenu.Shortcut>⌫</ContextMenu.Shortcut>
+        </ContextMenu.Item>
+      </ContextMenu.Content>
+    </ContextMenu>
   );
 }
