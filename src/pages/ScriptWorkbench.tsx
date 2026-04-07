@@ -1,5 +1,6 @@
 // src/pages/ScriptWorkbench.tsx
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { ScriptStep } from '../store/script';
 import { useScriptStore } from '../store/script';
 import { StepIndicator } from '../components/script/StepIndicator';
 import { StepInitialize } from '../components/script/StepInitialize';
@@ -7,8 +8,13 @@ import { StepReviewOriginal } from '../components/script/StepReviewOriginal';
 import { StepGenerate } from '../components/script/StepGenerate';
 import { StepAIReview } from '../components/script/StepAIReview';
 import { StepConfirm } from '../components/script/StepConfirm';
-import { MdEditor } from '../ui/components/md-editor';
-import { debouncedSaveFile } from '../lib/script-persistence';
+import { ScriptEditor } from '../ui/components/script-editor';
+import { AlertProvider } from '../ui/components/alert';
+import {
+  debouncedSaveFile,
+  loadFullScriptState,
+  loadPersistedScriptProjectDir,
+} from '../lib/script-persistence';
 import styles from './ScriptWorkbench.module.css';
 
 interface ScriptWorkbenchProps {
@@ -21,9 +27,54 @@ export function ScriptWorkbench({ onBack }: ScriptWorkbenchProps) {
     originalText,
     scriptText,
     projectDir,
+    annotations,
+    setCurrentStep,
     setOriginalText,
     setScriptText,
+    restoreState,
+    acceptAnnotation,
+    dismissAnnotation,
   } = useScriptStore();
+
+  const handleStepClick = useCallback(
+    (step: ScriptStep) => setCurrentStep(step),
+    [setCurrentStep],
+  );
+
+  const [restoring, setRestoring] = useState(false);
+
+  // 挂载时尝试从磁盘恢复上次的工作状态
+  useEffect(() => {
+    const restore = async () => {
+      // store 中已有 projectDir，说明状态已存在（如导航返回后重进），不覆盖
+      if (useScriptStore.getState().projectDir) return;
+
+      const savedDir = loadPersistedScriptProjectDir();
+      if (!savedDir) return;
+
+      setRestoring(true);
+      try {
+        const fullState = await loadFullScriptState(savedDir);
+        if (fullState) {
+          restoreState({
+            projectDir: savedDir,
+            currentStep: fullState.persisted.currentStep,
+            originalText: fullState.originalText,
+            scriptText: fullState.scriptText,
+            selectedTemplate: fullState.persisted.templateId,
+            annotations: fullState.persisted.annotations,
+          });
+        }
+      } catch (error) {
+        console.error('恢复口播稿状态失败:', error);
+      } finally {
+        setRestoring(false);
+      }
+    };
+
+    void restore();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const isEditingOriginal = currentStep <= 2;
   const editorValue = isEditingOriginal ? originalText : scriptText;
@@ -51,9 +102,27 @@ export function ScriptWorkbench({ onBack }: ScriptWorkbenchProps) {
     }
   };
 
+  if (restoring) {
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          color: '#EBEBF599',
+          fontSize: 14,
+        }}
+      >
+        正在恢复上次工作状态…
+      </div>
+    );
+  }
+
   return (
+    <AlertProvider>
     <div className={styles.page}>
-      <StepIndicator currentStep={currentStep} />
+      <StepIndicator currentStep={currentStep} onStepClick={handleStepClick} />
 
       <div className={styles.mainContent}>
         <div className={styles.editorPanel}>
@@ -91,13 +160,16 @@ export function ScriptWorkbench({ onBack }: ScriptWorkbenchProps) {
                   fontSize: 14,
                 }}
               >
-                在右侧面板上传报告文件并选择工作目录
+                在右侧面板选择工作目录并上传报告文件
               </div>
             ) : (
-              <MdEditor
+              <ScriptEditor
                 value={editorValue}
                 onChange={handleEditorChange}
-                placeholder={isEditingOriginal ? '报告原文内容…' : '口播稿内容…'}
+                placeholder={isEditingOriginal ? '报告原文内容...' : '口播稿内容...'}
+                annotations={isEditingOriginal ? undefined : annotations}
+                onAcceptAnnotation={isEditingOriginal ? undefined : acceptAnnotation}
+                onDismissAnnotation={isEditingOriginal ? undefined : dismissAnnotation}
               />
             )}
           </div>
@@ -108,5 +180,6 @@ export function ScriptWorkbench({ onBack }: ScriptWorkbenchProps) {
         <div className={styles.sidePanel}>{renderSidePanel()}</div>
       </div>
     </div>
+    </AlertProvider>
   );
 }
