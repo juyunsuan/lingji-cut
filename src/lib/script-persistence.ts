@@ -152,6 +152,27 @@ export function debouncedSaveState(
   }, delayMs);
 }
 
+// --- project.json script 段防抖保存 ---
+
+let scriptSectionTimer: ReturnType<typeof setTimeout> | null = null;
+
+export function debouncedSaveScriptSection(
+  projectDir: string,
+  scriptSection: unknown,
+  delayMs = 300,
+): void {
+  if (scriptSectionTimer) clearTimeout(scriptSectionTimer);
+  scriptSectionTimer = setTimeout(() => {
+    if (typeof window !== 'undefined' && window.electronAPI) {
+      void window.electronAPI.saveProjectSection(
+        projectDir,
+        'script',
+        JSON.stringify(scriptSection),
+      );
+    }
+  }, delayMs);
+}
+
 export async function saveScriptState(
   projectDir: string,
   state: PersistedScriptState,

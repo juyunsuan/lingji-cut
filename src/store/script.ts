@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import {
-  createPersistedScriptState,
-  debouncedSaveState,
+  debouncedSaveScriptSection,
   persistScriptProjectDir,
 } from '../lib/script-persistence';
 import { loadSelectedRole, saveSelectedRole } from '../lib/settings-storage';
@@ -492,7 +491,8 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
   setWorkbenchMounted: (mounted) => set({ workbenchMounted: mounted }),
 }));
 
-// 自动保存：当 reviewState / scriptDocVersion / template / annotations 变化时，防抖写入 script-state.json
+// 自动保存：当 reviewState / scriptDocVersion / template / annotations 变化时，
+// 通过 save-project-section IPC 写入 project.json 的 script 段
 useScriptStore.subscribe((state, prevState) => {
   if (!state.projectDir) return;
 
@@ -504,13 +504,12 @@ useScriptStore.subscribe((state, prevState) => {
 
   if (!changed) return;
 
-  debouncedSaveState(
-    state.projectDir,
-    createPersistedScriptState(
-      state.reviewState,
-      state.scriptDocVersion,
-      state.selectedTemplate,
-      state.annotations,
-    ),
-  );
+  const scriptSection = {
+    templateId: state.selectedTemplate,
+    annotations: state.annotations,
+    reviewState: state.reviewState,
+    lastReviewedDocVersion: state.scriptDocVersion,
+  };
+
+  debouncedSaveScriptSection(state.projectDir, scriptSection);
 });
