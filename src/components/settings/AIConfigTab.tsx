@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
-import { Field, Input, Divider, Switch } from '../../ui';
+import { Field, Input, Divider, Switch, Select } from '../../ui';
+import type { SelectOption } from '../../ui';
+
+const JIMENG_MODEL_OPTIONS: SelectOption[] = [
+  { value: 'jimeng-5.0', label: 'jimeng-5.0（国内站 / 亚洲国际站）' },
+  { value: 'jimeng-4.6', label: 'jimeng-4.6（国内站 / 亚洲国际站）' },
+  { value: 'jimeng-4.5', label: 'jimeng-4.5（默认，全站 · 2k/4k 全 ratio）' },
+  { value: 'jimeng-4.1', label: 'jimeng-4.1（全站 · 2k/4k 全 ratio）' },
+  { value: 'jimeng-4.0', label: 'jimeng-4.0（全站）' },
+];
 
 const DEFAULT_OPENAI_BASE_URL = 'https://api.openai.com/v1';
 const DEFAULT_OPENAI_MODEL = 'gpt-4o';
@@ -12,41 +21,37 @@ export function AIConfigTab() {
   const [enableThinking, setEnableThinking] = useState(true);
   const [jimengApiUrl, setJimengApiUrl] = useState('');
   const [jimengSessionId, setJimengSessionId] = useState('');
-  const [minimaxApiKey, setMinimaxApiKey] = useState('');
-  const [minimaxGroupId, setMinimaxGroupId] = useState('');
-  const [minimaxVoiceId, setMinimaxVoiceId] = useState('male-qn-qingse');
-  const [minimaxSpeed, setMinimaxSpeed] = useState(1.0);
+  const [jimengModel, setJimengModel] = useState('jimeng-4.5');
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    const settings = loadAISettings();
-    setLlmBaseUrl(settings?.llmBaseUrl ?? 'https://api.openai.com/v1');
-    setLlmApiKey(settings?.llmApiKey ?? '');
-    setLlmModel(settings?.llmModel ?? 'gpt-4o');
-    setEnableThinking(settings?.enableThinking ?? true);
-    setJimengApiUrl(settings?.jimengApiUrl ?? 'http://47.109.159.194:8330');
-    setJimengSessionId(settings?.jimengSessionId ?? '');
-    setMinimaxApiKey(settings?.minimaxApiKey ?? '');
-    setMinimaxGroupId(settings?.minimaxGroupId ?? '');
-    setMinimaxVoiceId(settings?.minimaxVoiceId ?? 'male-qn-qingse');
-    setMinimaxSpeed(settings?.minimaxSpeed ?? 1.0);
+    void loadAISettings().then((settings) => {
+      setLlmBaseUrl(settings?.llmBaseUrl ?? 'https://api.openai.com/v1');
+      setLlmApiKey(settings?.llmApiKey ?? '');
+      setLlmModel(settings?.llmModel ?? 'gpt-4o');
+      setEnableThinking(settings?.enableThinking ?? true);
+      setJimengApiUrl(settings?.jimengApiUrl ?? 'http://47.109.159.194:8330');
+      setJimengSessionId(settings?.jimengSessionId ?? '');
+      setJimengModel(settings?.jimengModel ?? 'jimeng-4.5');
+    });
   }, []);
 
   const handleSave = () => {
-    saveAISettings({
-      llmBaseUrl,
-      llmApiKey,
-      llmModel,
-      enableThinking,
-      jimengApiUrl,
-      jimengSessionId,
-      minimaxApiKey,
-      minimaxGroupId,
-      minimaxVoiceId,
-      minimaxSpeed,
+    void loadAISettings().then((current) => {
+      void saveAISettings({
+        ...(current ?? { minimaxApiKey: '', minimaxVoiceId: 'male-qn-qingse', minimaxSpeed: 1.0 }),
+        llmBaseUrl,
+        llmApiKey,
+        llmModel,
+        enableThinking,
+        jimengApiUrl,
+        jimengSessionId,
+        jimengModel,
+      }).then(() => {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      });
     });
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   };
 
   return (
@@ -91,6 +96,13 @@ export function AIConfigTab() {
         </Field>
         <Field label="即梦 Session ID">
           <Input type="password" value={jimengSessionId} onChange={(e) => setJimengSessionId(e.target.value)} placeholder="session id" />
+        </Field>
+        <Field label="即梦模型">
+          <Select
+            value={jimengModel}
+            options={JIMENG_MODEL_OPTIONS}
+            onChange={(e) => setJimengModel(e.target.value)}
+          />
         </Field>
       </div>
 

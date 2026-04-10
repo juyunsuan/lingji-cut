@@ -41,7 +41,7 @@ export function SubtitleInspector() {
   );
 
   const handleGenerateSubtitleHighlights = useCallback(async () => {
-    const settings = loadAISettings();
+    const settings = await loadAISettings();
     const settingsIssue = getAISettingsIssue(settings);
     if (settingsIssue) {
       setSubtitleHighlightError(settingsIssue);

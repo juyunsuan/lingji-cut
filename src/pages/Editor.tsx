@@ -147,13 +147,13 @@ export function Editor({
 
     void window.electronAPI.scanProjectAssets(projectDir).then((scanned) => {
       if (cancelled || scanned.length === 0) return;
-      store.addAssets(scanned);
+      useTimelineStore.getState().addAssets(scanned);
     }).catch((err) => {
       console.error('扫描项目素材失败:', err);
     });
 
     return () => { cancelled = true; };
-  }, [projectDir, store]);
+  }, [projectDir]);
 
   useEffect(() => {
     setTimelinePanelHeight((currentHeight) => {
@@ -310,7 +310,7 @@ export function Editor({
 
   const rerunAiAnalysisForCurrentSrt = useCallback(
     async (entries: ReturnType<typeof useTimelineStore.getState>['srtEntries']) => {
-      const settings = loadAISettings();
+      const settings = await loadAISettings();
       const settingsIssue = getAISettingsIssue(settings);
 
       clearAIAnalysis();
@@ -598,23 +598,6 @@ export function Editor({
                       <span>AI 助手</span>
                     </Button>
                   </div>
-                  {(workflow.step === 'idle' ||
-                    workflow.step === 'done' ||
-                    workflow.step === 'error') &&
-                  projectDir ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={styles.workflowAction}
-                      aria-label="AI 一键剪辑"
-                      onClick={() => {
-                        void handleStartAIClip();
-                      }}
-                    >
-                      <AppIcon name="sparkles" size={14} className={styles.topTabIcon} />
-                      <span>AI 一键剪辑</span>
-                    </Button>
-                  ) : null}
                 </div>
               </div>
               <div className={styles.panelBody}>
@@ -629,6 +612,15 @@ export function Editor({
                     onUseAsPodcastSrt={onUseAsPodcastSrt}
                     onReplaceAudio={handleReplaceAudio}
                     onReplaceSrt={handleReplaceSrt}
+                    showAIClip={
+                      (workflow.step === 'idle' ||
+                        workflow.step === 'done' ||
+                        workflow.step === 'error') &&
+                      Boolean(projectDir)
+                    }
+                    onStartAIClip={() => {
+                      void handleStartAIClip();
+                    }}
                   />
                 ) : (
                   <AIPanel

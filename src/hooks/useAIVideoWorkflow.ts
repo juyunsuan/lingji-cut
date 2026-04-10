@@ -90,7 +90,7 @@ export function useAIVideoWorkflow() {
       const currentRequestId = workflowSession.requestId;
       const isStaleRun = () =>
         workflowSession.cancelled || workflowSession.requestId !== currentRequestId;
-      const settings = loadAISettings();
+      const settings = await loadAISettings();
       const llmSettingsIssue = getAISettingsIssue(settings);
 
       if (!projectDir) {
@@ -120,14 +120,11 @@ export function useAIVideoWorkflow() {
         return;
       }
 
-      if (
-        fromStep === 'tts_generating' &&
-        (!settings.minimaxApiKey.trim() || !settings.minimaxGroupId.trim())
-      ) {
+      if (fromStep === 'tts_generating' && !settings.minimaxApiKey.trim()) {
         setWorkflow({
           ...DEFAULT_WORKFLOW,
           step: 'error',
-          error: '请先在 AI 配置中填写 MiniMax API Key 和 Group ID',
+          error: '请先在设置 → TTS 配置中填写 MiniMax API Key',
         });
         return;
       }
@@ -167,8 +164,11 @@ export function useAIVideoWorkflow() {
             text: scriptText,
             voiceId: settings.minimaxVoiceId || 'male-qn-qingse',
             speed: settings.minimaxSpeed ?? 1,
+            vol: settings.minimaxVol ?? 1,
+            pitch: settings.minimaxPitch ?? 0,
+            emotion: settings.minimaxEmotion ?? '',
+            model: settings.minimaxModel ?? 'speech-2.8-hd',
             apiKey: settings.minimaxApiKey,
-            groupId: settings.minimaxGroupId,
             projectDir,
           });
 
@@ -178,12 +178,13 @@ export function useAIVideoWorkflow() {
             return;
           }
 
-          const { entries, durationMs } = await window.electronAPI.parseSrtFile(ttsResult.srtPath);
+          const { entries } = await window.electronAPI.parseSrtFile(ttsResult.srtPath);
+          const actualDurationMs = await window.electronAPI.getAudioDuration(ttsResult.audioPath).catch(() => 0);
           timelineStore.setSrtEntries(entries);
           timelineStore.setPodcast(
             ttsResult.audioPath,
             ttsResult.srtPath,
-            durationMs > 0 ? durationMs : ttsResult.durationMs,
+            actualDurationMs > 0 ? actualDurationMs : ttsResult.durationMs,
           );
 
           setWorkflow({

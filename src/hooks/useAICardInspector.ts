@@ -109,7 +109,7 @@ export function useAICardInspector(cardId: string | null) {
         return null;
       }
 
-      const settings = loadAISettings();
+      const settings = await loadAISettings();
       const settingsIssue = getAISettingsIssue(settings);
       if (settingsIssue) {
         setAnalysisError(settingsIssue);

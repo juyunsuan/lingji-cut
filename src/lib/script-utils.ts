@@ -86,7 +86,7 @@ export async function generateScriptDraft(
     throw new Error('未找到选中的写稿模板');
   }
 
-  const settings = loadAISettings();
+  const settings = await loadAISettings();
   if (!settings?.llmApiKey) {
     throw new Error('请先在 AI 设置中配置 LLM API Key');
   }
@@ -122,7 +122,7 @@ export async function generateScriptDraftStream(
     throw new Error('未找到选中的写稿模板');
   }
 
-  const settings = loadAISettings();
+  const settings = await loadAISettings();
   if (!settings?.llmApiKey) {
     throw new Error('请先在 AI 设置中配置 LLM API Key');
   }
@@ -141,7 +141,7 @@ export async function generateScriptDraftStream(
 // --- AI 审查 ---
 
 export async function runScriptReview(scriptText: string): Promise<Annotation[]> {
-  const settings = loadAISettings();
+  const settings = await loadAISettings();
   if (!settings?.llmApiKey) {
     throw new Error('请先在 AI 设置中配置 LLM API Key');
   }
@@ -159,7 +159,7 @@ export async function runScriptReviewStream(
     onReasoningChunk?: (chunk: string) => void;
   },
 ): Promise<Annotation[]> {
-  const settings = loadAISettings();
+  const settings = await loadAISettings();
   if (!settings?.llmApiKey) {
     throw new Error('请先在 AI 设置中配置 LLM API Key');
   }

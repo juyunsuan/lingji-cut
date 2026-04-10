@@ -69,6 +69,11 @@ export function AIPanel({
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isRegeneratingCoverPrompt, setIsRegeneratingCoverPrompt] = useState(false);
   const [globalPromptDraft, setGlobalPromptDraft] = useState('');
+  const [panelSettings, setPanelSettings] = useState<import('../types/ai').AISettings | null>(null);
+
+  useEffect(() => {
+    void loadAISettings().then(setPanelSettings);
+  }, []);
 
   const enabledCount = analysisResult?.cards.filter((card) => card.enabled).length ?? 0;
   const enabledCardIds =
@@ -180,7 +185,7 @@ export function AIPanel({
   );
 
   const handleAnalyze = useCallback(async () => {
-    const settings = loadAISettings();
+    const settings = await loadAISettings();
     const settingsIssue = getAISettingsIssue(settings);
     if (settingsIssue) {
       setAnalysisError(settingsIssue);
@@ -240,7 +245,7 @@ export function AIPanel({
 
   const handleGenerateCovers = useCallback(
     async (prompts: string[]) => {
-      const settings = loadAISettings();
+      const settings = await loadAISettings();
       if (!settings?.jimengSessionId) {
         setAnalysisError('请先在 AI 配置中填写即梦 Session ID');
         setIsSettingsOpen(true);
@@ -274,7 +279,7 @@ export function AIPanel({
       return;
     }
 
-    const settings = loadAISettings();
+    const settings = await loadAISettings();
     const settingsIssue = getAISettingsIssue(settings);
     if (settingsIssue) {
       setAnalysisError(settingsIssue);
@@ -395,7 +400,6 @@ export function AIPanel({
     ],
   );
 
-  const panelSettings = loadAISettings();
   const aiSettingsIssue = getAISettingsIssue(panelSettings);
   const hasSrtEntries = srtEntries.length > 0;
   const analyzeButtonDisabled = !hasSrtEntries || isAnalyzing;
@@ -638,7 +642,11 @@ export function AIPanel({
         visible={isSettingsOpen}
         settings={panelSettings}
         onClose={() => setIsSettingsOpen(false)}
-        onSave={(settings: AISettings) => saveAISettings(settings)}
+        onSave={(settings: AISettings) => {
+          void saveAISettings(settings).then(() => {
+            setPanelSettings(settings);
+          });
+        }}
       />
     </aside>
   );
