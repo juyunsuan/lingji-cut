@@ -37,6 +37,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveAIAnalysis: (projectDir: string, data: string) =>
     ipcRenderer.invoke('save-ai-analysis', projectDir, data),
   loadAIAnalysis: (projectDir: string) => ipcRenderer.invoke('load-ai-analysis', projectDir),
+  loadProject: (projectDir: string) =>
+    ipcRenderer.invoke('load-project', projectDir),
+  saveProjectSection: (projectDir: string, section: string, data: string) =>
+    ipcRenderer.invoke('save-project-section', projectDir, section, data),
+  loadGlobalSettings: () =>
+    ipcRenderer.invoke('load-global-settings'),
+  saveGlobalSettings: (data: string) =>
+    ipcRenderer.invoke('save-global-settings', data),
   getProjectMetadata: (projectDir: string) =>
     ipcRenderer.invoke('get-project-metadata', projectDir) as Promise<ProjectMetadata>,
   selectProjectDirectory: () => ipcRenderer.invoke('select-project-directory'),
@@ -99,8 +107,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     text: string;
     voiceId: string;
     speed: number;
+    vol: number;
+    pitch: number;
+    emotion: string;
+    model: string;
     apiKey: string;
-    groupId: string;
     projectDir: string;
   }) => ipcRenderer.invoke('generate-tts', args),
   onTTSProgress: (callback: (pct: number) => void) => {
