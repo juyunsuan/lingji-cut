@@ -1,6 +1,7 @@
 import type {
   AgentConfigData,
   AgentMode,
+  ConfigOption,
   ConnectionStatus,
   PermissionOption,
   PermissionPolicy,

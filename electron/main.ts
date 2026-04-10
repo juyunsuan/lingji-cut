@@ -251,6 +251,11 @@ ipcMain.handle('parse-srt-file', async (_event, filePath: string) => {
   return { entries, durationMs };
 });
 
+ipcMain.handle('get-audio-duration', async (_event, filePath: string) => {
+  const metadata = await getVideoMetadata(filePath);
+  return Math.max(1_000, Math.round((metadata.durationInSeconds ?? 0) * 1000));
+});
+
 ipcMain.handle(
   'analyze-srt',
   async (

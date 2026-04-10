@@ -3,6 +3,7 @@ import { AgentSidebar } from './components/agent/AgentSidebar';
 import { AppStatusBar } from './components/AppStatusBar';
 import { Toolbar } from './components/Toolbar';
 import type { AppPage, MenuAction, MenuEvent } from './lib/electron-api';
+import { getAISettingsIssue } from './lib/ai-settings';
 import { useAgentStore } from './store/agent';
 import { createPersistedAIState, parsePersistedAIState } from './lib/ai-persistence';
 import { useViewportSize } from './hooks/useViewportSize';
@@ -14,7 +15,8 @@ import { Setup } from './pages/Setup';
 import { WorkspaceTabs } from './components/WorkspaceTabs';
 import { getFileNameFromPath } from './lib/utils';
 import { createDefaultTimeline, type TimelineData } from './types';
-import { useAIStore } from './store/ai';
+import type { AIAnalysisResult } from './types/ai';
+import { loadAISettings, useAIStore } from './store/ai';
 import { useScriptStore } from './store/script';
 import {
   clearCurrentProject,
@@ -80,6 +82,81 @@ export default function App() {
       JSON.stringify(createPersistedAIState(null, []), null, 2),
     );
   }, [clearAIAnalysis]);
+
+  const persistAIAnalysis = useCallback(
+    async (analysisResult: AIAnalysisResult | null) => {
+      if (!currentProjectDir) {
+        return;
+      }
+
+      await window.electronAPI.saveAIAnalysis(
+        currentProjectDir,
+        JSON.stringify(createPersistedAIState(analysisResult, []), null, 2),
+      );
+    },
+    [currentProjectDir],
+  );
+
+  const rerunAiAnalysisForEntries = useCallback(
+    async (entries: ReturnType<typeof useTimelineStore.getState>['srtEntries']) => {
+      const settings = loadAISettings();
+      const settingsIssue = getAISettingsIssue(settings);
+
+      clearAIAnalysis();
+      await persistAIAnalysis(null);
+
+      if (settingsIssue || !settings) {
+        window.alert(settingsIssue ?? '请先完成 AI 配置后再重新分析');
+        return;
+      }
+
+      try {
+        const result = (await window.electronAPI.analyzeSrt({
+          entries,
+          settings,
+        })) as AIAnalysisResult;
+        setAIAnalysisResult(result);
+        setCoverCandidates([]);
+        await persistAIAnalysis(result);
+      } catch (error) {
+        console.error('重新分析字幕失败:', error);
+        window.alert(error instanceof Error ? error.message : '重新分析字幕失败，请稍后重试。');
+      }
+    },
+    [clearAIAnalysis, persistAIAnalysis, setAIAnalysisResult, setCoverCandidates],
+  );
+
+  const resolveAudioDuration = useCallback(
+    async (audioPath: string, fallbackDurationMs: number) => {
+      try {
+        const durationMs = await window.electronAPI.getAudioDuration(audioPath);
+        return durationMs > 0 ? durationMs : fallbackDurationMs;
+      } catch (error) {
+        console.warn('读取音频时长失败，使用兜底时长:', error);
+        return fallbackDurationMs;
+      }
+    },
+    [],
+  );
+
+  const replaceSubtitleWithConfirmation = useCallback(
+    async (srtPath: string) => {
+      const { entries, durationMs } = await window.electronAPI.parseSrtFile(srtPath);
+      setSrtEntries(entries);
+      setPodcast(timeline.podcast.audioPath, srtPath, durationMs);
+
+      const shouldReanalyze = window.confirm(
+        '替换字幕后，AI 卡片将失效。是否立即重新分析？',
+      );
+
+      if (!shouldReanalyze) {
+        return;
+      }
+
+      await rerunAiAnalysisForEntries(entries);
+    },
+    [rerunAiAnalysisForEntries, setPodcast, setSrtEntries, timeline.podcast.audioPath],
+  );
 
   const syncWorkspaceState = useCallback(() => {
     setCurrentProjectDir(getCurrentProjectDir());
@@ -240,8 +317,9 @@ export default function App() {
       return;
     }
 
-    setPodcast(audioPath, timeline.podcast.srtPath, timeline.podcast.durationMs);
-  }, [setPodcast, timeline.podcast.durationMs, timeline.podcast.srtPath]);
+    const durationMs = await resolveAudioDuration(audioPath, timeline.podcast.durationMs);
+    setPodcast(audioPath, timeline.podcast.srtPath, durationMs);
+  }, [resolveAudioDuration, setPodcast, timeline.podcast.durationMs, timeline.podcast.srtPath]);
 
   const handleReplaceSrt = useCallback(async () => {
     const srtPath = await window.electronAPI.selectMediaFile('srt');
@@ -249,28 +327,25 @@ export default function App() {
       return;
     }
 
-    const { entries, durationMs } = await window.electronAPI.parseSrtFile(srtPath);
-    setSrtEntries(entries);
-    setPodcast(timeline.podcast.audioPath, srtPath, durationMs);
-    await invalidateAIAnalysis(currentProjectDir);
-  }, [currentProjectDir, invalidateAIAnalysis, setPodcast, setSrtEntries, timeline.podcast.audioPath]);
+    await replaceSubtitleWithConfirmation(srtPath);
+  }, [replaceSubtitleWithConfirmation]);
 
   const handleUseAssetAsPodcastAudio = useCallback(
     async (audioPath: string, durationMs: number) => {
-      const resolvedDuration = durationMs > 0 ? durationMs : timeline.podcast.durationMs;
+      const resolvedDuration = await resolveAudioDuration(
+        audioPath,
+        durationMs > 0 ? durationMs : timeline.podcast.durationMs,
+      );
       setPodcast(audioPath, timeline.podcast.srtPath, resolvedDuration);
     },
-    [setPodcast, timeline.podcast.durationMs, timeline.podcast.srtPath],
+    [resolveAudioDuration, setPodcast, timeline.podcast.durationMs, timeline.podcast.srtPath],
   );
 
   const handleUseAssetAsPodcastSrt = useCallback(
     async (srtPath: string) => {
-      const { entries, durationMs } = await window.electronAPI.parseSrtFile(srtPath);
-      setSrtEntries(entries);
-      setPodcast(timeline.podcast.audioPath, srtPath, durationMs);
-      await invalidateAIAnalysis(currentProjectDir);
+      await replaceSubtitleWithConfirmation(srtPath);
     },
-    [currentProjectDir, invalidateAIAnalysis, setPodcast, setSrtEntries, timeline.podcast.audioPath],
+    [replaceSubtitleWithConfirmation],
   );
 
   const handleCommand = useCallback(

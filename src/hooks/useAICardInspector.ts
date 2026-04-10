@@ -115,6 +115,10 @@ export function useAICardInspector(cardId: string | null) {
         setAnalysisError(settingsIssue);
         return null;
       }
+      if (!settings) {
+        setAnalysisError('请先完成 AI 配置');
+        return null;
+      }
 
       setIsRegeneratingCard(true);
       setAnalysisError(null);

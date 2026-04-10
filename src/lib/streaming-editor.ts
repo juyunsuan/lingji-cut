@@ -84,7 +84,13 @@ export class StreamingEditor {
 
   /** 判断编辑器是否滚动到底部附近，用于决定是否自动跟随 */
   private isNearBottom(): boolean {
-    const { scrollTop, scrollHeight, clientHeight } = this.view.scrollDOM;
+    const scrollDOM = (this.view as EditorView & {
+      scrollDOM?: { scrollTop: number; scrollHeight: number; clientHeight: number };
+    }).scrollDOM;
+    if (!scrollDOM) {
+      return true;
+    }
+    const { scrollTop, scrollHeight, clientHeight } = scrollDOM;
     return scrollHeight - scrollTop - clientHeight < 50;
   }
 

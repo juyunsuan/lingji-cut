@@ -60,7 +60,15 @@ vi.mock('../src/hooks/useAIVideoWorkflow', () => ({
 }));
 
 vi.mock('../src/components/TimelineAIOverlay', () => ({
-  TimelineAIOverlay: () => <div data-editor-region="timeline-ai-overlay">timeline-ai-overlay</div>,
+  TimelineAIOverlay: (props: { compactTimeline?: boolean; onRetry?: () => void }) => (
+    <div
+      data-editor-region="timeline-ai-overlay"
+      data-compact-timeline={String(Boolean(props.compactTimeline))}
+      data-has-retry={String(Boolean(props.onRetry))}
+    >
+      timeline-ai-overlay
+    </div>
+  ),
 }));
 
 vi.mock('../src/store/timeline', () => ({
@@ -130,5 +138,12 @@ describe('Editor', () => {
     })();
 
     expect(rendered).toContain('AI 一键剪辑');
+  });
+
+  it('passes retry support and timeline compact flag into the AI overlay', async () => {
+    const html = await renderEditor();
+
+    expect(html).toContain('data-editor-region="timeline-ai-overlay"');
+    expect(html).toContain('data-has-retry="true"');
   });
 });

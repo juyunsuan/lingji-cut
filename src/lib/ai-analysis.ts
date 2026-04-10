@@ -192,7 +192,9 @@ function parsePartialResult(value: unknown): AIAnalysisResult | null {
 
   const candidate = value as Record<string, unknown>;
   const cards = Array.isArray(candidate.cards)
-    ? candidate.cards.map(normalizeCard).filter(Boolean)
+    ? candidate.cards
+        .map(normalizeCard)
+        .filter((card): card is AICard => card !== null)
     : [];
 
   return {

@@ -80,4 +80,10 @@ describe('AssetPanel', () => {
     expect(html).toContain('替换音频');
     expect(html).toContain('替换字幕');
   });
+
+  it('keeps podcast resource section visible in compact mode', () => {
+    const html = renderToStaticMarkup(<AssetPanel compact />);
+
+    expect(html).toContain('口播资源');
+  });
 });

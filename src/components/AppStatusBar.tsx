@@ -62,10 +62,12 @@ function ContextPopover({
 function ContextWindowIndicator() {
   const contextUsage = useAgentStore((s) => s.contextUsage);
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleEnter = useCallback(() => {
-    clearTimeout(timerRef.current);
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+    }
     setPopoverOpen(true);
   }, []);
 
@@ -75,7 +77,11 @@ function ContextWindowIndicator() {
 
   // 组件卸载时清理 timer
   useEffect(() => {
-    return () => clearTimeout(timerRef.current);
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
   }, []);
 
   if (!contextUsage) return null;

@@ -46,18 +46,42 @@ export class ReviewPlaybackController {
     };
   }
 
+  private getScrollDom():
+    | {
+        addEventListener: (type: string, listener: () => void) => void;
+        removeEventListener: (type: string, listener: () => void) => void;
+      }
+    | null {
+    const maybeScrollDom = (this.view as EditorView & {
+      scrollDOM?: {
+        addEventListener: (type: string, listener: () => void) => void;
+        removeEventListener: (type: string, listener: () => void) => void;
+      };
+    }).scrollDOM;
+
+    if (
+      !maybeScrollDom ||
+      typeof maybeScrollDom.addEventListener !== 'function' ||
+      typeof maybeScrollDom.removeEventListener !== 'function'
+    ) {
+      return null;
+    }
+
+    return maybeScrollDom;
+  }
+
   private startScrollTracking(): void {
     this.userScrolled = false;
     this.scrollHandler = () => {
       if (Date.now() - this.lastProgrammaticScrollTime < 100) return;
       this.userScrolled = true;
     };
-    this.view.scrollDOM.addEventListener('scroll', this.scrollHandler);
+    this.getScrollDom()?.addEventListener('scroll', this.scrollHandler);
   }
 
   private stopScrollTracking(): void {
     if (this.scrollHandler) {
-      this.view.scrollDOM.removeEventListener('scroll', this.scrollHandler);
+      this.getScrollDom()?.removeEventListener('scroll', this.scrollHandler);
       this.scrollHandler = null;
     }
   }

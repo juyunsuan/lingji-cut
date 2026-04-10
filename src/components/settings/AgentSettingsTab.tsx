@@ -1,10 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Bot, Eye, EyeOff, RefreshCw, Loader2, Trash2 } from 'lucide-react';
-import type { AgentConfigData, PreflightCheck, PermissionPolicy } from '../../../electron/acp/types';
+import type {
+  AgentConfigData,
+  AgentEntry,
+  AuthMode,
+  PreflightCheck,
+  PermissionPolicy,
+} from '../../../electron/acp/types';
 import { PillGroup } from '../../ui';
 import type { PillGroupItem } from '../../ui/patterns/PillGroup';
-
-type AuthMode = 'subscription' | 'custom_api';
 
 const AUTH_MODES: PillGroupItem<AuthMode>[] = [
   { value: 'subscription', label: '官方订阅 (Max/Pro)' },
@@ -64,7 +68,7 @@ export function AgentSettingsTab() {
   };
 
   const updateAgent = useCallback(
-    (patch: Partial<typeof DEFAULT_AGENT_ENTRY>) => {
+    (patch: Partial<AgentEntry>) => {
       if (!config) return;
       setConfig({
         ...config,

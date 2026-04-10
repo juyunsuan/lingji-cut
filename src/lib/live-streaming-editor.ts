@@ -317,7 +317,13 @@ export class LiveStreamingEditor {
    * 若是则自动跟随滚动，若用户手动上滑则停止跟随，用户滑回底部则恢复。
    */
   private isNearBottom(): boolean {
-    const { scrollTop, scrollHeight, clientHeight } = this.view.scrollDOM;
+    const scrollDOM = (this.view as EditorView & {
+      scrollDOM?: { scrollTop: number; scrollHeight: number; clientHeight: number };
+    }).scrollDOM;
+    if (!scrollDOM) {
+      return true;
+    }
+    const { scrollTop, scrollHeight, clientHeight } = scrollDOM;
     return scrollHeight - scrollTop - clientHeight < 50;
   }
 

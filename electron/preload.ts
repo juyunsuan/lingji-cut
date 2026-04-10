@@ -8,6 +8,7 @@ import type { ConversationAPI } from '../src/types/conversation';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   parseSrtFile: (filePath: string) => ipcRenderer.invoke('parse-srt-file', filePath),
+  getAudioDuration: (filePath: string) => ipcRenderer.invoke('get-audio-duration', filePath),
   analyzeSrt: (args: {
     entries?: SrtEntry[];
     srtContent?: string;
