@@ -103,6 +103,10 @@ export interface ElectronAPI {
   loadTimeline: (projectDir: string) => Promise<string | null>;
   saveAIAnalysis: (projectDir: string, data: string) => Promise<string>;
   loadAIAnalysis: (projectDir: string) => Promise<string | null>;
+  loadProject: (projectDir: string) => Promise<string>;
+  saveProjectSection: (projectDir: string, section: string, data: string) => Promise<void>;
+  loadGlobalSettings: () => Promise<string | null>;
+  saveGlobalSettings: (data: string) => Promise<void>;
   getProjectMetadata: (projectDir: string) => Promise<ProjectMetadata>;
   selectProjectDirectory: () => Promise<string | null>;
   selectSetupFile: (kind: ImportKind) => Promise<string | null>;
@@ -145,8 +149,11 @@ export interface ElectronAPI {
     text: string;
     voiceId: string;
     speed: number;
+    vol: number;
+    pitch: number;
+    emotion: string;
+    model: string;
     apiKey: string;
-    groupId: string;
     projectDir: string;
   }) => Promise<{ audioPath: string; srtPath: string; durationMs: number }>;
   onTTSProgress: (callback: (pct: number) => void) => () => void;
