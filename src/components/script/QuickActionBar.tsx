@@ -1,16 +1,18 @@
 import { FileUp, Sparkles, Search, Copy, RefreshCw, Square, User } from 'lucide-react';
 import { useScriptStore } from '../../store/script';
 import { getAllRoles } from '../../lib/script-templates';
+import { ModelSelector } from './ModelSelector';
 import styles from './QuickActionBar.module.css';
 
 // ─── 组件 ─────────────────────────────────────────────
 
 interface QuickActionBarProps {
   onImportText: () => void;
+  onImportDouyin: () => void;
 }
 
 /** 内容区顶部快捷操作栏：根据工作流状态展示不同操作按钮 */
-export function QuickActionBar({ onImportText }: QuickActionBarProps) {
+export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarProps) {
   const workspaceFiles = useScriptStore((s) => s.workspaceFiles);
   const agentOperation = useScriptStore((s) => s.agentOperation);
   const reviewState = useScriptStore((s) => s.reviewState);
@@ -107,6 +109,10 @@ export function QuickActionBar({ onImportText }: QuickActionBarProps) {
             <FileUp size={12} />
             导入原稿
           </button>
+          <button className={styles.btn} onClick={onImportDouyin}>
+            <FileUp size={12} />
+            导入抖音视频
+          </button>
         </div>
       </div>
     );
@@ -119,6 +125,7 @@ export function QuickActionBar({ onImportText }: QuickActionBarProps) {
         <div className={styles.hint}>原稿已就绪</div>
         <div className={styles.actions}>
           {roleSelector}
+          <ModelSelector />
           <button
             className={`${styles.btn} ${styles.primaryBtn}`}
             disabled={!generateScriptCb}
@@ -131,6 +138,10 @@ export function QuickActionBar({ onImportText }: QuickActionBarProps) {
           <button className={styles.btn} onClick={onImportText}>
             <FileUp size={12} />
             重新导入
+          </button>
+          <button className={styles.btn} onClick={onImportDouyin}>
+            <FileUp size={12} />
+            抖音导入
           </button>
         </div>
       </div>
