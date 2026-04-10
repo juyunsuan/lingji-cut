@@ -20,6 +20,31 @@
   width: 224px;
 }
 
+/* ── AI 一键剪辑按钮 ── */
+.aiClipButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: calc(100% - 16px);
+  margin: 10px 8px 6px;
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
+  background: color-mix(in srgb, var(--color-selection-blue) 12%, transparent);
+  color: var(--color-text-primary);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--motion-fast, 120ms);
+}
+
+.aiClipButton:hover {
+  background: color-mix(in srgb, var(--color-selection-blue) 20%, transparent);
+  border-color: color-mix(in srgb, var(--color-selection-blue) 44%, transparent);
+}
+
 /* ── 口播资源区块 ── */
 .podcastSection {
   flex-shrink: 0;

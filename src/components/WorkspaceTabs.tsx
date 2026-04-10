@@ -7,6 +7,64 @@ type WorkspaceTab = 'script-workbench' | 'editor';
 interface WorkspaceTabsProps {
   active: WorkspaceTab;
   onSwitch: (tab: WorkspaceTab) => void;
+  /** script.md 整体进度：null 表示无稿件（隐藏圆环），50 = 已生成未审，100 = 审稿完成 */
+  scriptProgress?: number | null;
+}
+
+// SVG 进度圆环，r=5 circumference≈31.42
+const RING_R = 5;
+const RING_C = 2 * Math.PI * RING_R;
+
+function ScriptProgressRing({ progress }: { progress: number }) {
+  const done = progress >= 100;
+  const dashoffset = RING_C * (1 - progress / 100);
+  const color = done ? '#34d399' : 'var(--color-text-tertiary, #636366)';
+
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      style={{ flexShrink: 0, transition: 'opacity 0.2s' }}
+      aria-label={done ? '写稿已完成' : '写稿进行中'}
+    >
+      {/* 背景轨道 */}
+      <circle
+        cx="7"
+        cy="7"
+        r={RING_R}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        opacity="0.15"
+      />
+      {/* 进度弧 */}
+      <circle
+        cx="7"
+        cy="7"
+        r={RING_R}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeDasharray={RING_C}
+        strokeDashoffset={dashoffset}
+        strokeLinecap="round"
+        transform="rotate(-90 7 7)"
+        style={{ transition: 'stroke-dashoffset 0.4s ease, stroke 0.3s ease' }}
+      />
+      {/* 完成勾号 */}
+      {done && (
+        <polyline
+          points="4.5,7 6.2,8.8 9.5,5.5"
+          fill="none"
+          stroke="#34d399"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      )}
+    </svg>
+  );
 }
 
 const tabs: { key: WorkspaceTab; label: string; icon: React.ReactNode; page: AppPage }[] = [
@@ -14,7 +72,7 @@ const tabs: { key: WorkspaceTab; label: string; icon: React.ReactNode; page: App
   { key: 'editor', label: '视频编辑器', icon: <Film />, page: 'editor' },
 ];
 
-export function WorkspaceTabs({ active, onSwitch }: WorkspaceTabsProps) {
+export function WorkspaceTabs({ active, onSwitch, scriptProgress }: WorkspaceTabsProps) {
   return (
     <nav className={styles.root}>
       {tabs.map((tab, i) => (
@@ -27,6 +85,9 @@ export function WorkspaceTabs({ active, onSwitch }: WorkspaceTabsProps) {
           >
             <span className={styles.icon}>{tab.icon}</span>
             {tab.label}
+            {tab.key === 'script-workbench' && scriptProgress != null && (
+              <ScriptProgressRing progress={scriptProgress} />
+            )}
           </button>
         </span>
       ))}

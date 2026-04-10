@@ -129,6 +129,7 @@ function PreviewPanelComponent({
           }}
         >
           <Player
+            key={timeline.podcast.audioPath || 'empty'}
             ref={playerRef}
             component={PodcastComposition}
             inputProps={playerInputProps}

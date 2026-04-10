@@ -148,6 +148,7 @@ export const DEFAULT_TIMELINE_VERSION = 2;
 export const DEFAULT_AUDIO_TRACK_ID = 'audio';
 export const DEFAULT_SUBTITLE_TRACK_ID = 'subtitle';
 export const DEFAULT_VISUAL_TRACK_ID = 'visual-1';
+export const DEFAULT_AI_CARDS_TRACK_ID = 'visual-2';
 
 export function createVisualTrack(index: number, order = index): TimelineTrack {
   return {

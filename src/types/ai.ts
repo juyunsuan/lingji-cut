@@ -67,11 +67,15 @@ export interface AISettings {
   // 图片生成
   jimengApiUrl: string;
   jimengSessionId: string;
+  jimengModel?: string;
   // MiniMax TTS
   minimaxApiKey: string;
-  minimaxGroupId: string;
   minimaxVoiceId: string;
   minimaxSpeed: number;
+  minimaxVol?: number;
+  minimaxPitch?: number;
+  minimaxEmotion?: string;
+  minimaxModel?: string;
 }
 
 export interface AICardOverlayData {

@@ -23,6 +23,7 @@ import {
 } from '../lib/script-utils';
 import { ReviewCursorAnimator } from '../lib/review-cursor-animator';
 import { useScriptStore } from '../store/script';
+import { useTimelineStore } from '../store/timeline';
 import { getAllTemplates, getRoleById } from '../lib/script-templates';
 import { replaceEditorContent } from '../lib/editor-document';
 import { clearVirtualCursor } from '../lib/virtual-cursor';
@@ -116,6 +117,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     reviewCursorPos,
     reviewBreathing,
   } = useScriptStore();
+
+  const hasAICardOverlays = useTimelineStore(
+    (state) => state.timeline.overlays?.some((o) => o.overlayType === 'ai-card') ?? false,
+  );
 
   const [restoring, setRestoring] = useState(false);
   const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
@@ -1426,8 +1431,8 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
           {projectDir ? (
             <div className={styles.workflowBar}>
               {(workflow.step === 'idle' ||
-                workflow.step === 'done' ||
-                workflow.step === 'error') ? (
+                workflow.step === 'error') &&
+                !hasAICardOverlays ? (
                 <Button
                   variant="ghost"
                   size="sm"

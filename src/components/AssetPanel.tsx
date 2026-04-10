@@ -152,6 +152,8 @@ export function AssetPanel({
   onUseAsPodcastSrt,
   onReplaceAudio,
   onReplaceSrt,
+  showAIClip,
+  onStartAIClip,
 }: {
   compact: boolean;
   railHeight?: number;
@@ -162,6 +164,8 @@ export function AssetPanel({
   onUseAsPodcastSrt?: (path: string) => Promise<void>;
   onReplaceAudio?: () => Promise<void>;
   onReplaceSrt?: () => Promise<void>;
+  showAIClip?: boolean;
+  onStartAIClip?: () => void;
 }) {
   const { addAsset, assets, removeAsset, timeline } = useTimelineStore();
   const [keyword, setKeyword] = useState('');
@@ -210,6 +214,12 @@ export function AssetPanel({
     <aside
       className={[styles.root, compact ? styles.compact : styles.regular].join(' ')}
     >
+      {showAIClip && onStartAIClip ? (
+        <button type="button" className={styles.aiClipButton} onClick={onStartAIClip}>
+          <AppIcon name="sparkles" size={13} />
+          <span>AI 一键剪辑</span>
+        </button>
+      ) : null}
       <PodcastResourceSection
         compact={compact}
         expanded={podcastExpanded}

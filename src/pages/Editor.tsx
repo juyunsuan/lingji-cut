@@ -97,6 +97,9 @@ export function Editor({
   const assets = store.assets ?? [];
   const { timeline } = store;
   const overlayCount = timeline.overlays?.length ?? 0;
+  const hasAICardOverlays = timeline.overlays?.some(
+    (overlay) => overlay.overlayType === 'ai-card',
+  ) ?? false;
   const podcastAudioPath = timeline.podcast?.audioPath ?? '';
   const podcastSrtPath = timeline.podcast?.srtPath ?? '';
   const fps = timeline.fps || 30;
@@ -615,9 +618,9 @@ export function Editor({
                     onReplaceSrt={handleReplaceSrt}
                     showAIClip={
                       (workflow.step === 'idle' ||
-                        workflow.step === 'done' ||
                         workflow.step === 'error') &&
-                      Boolean(projectDir)
+                      Boolean(projectDir) &&
+                      !hasAICardOverlays
                     }
                     onStartAIClip={() => {
                       void handleStartAIClip();

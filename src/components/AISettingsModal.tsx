@@ -11,9 +11,19 @@ import {
   Field,
   Input,
   ModalFooter,
+  Select,
   Switch,
 } from "../ui";
+import type { SelectOption } from "../ui";
 import styles from "./AISettingsModal.module.css";
+
+const JIMENG_MODEL_OPTIONS: SelectOption[] = [
+  { value: 'jimeng-5.0', label: 'jimeng-5.0（国内站 / 亚洲国际站）' },
+  { value: 'jimeng-4.6', label: 'jimeng-4.6（国内站 / 亚洲国际站）' },
+  { value: 'jimeng-4.5', label: 'jimeng-4.5（默认，全站 · 2k/4k 全 ratio）' },
+  { value: 'jimeng-4.1', label: 'jimeng-4.1（全站 · 2k/4k 全 ratio）' },
+  { value: 'jimeng-4.0', label: 'jimeng-4.0（全站）' },
+];
 
 interface AISettingsModalProps {
   visible: boolean;
@@ -34,8 +44,8 @@ export function AISettingsModal({
   const [enableThinking, setEnableThinking] = useState(true);
   const [jimengApiUrl, setJimengApiUrl] = useState("");
   const [jimengSessionId, setJimengSessionId] = useState("");
+  const [jimengModel, setJimengModel] = useState("jimeng-4.5");
   const [minimaxApiKey, setMinimaxApiKey] = useState("");
-  const [minimaxGroupId, setMinimaxGroupId] = useState("");
   const [minimaxVoiceId, setMinimaxVoiceId] = useState("male-qn-qingse");
   const [minimaxSpeed, setMinimaxSpeed] = useState("1.0");
 
@@ -50,8 +60,8 @@ export function AISettingsModal({
     setEnableThinking(settings?.enableThinking ?? true);
     setJimengApiUrl(settings?.jimengApiUrl ?? "http://47.109.159.194:8330");
     setJimengSessionId(settings?.jimengSessionId ?? "");
+    setJimengModel(settings?.jimengModel ?? "jimeng-4.5");
     setMinimaxApiKey(settings?.minimaxApiKey ?? "");
-    setMinimaxGroupId(settings?.minimaxGroupId ?? "");
     setMinimaxVoiceId(settings?.minimaxVoiceId ?? "male-qn-qingse");
     setMinimaxSpeed(String(settings?.minimaxSpeed ?? 1.0));
   }, [settings, visible]);
@@ -109,6 +119,13 @@ export function AISettingsModal({
               onChange={setJimengSessionId}
               type="password"
             />
+            <Field label="即梦模型">
+              <Select
+                value={jimengModel}
+                options={JIMENG_MODEL_OPTIONS}
+                onChange={(e) => setJimengModel(e.target.value)}
+              />
+            </Field>
 
             <Divider label="语音合成（MiniMax）" />
             <SettingsField
@@ -117,12 +134,6 @@ export function AISettingsModal({
               placeholder="eyJ..."
               onChange={setMinimaxApiKey}
               type="password"
-            />
-            <SettingsField
-              label="MiniMax Group ID"
-              value={minimaxGroupId}
-              placeholder="1234567890"
-              onChange={setMinimaxGroupId}
             />
             <SettingsField
               label="发音人 ID"
@@ -147,14 +158,15 @@ export function AISettingsModal({
               }
 
               onSave({
+                ...(settings ?? { minimaxApiKey: '', minimaxVoiceId: 'male-qn-qingse', minimaxSpeed: 1.0 }),
                 llmBaseUrl,
                 llmApiKey,
                 llmModel,
                 enableThinking,
                 jimengApiUrl,
                 jimengSessionId,
+                jimengModel,
                 minimaxApiKey,
-                minimaxGroupId,
                 minimaxVoiceId,
                 minimaxSpeed: parseFloat(minimaxSpeed) || 1.0,
               });
