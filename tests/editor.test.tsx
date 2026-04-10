@@ -14,7 +14,17 @@ vi.mock('../src/components/Timeline', () => ({
 }));
 
 vi.mock('../src/components/AssetPanel', () => ({
-  AssetPanel: () => <div>asset-panel</div>,
+  AssetPanel: (props: {
+    onUseAsPodcastAudio?: () => Promise<void>;
+    onUseAsPodcastSrt?: () => Promise<void>;
+  }) => (
+    <div
+      data-asset-audio-hook={String(Boolean(props.onUseAsPodcastAudio))}
+      data-asset-srt-hook={String(Boolean(props.onUseAsPodcastSrt))}
+    >
+      asset-panel
+    </div>
+  ),
 }));
 
 vi.mock('../src/components/AIPanel', () => ({
@@ -50,7 +60,12 @@ async function renderEditor() {
   const { Editor } = await import('../src/pages/Editor');
 
   return renderToStaticMarkup(
-    <Editor onAddAsset={async () => undefined} exportRequestToken={0} />,
+    <Editor
+      onAddAsset={async () => undefined}
+      onUseAsPodcastAudio={async () => undefined}
+      onUseAsPodcastSrt={async () => undefined}
+      exportRequestToken={0}
+    />,
   );
 }
 
@@ -71,5 +86,12 @@ describe('Editor', () => {
 
     expect(html).toContain('data-editor-region="timeline-wrap"');
     expect(html).toContain('data-editor-region="sidebar-shell"');
+  });
+
+  it('passes dedicated audio and srt attach handlers into the asset panel', async () => {
+    const html = await renderEditor();
+
+    expect(html).toContain('data-asset-audio-hook="true"');
+    expect(html).toContain('data-asset-srt-hook="true"');
   });
 });

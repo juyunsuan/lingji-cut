@@ -59,7 +59,7 @@ AssetPanel
   → electronAPI.parseSrtFile(path)  // 获取条目 + 时长
   → timelineStore.setPodcast(currentAudioPath, newSrtPath, durationMs)
   → 弹出确认：「AI 卡片将失效，是否重新分析？」
-      是 → aiStore.clearAnalysis() + analyzeSrt()
+      是 → aiStore.clearAnalysis() + analyzeSrt() + 持久化 ai-analysis.json
       否 → 仅更新路径
 ```
 
@@ -104,6 +104,12 @@ async function generateTTS(
   onProgress: (pct: number) => void
 ): Promise<TTSResult>
 ```
+
+#### 取消语义
+
+- Renderer 侧 `cancel()` 不能只重置 UI
+- 必须同时中断主进程中的 TTS 请求与流式读取
+- 主进程需维护当前 TTS 任务句柄，接收 cancel IPC 后真正 `abort`
 
 #### SRT 组装规则
 
@@ -166,6 +172,12 @@ idle
 
 任意步骤异常 → error（保留已完成结果，支持断点重试）
 ```
+
+#### 状态持久化
+
+- `ai_analyzing` 完成后，需将分析结果写入 `ai-analysis.json`
+- `cover_generating` 完成后，需将封面候选与选中状态写入 `ai-analysis.json`
+- 这样即使关闭并重新打开项目，也能恢复 AI 卡片和封面候选
 
 #### 断点重试策略
 

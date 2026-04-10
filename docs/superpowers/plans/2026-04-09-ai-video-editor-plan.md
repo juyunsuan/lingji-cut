@@ -4,7 +4,7 @@
 
 **Goal:** 为 Editor 添加口播资源手动导入，并实现从文稿→TTS→AI 卡片→封面→时间轴自动排布的 AI 一键剪辑完整流程。
 
-**Architecture:** Feature 1 在 AssetPanel 内新增 PodcastResourceSection，复用已有 `selectMediaFile` IPC。Feature 2 新增 MiniMax TTS IPC 处理器（main.ts）、WorkflowState（ai store）、`useAIVideoWorkflow` hook、`TimelineAIOverlay` 动画组件，两端（ScriptWorkbench / Editor）共享同一 hook 入口。
+**Architecture:** Feature 1 在 AssetPanel 内新增 PodcastResourceSection，复用已有 `selectMediaFile` IPC。Feature 2 新增可取消的 MiniMax TTS IPC 处理器（main.ts）、WorkflowState（ai store）、`useAIVideoWorkflow` hook、`TimelineAIOverlay` 动画组件，两端（ScriptWorkbench / Editor）共享同一 hook 入口；AI 分析结果与封面候选沿用现有 `ai-analysis.json` 持久化链路。
 
 **Tech Stack:** React 19, Zustand 5, TypeScript 6, Electron 41 IPC, MiniMax T2A Pro API, CSS Animation
 
@@ -19,9 +19,9 @@
 | `src/types/ai.ts` | 修改 — AISettings 增加 MiniMax 字段 |
 | `src/store/ai.ts` | 修改 — loadAISettings 默认值 + WorkflowState + workflow actions |
 | `src/components/AISettingsModal.tsx` | 修改 — 新增 MiniMax 配置区块 |
-| `src/lib/electron-api.ts` | 修改 — generateTTS + onTTSProgress 类型 |
-| `electron/preload.ts` | 修改 — 暴露 generateTTS + onTTSProgress |
-| `electron/main.ts` | 修改 — generateTTS IPC 处理器 + SRT 组装 |
+| `src/lib/electron-api.ts` | 修改 — generateTTS + onTTSProgress + cancelTTS 类型 |
+| `electron/preload.ts` | 修改 — 暴露 generateTTS + onTTSProgress + cancelTTS |
+| `electron/main.ts` | 修改 — generateTTS/cancelTTS IPC 处理器 + SRT 组装 |
 | `src/hooks/useAIVideoWorkflow.ts` | 新增 — 工作流状态机 hook |
 | `src/components/TimelineAIOverlay.tsx` | 新增 — 进度横幅 + floating 光标 + 飞入动画 |
 | `src/pages/Editor.tsx` | 修改 — 挂载 Overlay、AI 剪辑按钮、tts_done 自动继续 |
@@ -258,6 +258,8 @@ import { useAIStore } from '../store/ai';
     const confirmed = window.confirm('替换字幕后，AI 卡片分析将失效。是否重新分析？');
     if (confirmed) {
       useAIStore.getState().clearAnalysis();
+      // 不能停在 clearAnalysis()；需立即复用现有 analyzeSrt + saveAIAnalysis 链路重建结果
+      // 若当前 AI 配置不完整，则保留清空状态并引导用户补全配置
     }
   }, [store]);
 ```
@@ -493,6 +495,7 @@ git commit -m "feat(ai-store): 新增 WorkflowState 支持 AI 剪辑流程状态
 在 `selectOutputPath` 行前插入：
 ```typescript
   generateTTS: (args: {
+    requestId: string;
     text: string;
     voiceId: string;
     speed: number;
@@ -501,6 +504,7 @@ git commit -m "feat(ai-store): 新增 WorkflowState 支持 AI 剪辑流程状态
     projectDir: string;
   }) => Promise<{ audioPath: string; srtPath: string; durationMs: number }>;
   onTTSProgress: (callback: (pct: number) => void) => () => void;
+  cancelTTS: (requestId: string) => Promise<void>;
 ```
 
 - [ ] **Step 2: 在 electron/preload.ts 的 contextBridge.exposeInMainWorld('electronAPI', {...}) 内追加**
@@ -508,6 +512,7 @@ git commit -m "feat(ai-store): 新增 WorkflowState 支持 AI 剪辑流程状态
 在 `selectOutputPath: ...` 行前插入：
 ```typescript
   generateTTS: (args: {
+    requestId: string;
     text: string;
     voiceId: string;
     speed: number;
@@ -520,6 +525,7 @@ git commit -m "feat(ai-store): 新增 WorkflowState 支持 AI 剪辑流程状态
     ipcRenderer.on('tts-progress', handler);
     return () => ipcRenderer.removeListener('tts-progress', handler);
   },
+  cancelTTS: (requestId: string) => ipcRenderer.invoke('cancel-tts', requestId),
 ```
 
 - [ ] **Step 3: 在 electron/main.ts 末尾（最后一个 ipcMain.handle 之后）添加 SRT 组装函数**
@@ -532,6 +538,8 @@ interface MinimaxSubtitleWord {
   time_ms: number;
   duration_ms: number;
 }
+
+const activeTtsRequests = new Map<string, AbortController>();
 
 function assembleSRT(words: MinimaxSubtitleWord[]): string {
   if (words.length === 0) return '';
@@ -582,6 +590,7 @@ ipcMain.handle(
   async (
     _event,
     args: {
+      requestId: string;
       text: string;
       voiceId: string;
       speed: number;
@@ -590,7 +599,9 @@ ipcMain.handle(
       projectDir: string;
     },
   ) => {
-    const { text, voiceId, speed, apiKey, groupId, projectDir } = args;
+    const { requestId, text, voiceId, speed, apiKey, groupId, projectDir } = args;
+    const controller = new AbortController();
+    activeTtsRequests.set(requestId, controller);
 
     const response = await fetch('https://api.minimax.chat/v1/t2a_pro', {
       method: 'POST',
@@ -598,6 +609,7 @@ ipcMain.handle(
         Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
       body: JSON.stringify({
         model: 'speech-01-turbo',
         text,
@@ -685,10 +697,18 @@ ipcMain.handle(
 
     mainWindow?.webContents.send('tts-progress', 100);
 
+    activeTtsRequests.delete(requestId);
     return { audioPath, srtPath, durationMs };
   },
 );
+
+ipcMain.handle('cancel-tts', async (_event, requestId: string) => {
+  activeTtsRequests.get(requestId)?.abort();
+  activeTtsRequests.delete(requestId);
+});
 ```
+
+> 注意：`generate-tts` 处理器需要用 `try/finally` 包住请求与文件写入逻辑，确保异常和取消时都能清理 `activeTtsRequests`，避免泄漏脏状态。
 
 - [ ] **Step 5: Commit**
 
@@ -708,6 +728,7 @@ git commit -m "feat(electron): 新增 generateTTS IPC + MiniMax T2A 处理器与
 
 ```typescript
 import { useCallback, useRef } from 'react';
+import { createPersistedAIState } from '../lib/ai-persistence';
 import { useAIStore, loadAISettings } from '../store/ai';
 import { useTimelineStore } from '../store/timeline';
 import { getProjectDir } from '../store/timeline';
@@ -727,8 +748,20 @@ export function useAIVideoWorkflow() {
     useAIStore();
   const timelineStore = useTimelineStore();
   const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef('');
   const retryStepRef = useRef<WorkflowStep>('tts_generating');
   const scriptTextRef = useRef('');
+
+  const persistAIState = useCallback(
+    async (projectDir: string, analysisResult: AIAnalysisResult | null) => {
+      const nextState = createPersistedAIState(
+        analysisResult,
+        useAIStore.getState().coverCandidates,
+      );
+      await window.electronAPI.saveAIAnalysis(projectDir, JSON.stringify(nextState, null, 2));
+    },
+    [],
+  );
 
   const runFromStep = useCallback(
     async (fromStep: WorkflowStep, scriptText: string, projectDir: string) => {
@@ -763,6 +796,7 @@ export function useAIVideoWorkflow() {
         let ttsResult: { audioPath: string; srtPath: string; durationMs: number };
         try {
           ttsResult = await window.electronAPI.generateTTS({
+            requestId: requestIdRef.current,
             text: scriptText,
             voiceId: settings.minimaxVoiceId || 'male-qn-qingse',
             speed: settings.minimaxSpeed ?? 1.0,
@@ -826,6 +860,7 @@ export function useAIVideoWorkflow() {
             settings,
           })) as AIAnalysisResult;
           setAnalysisResult(analysisResult);
+          await persistAIState(projectDir, analysisResult);
         } catch (err) {
           setWorkflow({
             step: 'error',
@@ -865,6 +900,7 @@ export function useAIVideoWorkflow() {
               selectCover(randomPick.id);
               timelineStore.setGlobalBackground(randomPick.imageUrl);
             }
+            await persistAIState(projectDir, useAIStore.getState().analysisResult);
           } catch (err) {
             // 封面生成失败不阻断流程，继续 arranging
             console.warn('封面生成失败，跳过:', err);
@@ -901,6 +937,7 @@ export function useAIVideoWorkflow() {
       const projectDir = getProjectDir() ?? '';
       scriptTextRef.current = scriptText;
       abortRef.current = new AbortController();
+      requestIdRef.current = crypto.randomUUID();
       retryStepRef.current = 'tts_generating';
       void runFromStep('tts_generating', scriptText, projectDir);
     },
@@ -909,12 +946,16 @@ export function useAIVideoWorkflow() {
 
   const cancel = useCallback(() => {
     abortRef.current?.abort();
+    if (requestIdRef.current) {
+      void window.electronAPI.cancelTTS(requestIdRef.current);
+    }
     resetWorkflow();
   }, [resetWorkflow]);
 
   const retry = useCallback(() => {
     const projectDir = getProjectDir() ?? '';
     abortRef.current = new AbortController();
+    requestIdRef.current = crypto.randomUUID();
     void runFromStep(retryStepRef.current, scriptTextRef.current, projectDir);
   }, [runFromStep]);
 
