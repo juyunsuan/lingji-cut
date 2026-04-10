@@ -9,7 +9,7 @@ import type {
   SubtitleStyle,
   TimelineData,
 } from '../types';
-import { DEFAULT_VISUAL_TRACK_ID, createDefaultTimeline } from '../types';
+import { DEFAULT_VISUAL_TRACK_ID, DEFAULT_AI_CARDS_TRACK_ID, createDefaultTimeline, createVisualTrack } from '../types';
 import type { AICardTimelineDraft } from '../types/ai';
 import { getFileNameFromPath } from '../lib/utils';
 import { getNextVisualTrack, normalizeTimelineData } from '../lib/timeline-tracks';
@@ -510,8 +510,13 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
   },
   addAICardsToTimeline: (cards) =>
     set((state) => {
-      const trackId =
-        state.timeline.tracks.find((track) => track.kind === 'visual')?.id ?? DEFAULT_VISUAL_TRACK_ID;
+      const existingAITrack = state.timeline.tracks.find(
+        (track) => track.id === DEFAULT_AI_CARDS_TRACK_ID,
+      );
+      const trackId = existingAITrack?.id ?? DEFAULT_AI_CARDS_TRACK_ID;
+      const tracks = existingAITrack
+        ? state.timeline.tracks
+        : [...state.timeline.tracks, createVisualTrack(2, 2)];
       const overlays = [...state.timeline.overlays];
 
       for (const card of cards) {
@@ -569,6 +574,7 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
       }
       const nextTimeline = normalizeTimeline({
         ...state.timeline,
+        tracks,
         overlays,
       });
 
@@ -883,7 +889,7 @@ if (typeof window !== 'undefined') {
     }
 
     const projectDir = getProjectDir();
-    if (!projectDir || !window.electronAPI?.saveTimeline) {
+    if (!projectDir || !window.electronAPI?.saveProjectSection) {
       return;
     }
 
@@ -894,7 +900,7 @@ if (typeof window !== 'undefined') {
 
     saveTimer = setTimeout(() => {
       void window.electronAPI
-        .saveTimeline(projectDir, JSON.stringify(state.timeline, null, 2))
+        .saveProjectSection(projectDir, 'timeline', JSON.stringify(state.timeline))
         .then(() => {
           emitSaveStatus('saved');
         })
