@@ -187,6 +187,11 @@ export function AIPanel({
       setIsSettingsOpen(true);
       return;
     }
+    if (!settings) {
+      setAnalysisError('请先完成 AI 配置');
+      setIsSettingsOpen(true);
+      return;
+    }
 
     if (!timeline.podcast.srtPath) {
       setAnalysisError('请先导入 SRT 字幕文件');
@@ -273,6 +278,11 @@ export function AIPanel({
     const settingsIssue = getAISettingsIssue(settings);
     if (settingsIssue) {
       setAnalysisError(settingsIssue);
+      setIsSettingsOpen(true);
+      return;
+    }
+    if (!settings) {
+      setAnalysisError('请先完成 AI 配置');
       setIsSettingsOpen(true);
       return;
     }

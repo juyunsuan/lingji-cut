@@ -27,6 +27,12 @@ interface WorkflowSessionState {
   cancelled: boolean;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 const workflowSession: WorkflowSessionState = {
   requestId: '',
   retryStep: 'tts_generating',
@@ -314,7 +320,8 @@ export function useAIVideoWorkflow() {
       if (fromStep === 'arranging') {
         try {
           const { analysisResult } = useAIStore.getState();
-          const drafts = (analysisResult?.cards ?? [])
+          const allCards = analysisResult?.cards ?? [];
+          const drafts = allCards
             .filter((card) => card.enabled)
             .map(buildAICardTimelineDraft);
 
@@ -322,8 +329,21 @@ export function useAIVideoWorkflow() {
             return;
           }
 
+          timelineStore.removeAICardOverlaysBySourceIds(allCards.map((card) => card.id));
+
           if (drafts.length > 0) {
-            timelineStore.addAICardsToTimeline(drafts);
+            for (const [index, draft] of drafts.entries()) {
+              if (isStaleRun()) {
+                return;
+              }
+
+              timelineStore.addAICardsToTimeline([draft]);
+              setWorkflow({
+                progress: Math.round(72 + ((index + 1) / drafts.length) * 24),
+                stepLabel: `正在排布时间轴… ${index + 1}/${drafts.length}`,
+              });
+              await sleep(90);
+            }
           }
 
           setWorkflow({
@@ -363,13 +383,13 @@ export function useAIVideoWorkflow() {
   );
 
   const cancel = useCallback(() => {
+    const currentRequestId = workflowSession.requestId;
     workflowSession.cancelled = true;
 
-    if (workflowSession.requestId) {
-      void window.electronAPI.cancelTTS(workflowSession.requestId);
+    if (currentRequestId) {
+      void window.electronAPI.cancelTTS(currentRequestId);
     }
 
-    resetWorkflowSession();
     resetWorkflow();
   }, [resetWorkflow]);
 

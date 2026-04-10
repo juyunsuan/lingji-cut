@@ -90,6 +90,7 @@ export function Editor({
   const {
     start: startWorkflow,
     cancel: cancelWorkflow,
+    retry: retryWorkflow,
     continueFromTtsDone,
     workflow,
   } = useAIVideoWorkflow();
@@ -371,10 +372,14 @@ export function Editor({
       return;
     }
 
+    const durationMs = await window.electronAPI
+      .getAudioDuration(audioPath)
+      .catch(() => store.timeline.podcast?.durationMs ?? 0);
+
     store.setPodcast(
       audioPath,
       store.timeline.podcast?.srtPath ?? '',
-      store.timeline.podcast?.durationMs ?? 0,
+      durationMs,
     );
   }, [store]);
 
@@ -387,8 +392,6 @@ export function Editor({
     const { entries, durationMs } = await window.electronAPI.parseSrtFile(srtPath);
     store.setSrtEntries(entries);
     store.setPodcast(store.timeline.podcast?.audioPath ?? '', srtPath, durationMs);
-    clearAIAnalysis();
-    await persistAIState(null);
 
     const shouldReanalyze = window.confirm(
       '替换字幕后，AI 卡片分析将失效。是否立即重新分析？',
@@ -701,7 +704,9 @@ export function Editor({
         <TimelineAIOverlay
           workflow={workflow}
           timelineContainerRef={timelineWrapRef}
+          compactTimeline={layout.compactTimeline}
           onCancel={cancelWorkflow}
+          onRetry={retryWorkflow}
         />
       </div>
 

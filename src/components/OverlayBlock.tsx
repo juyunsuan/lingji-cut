@@ -207,7 +207,7 @@ export function OverlayBlock({
     >
       <div className={styles.accentLine} />
 
-      {showImageThumbnail ? (
+      {showImageThumbnail && asset ? (
         <div
           className={styles.thumbnail}
           style={{ width: thumbnailWidth }}

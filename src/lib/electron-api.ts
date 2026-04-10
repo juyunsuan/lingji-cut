@@ -74,6 +74,7 @@ export interface ProjectMetadata {
 
 export interface ElectronAPI {
   parseSrtFile: (filePath: string) => Promise<{ entries: SrtEntry[]; durationMs: number }>;
+  getAudioDuration: (filePath: string) => Promise<number>;
   analyzeSrt: (args: {
     entries?: SrtEntry[];
     srtContent?: string;

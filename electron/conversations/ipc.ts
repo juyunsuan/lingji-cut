@@ -2,6 +2,7 @@ import { ipcMain, type BrowserWindow } from 'electron';
 import { createConversationDb, type ConversationDatabase } from './db';
 import { ConversationRepository } from './repository';
 import { ConversationService } from './service';
+import type { AppendConversationTurnParams, UpdateConversationParams } from './service';
 
 interface ConversationRuntime {
   db: ConversationDatabase;
@@ -65,7 +66,7 @@ export function registerConversationIpc(_getMainWindow: () => BrowserWindow | nu
       _event,
       projectId: string,
       conversationId: number,
-      patch: { title?: string; status?: string; externalId?: string | null },
+      patch: UpdateConversationParams,
     ) => {
       const runtime = getConversationRuntime(projectId);
       return runtime.service.updateConversation(conversationId, patch);
@@ -101,7 +102,7 @@ export function registerConversationIpc(_getMainWindow: () => BrowserWindow | nu
       _event,
       projectId: string,
       conversationId: number,
-      input: { role: string; blocks: unknown[]; sessionStatsJson?: string | null },
+      input: AppendConversationTurnParams,
     ) => {
       const runtime = getConversationRuntime(projectId);
       return runtime.service.appendTurn(projectId, conversationId, input);

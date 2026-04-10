@@ -13,7 +13,7 @@ describe('AI video workflow regressions', () => {
     expect(source).toContain("requestId: currentRequestId");
   });
 
-  it('invalidates persisted AI analysis after subtitle replacement entrypoints', () => {
+  it('keeps subtitle replacement on the new confirmation-based AI invalidation path', () => {
     const appSource = readFileSync(
       new URL('../src/App.tsx', import.meta.url),
       'utf8',
@@ -24,8 +24,9 @@ describe('AI video workflow regressions', () => {
     );
 
     expect(appSource).toContain('createPersistedAIState(null, [])');
-    expect(appSource).toContain('await invalidateAIAnalysis(currentProjectDir);');
-    expect(editorSource).toContain('clearAIAnalysis();');
-    expect(editorSource).toContain('await persistAIState(null);');
+    expect(appSource).toContain('const shouldReanalyze = window.confirm(');
+    expect(appSource).toContain('await rerunAiAnalysisForEntries(entries);');
+    expect(editorSource).toContain('const shouldReanalyze = window.confirm(');
+    expect(editorSource).toContain('await rerunAiAnalysisForCurrentSrt(entries);');
   });
 });

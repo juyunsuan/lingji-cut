@@ -130,7 +130,6 @@ export async function startMcpServer(
     httpServer!.on('error', (err) => {
       console.error('[MCP] HTTP Server 启动失败:', err);
       httpServer = null;
-      mcpServer = null;
       reject(err);
     });
   });

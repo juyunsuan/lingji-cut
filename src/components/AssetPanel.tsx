@@ -46,16 +46,22 @@ function getPathFileName(path: string): string {
   if (!path) {
     return '';
   }
-  const normalizedPath = path.replaceAll('\\', '/');
+  const normalizedPath = path.replace(/\\/g, '/');
   return normalizedPath.split('/').pop() ?? '';
 }
 
 function PodcastResourceSection({
+  compact,
+  expanded,
+  onToggleExpanded,
   audioPath,
   srtPath,
   onReplaceAudio,
   onReplaceSrt,
 }: {
+  compact: boolean;
+  expanded: boolean;
+  onToggleExpanded: () => void;
   audioPath: string;
   srtPath: string;
   onReplaceAudio?: () => Promise<void>;
@@ -66,49 +72,72 @@ function PodcastResourceSection({
 
   return (
     <section className={styles.podcastSection} aria-label="口播资源">
-      <div className={styles.podcastSectionTitle}>口播资源</div>
-      <div className={styles.podcastRow}>
-        <span className={styles.podcastRowIcon}>
-          <AppIcon name="music" size={13} />
+      <button
+        type="button"
+        className={styles.podcastSectionToggle}
+        aria-expanded={expanded}
+        onClick={onToggleExpanded}
+      >
+        <span className={styles.podcastSectionTitle}>
+          <AppIcon
+            name={expanded ? 'chevron-down' : 'chevron-right'}
+            size={12}
+            className={styles.podcastSectionChevron}
+          />
+          <span>口播资源</span>
         </span>
-        <span
-          className={[
-            styles.podcastRowName,
-            audioName ? '' : styles.podcastRowNameEmpty,
-          ].join(' ')}
-          title={audioName || '未设置音频'}
-        >
-          {audioName || '未设置音频'}
-        </span>
-        <button
-          type="button"
-          className={styles.podcastRowAction}
-          onClick={() => void onReplaceAudio?.()}
-        >
-          {audioName ? '替换音频' : '+ 添加'}
-        </button>
-      </div>
-      <div className={styles.podcastRow}>
-        <span className={styles.podcastRowIcon}>
-          <AppIcon name="file-text" size={13} />
-        </span>
-        <span
-          className={[
-            styles.podcastRowName,
-            srtName ? '' : styles.podcastRowNameEmpty,
-          ].join(' ')}
-          title={srtName || '未设置字幕'}
-        >
-          {srtName || '未设置字幕'}
-        </span>
-        <button
-          type="button"
-          className={styles.podcastRowAction}
-          onClick={() => void onReplaceSrt?.()}
-        >
-          {srtName ? '替换字幕' : '+ 添加'}
-        </button>
-      </div>
+        {compact ? (
+          <span className={styles.podcastSectionSummary}>
+            {audioName || srtName ? '已配置' : '未设置'}
+          </span>
+        ) : null}
+      </button>
+      {expanded ? (
+        <div className={styles.podcastSectionBody}>
+          <div className={styles.podcastRow}>
+            <span className={styles.podcastRowIcon}>
+              <AppIcon name="music" size={13} />
+            </span>
+            <span
+              className={[
+                styles.podcastRowName,
+                audioName ? '' : styles.podcastRowNameEmpty,
+              ].join(' ')}
+              title={audioName || '未设置音频'}
+            >
+              {audioName || '未设置音频'}
+            </span>
+            <button
+              type="button"
+              className={styles.podcastRowAction}
+              onClick={() => void onReplaceAudio?.()}
+            >
+              {audioName ? '替换音频' : '+ 添加'}
+            </button>
+          </div>
+          <div className={styles.podcastRow}>
+            <span className={styles.podcastRowIcon}>
+              <AppIcon name="file-text" size={13} />
+            </span>
+            <span
+              className={[
+                styles.podcastRowName,
+                srtName ? '' : styles.podcastRowNameEmpty,
+              ].join(' ')}
+              title={srtName || '未设置字幕'}
+            >
+              {srtName || '未设置字幕'}
+            </span>
+            <button
+              type="button"
+              className={styles.podcastRowAction}
+              onClick={() => void onReplaceSrt?.()}
+            >
+              {srtName ? '替换字幕' : '+ 添加'}
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -138,6 +167,7 @@ export function AssetPanel({
   const [keyword, setKeyword] = useState('');
   const [activeFilter, setActiveFilter] = useState<AssetFilterKey>('all');
   const [pendingRemovalPath, setPendingRemovalPath] = useState<string | null>(null);
+  const [podcastExpanded, setPodcastExpanded] = useState(!compact);
 
   const handleAddAsset = useCallback(async () => {
     if (onAddAsset) {
@@ -180,14 +210,15 @@ export function AssetPanel({
     <aside
       className={[styles.root, compact ? styles.compact : styles.regular].join(' ')}
     >
-      {!compact && (
-        <PodcastResourceSection
-          audioPath={timeline.podcast?.audioPath ?? ''}
-          srtPath={timeline.podcast?.srtPath ?? ''}
-          onReplaceAudio={onReplaceAudio}
-          onReplaceSrt={onReplaceSrt}
-        />
-      )}
+      <PodcastResourceSection
+        compact={compact}
+        expanded={podcastExpanded}
+        onToggleExpanded={() => setPodcastExpanded((current) => !current)}
+        audioPath={timeline.podcast?.audioPath ?? ''}
+        srtPath={timeline.podcast?.srtPath ?? ''}
+        onReplaceAudio={onReplaceAudio}
+        onReplaceSrt={onReplaceSrt}
+      />
 
       {/* 搜索栏 — compact 时通过 CSS 隐藏 */}
       {!compact && (

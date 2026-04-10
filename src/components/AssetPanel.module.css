@@ -27,13 +27,40 @@
   border-bottom: 1px solid var(--color-separator);
 }
 
+.podcastSectionToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
 .podcastSectionTitle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
   text-transform: uppercase;
-  margin-bottom: 6px;
+}
+
+.podcastSectionChevron {
+  opacity: 0.78;
+}
+
+.podcastSectionSummary {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+.podcastSectionBody {
+  margin-top: 6px;
 }
 
 .podcastRow {
@@ -81,6 +108,10 @@
 .podcastRowAction:hover {
   background: var(--color-panel-elevated);
   color: var(--color-text-primary);
+}
+
+.compact .podcastSection {
+  padding: 8px;
 }
 
 /* ── 搜索栏 ── */

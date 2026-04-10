@@ -172,7 +172,7 @@ export class BinaryManager {
     // execFileAsync 在非零退出码时自动 throw，这里处理 stderr 中有警告但退出码为 0 的情况
     if (stderr && (stderr.includes('ERR!') || stderr.includes('EACCES') || stderr.includes('EEXIST'))) {
       const err = new Error(`npm install failed: ${stderr}`);
-      (err as Record<string, unknown>).stderr = stderr;
+      (err as Error & { stderr?: string }).stderr = stderr;
       throw err;
     }
   }

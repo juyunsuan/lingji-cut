@@ -50,7 +50,12 @@ interface ScriptWorkbenchProps {
 const SPECIAL_FILES = new Set(['original.md', 'script.md']);
 
 export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchProps) {
-  const { start: startWorkflow, workflow } = useAIVideoWorkflow();
+  const {
+    start: startWorkflow,
+    cancel: cancelWorkflow,
+    retry: retryWorkflow,
+    workflow,
+  } = useAIVideoWorkflow();
   const {
     currentStep,
     originalText,
@@ -1448,6 +1453,47 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
             </div>
           ) : null}
           <div className={styles.editorBody}>
+            {workflow.step !== 'idle' && workflow.step !== 'done' ? (
+              <div className={styles.workflowOverlay}>
+                <div className={styles.workflowOverlayCard}>
+                  <div className={styles.workflowOverlayHeader}>
+                    <span className={styles.workflowOverlayTitle}>
+                      {workflow.step === 'error' ? 'AI 视频流程已中断' : 'AI 正在生成视频草稿'}
+                    </span>
+                    <span className={styles.workflowOverlayMeta}>
+                      {workflow.step === 'error'
+                        ? workflow.error ?? '发生未知错误'
+                        : `${workflow.stepLabel} ${Math.round(workflow.progress)}%`}
+                    </span>
+                  </div>
+                  {workflow.step !== 'error' ? (
+                    <div className={styles.workflowOverlayProgressTrack}>
+                      <div
+                        className={styles.workflowOverlayProgressValue}
+                        style={{ width: `${workflow.progress}%` }}
+                      />
+                    </div>
+                  ) : null}
+                  <div className={styles.workflowOverlayActions}>
+                    {workflow.canCancel ? (
+                      <Button variant="ghost" size="sm" onClick={cancelWorkflow}>
+                        取消
+                      </Button>
+                    ) : null}
+                    {workflow.step === 'error' ? (
+                      <>
+                        <Button variant="secondary" size="sm" onClick={retryWorkflow}>
+                          断点重试
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={cancelWorkflow}>
+                          关闭
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {activeFile && fileConflictMap[activeFile] ? (
               <div className={styles.conflictBanner}>
                 <div className={styles.conflictBannerText}>

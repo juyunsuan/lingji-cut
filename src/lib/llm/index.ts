@@ -31,9 +31,17 @@ export async function generateStructuredData(
   systemPrompt: string,
   userMessage: string,
 ): Promise<Record<string, unknown>> {
-  const model = createChatModel(settings).bind({
-    response_format: { type: 'json_object' },
-  });
+  const chatModel = createChatModel(settings) as ReturnType<typeof createChatModel> & {
+    bind?: (kwargs: Record<string, unknown>) => {
+      invoke: (messages: unknown[]) => Promise<{ content: unknown }>;
+    };
+  };
+  const model =
+    typeof chatModel.bind === 'function'
+      ? chatModel.bind({
+          response_format: { type: 'json_object' },
+        })
+      : chatModel;
   const response = await model.invoke(buildPromptMessages(systemPrompt, userMessage));
   const content = assertNonEmptyContent(extractTextContent(response.content), 'LLM 返回空内容');
   return parseStructuredOutput(content);

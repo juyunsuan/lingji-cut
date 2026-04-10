@@ -12,6 +12,10 @@ export function AIConfigTab() {
   const [enableThinking, setEnableThinking] = useState(true);
   const [jimengApiUrl, setJimengApiUrl] = useState('');
   const [jimengSessionId, setJimengSessionId] = useState('');
+  const [minimaxApiKey, setMinimaxApiKey] = useState('');
+  const [minimaxGroupId, setMinimaxGroupId] = useState('');
+  const [minimaxVoiceId, setMinimaxVoiceId] = useState('male-qn-qingse');
+  const [minimaxSpeed, setMinimaxSpeed] = useState(1.0);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
@@ -22,6 +26,10 @@ export function AIConfigTab() {
     setEnableThinking(settings?.enableThinking ?? true);
     setJimengApiUrl(settings?.jimengApiUrl ?? 'http://47.109.159.194:8330');
     setJimengSessionId(settings?.jimengSessionId ?? '');
+    setMinimaxApiKey(settings?.minimaxApiKey ?? '');
+    setMinimaxGroupId(settings?.minimaxGroupId ?? '');
+    setMinimaxVoiceId(settings?.minimaxVoiceId ?? 'male-qn-qingse');
+    setMinimaxSpeed(settings?.minimaxSpeed ?? 1.0);
   }, []);
 
   const handleSave = () => {
@@ -32,6 +40,10 @@ export function AIConfigTab() {
       enableThinking,
       jimengApiUrl,
       jimengSessionId,
+      minimaxApiKey,
+      minimaxGroupId,
+      minimaxVoiceId,
+      minimaxSpeed,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);

@@ -47,6 +47,10 @@ export function SubtitleInspector() {
       setSubtitleHighlightError(settingsIssue);
       return;
     }
+    if (!settings) {
+      setSubtitleHighlightError("请先完成 AI 配置");
+      return;
+    }
 
     if (srtEntries.length === 0) {
       setSubtitleHighlightError("请先导入 SRT 字幕文件");

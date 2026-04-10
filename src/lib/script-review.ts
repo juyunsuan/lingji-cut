@@ -61,6 +61,8 @@ export function parseAnnotations(payload: unknown, scriptText: string): Annotati
       startOffset,
       endOffset: startOffset + raw.originalText.length,
       originalText: raw.originalText,
+      quotedText: raw.originalText,
+      docVersion: 0,
       issue: raw.issue,
       suggestion: raw.suggestion,
       severity: raw.severity,

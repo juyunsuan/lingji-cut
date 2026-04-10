@@ -110,4 +110,15 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('生成视频');
     expect(source).toContain('useAIVideoWorkflow');
   });
+
+  it('renders workflow overlay controls for cancel and retry', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('workflowOverlay');
+    expect(source).toContain('断点重试');
+    expect(source).toContain('cancelWorkflow');
+  });
 });
