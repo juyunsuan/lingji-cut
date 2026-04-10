@@ -32,6 +32,7 @@ import { materializePersistedAIState, materializeTimelineWebCards } from './web-
 import { registerAgentIpc } from './acp/ipc';
 import { registerConversationIpc } from './conversations/ipc';
 import { registerMcpIpc } from './mcp/ipc';
+import { registerScriptHistoryIpc } from './script-history/ipc';
 import { startMcpServer, stopMcpServer } from './mcp/server';
 import { loadProjectFile, saveProjectSection } from './project-file';
 import { loadGlobalSettings, saveGlobalSettings, type GlobalSettingsFile } from './global-settings';
@@ -43,6 +44,8 @@ import {
   refreshRecentProjects,
   type RecentProjectEntry,
 } from './recent-projects';
+import { getVideoImportService } from './video-import/import-service';
+import type { VideoImportRequest } from '../src/lib/video-import-types';
 
 let mainWindow: BrowserWindow | null = null;
 let menuContext: MenuContext = {
@@ -53,6 +56,7 @@ let menuContext: MenuContext = {
 let fileWatcher: FSWatcher | null = null;
 const activeTtsRequests = new Map<string, AbortController>();
 let isAppQuitting = false;
+const videoImportService = getVideoImportService();
 
 function sendMenuEvent(event: MenuEvent) {
   mainWindow?.webContents.send('menu-action', event);
@@ -676,6 +680,20 @@ ipcMain.handle('select-text-file', async () => {
   return { path: filePath, content };
 });
 
+ipcMain.handle('import-video-source', async (_event, request: VideoImportRequest) => {
+  writeAppLog(
+    'info',
+    'video-import',
+    '收到视频导入请求',
+    `${request.sourceType}: ${request.url}`,
+  );
+  return videoImportService.startImport(request);
+});
+
+ipcMain.handle('get-video-import-status', async (_event, importId: string) => {
+  return videoImportService.getImportStatus(importId);
+});
+
 ipcMain.handle('start-watching', async (_event, dir: string) => {
   await fileWatcher?.close();
 
@@ -1043,6 +1061,7 @@ if (process.env.NODE_ENV_ELECTRON_VITE === 'development') {
 registerAgentIpc(() => mainWindow);
 registerConversationIpc(() => mainWindow);
 registerMcpIpc(() => mainWindow);
+registerScriptHistoryIpc();
 
 // 设置 macOS 系统菜单栏应用名称
 app.setName('灵机剪影');
