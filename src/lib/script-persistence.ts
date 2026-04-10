@@ -129,8 +129,18 @@ export async function saveAllDirtyFiles(
 
   for (const file of dirtyFiles) {
     savingFiles.add(file);
+    const content = getText(file);
     try {
-      await window.electronAPI.saveScriptFile(projectDir, file, getText(file));
+      await window.electronAPI.saveScriptFile(projectDir, file, content);
+      // 为 script.md 创建版本快照
+      if (file === 'script.md' && typeof window !== 'undefined' && window.scriptHistoryAPI) {
+        void window.scriptHistoryAPI.create({
+          projectId: projectDir,
+          fileName: file,
+          content,
+          source: 'manual',
+        });
+      }
     } finally {
       setTimeout(() => savingFiles.delete(file), 500);
     }
