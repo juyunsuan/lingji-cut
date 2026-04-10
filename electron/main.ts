@@ -14,6 +14,15 @@ import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-se
 import { generateCoverCandidates } from '../src/lib/jimeng-client';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';
 import type { PersistedAIState } from '../src/lib/ai-persistence';
+import {
+  buildMinimaxTtsRequestBody,
+  decodeMinimaxAudioData,
+  extractMinimaxSubtitleSentences,
+  getMinimaxDurationMs,
+  subtitleJsonToSRT,
+  type MinimaxSubtitleSentence,
+  type MinimaxTtsResponse,
+} from '../src/lib/minimax-tts';
 import { parseSrt } from '../src/lib/srt-parser';
 import type { SrtEntry, TimelineData } from '../src/types';
 import type { AICard, AISettings } from '../src/types/ai';
@@ -24,6 +33,8 @@ import { registerAgentIpc } from './acp/ipc';
 import { registerConversationIpc } from './conversations/ipc';
 import { registerMcpIpc } from './mcp/ipc';
 import { startMcpServer, stopMcpServer } from './mcp/server';
+import { loadProjectFile, saveProjectSection } from './project-file';
+import { loadGlobalSettings, saveGlobalSettings, type GlobalSettingsFile } from './global-settings';
 
 let mainWindow: BrowserWindow | null = null;
 let menuContext: MenuContext = {
@@ -33,61 +44,6 @@ let menuContext: MenuContext = {
 };
 let fileWatcher: FSWatcher | null = null;
 const activeTtsRequests = new Map<string, AbortController>();
-
-interface MinimaxSubtitleWord {
-  text: string;
-  time_ms: number;
-  duration_ms: number;
-}
-
-function assembleSRT(words: MinimaxSubtitleWord[]): string {
-  if (words.length === 0) return '';
-
-  const sentences: Array<{ words: MinimaxSubtitleWord[]; startMs: number; endMs: number }> = [];
-  let current: MinimaxSubtitleWord[] = [];
-
-  for (const word of words) {
-    current.push(word);
-    const isSentenceEnd =
-      /[。！？….!?]$/.test(word.text.trimEnd()) || current.length >= 20;
-    if (isSentenceEnd) {
-      const startMs = current[0].time_ms;
-      const lastWord = current[current.length - 1];
-      sentences.push({
-        words: current,
-        startMs,
-        endMs: lastWord.time_ms + lastWord.duration_ms,
-      });
-      current = [];
-    }
-  }
-
-  if (current.length > 0) {
-    const startMs = current[0].time_ms;
-    const lastWord = current[current.length - 1];
-    sentences.push({
-      words: current,
-      startMs,
-      endMs: lastWord.time_ms + lastWord.duration_ms,
-    });
-  }
-
-  const toSRTTime = (ms: number): string => {
-    const safeMs = Math.max(0, Math.round(ms));
-    const h = Math.floor(safeMs / 3_600_000);
-    const m = Math.floor((safeMs % 3_600_000) / 60_000);
-    const s = Math.floor((safeMs % 60_000) / 1_000);
-    const mil = safeMs % 1_000;
-    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')},${String(mil).padStart(3, '0')}`;
-  };
-
-  return `${sentences
-    .map((sentence, index) => {
-      const text = sentence.words.map((w) => w.text).join('');
-      return `${index + 1}\n${toSRTTime(sentence.startMs)} --> ${toSRTTime(sentence.endMs)}\n${text}`;
-    })
-    .join('\n\n')}\n`;
-}
 
 function sendMenuEvent(event: MenuEvent) {
   mainWindow?.webContents.send('menu-action', event);
@@ -372,6 +328,31 @@ ipcMain.handle(
     return generateCoverCandidates(args.prompts, args.settings, coversDir);
   },
 );
+
+ipcMain.handle('load-project', async (_event, projectDir: string) => {
+  const data = await loadProjectFile(projectDir);
+  return JSON.stringify(data, null, 2);
+});
+
+ipcMain.handle(
+  'save-project-section',
+  async (_event, projectDir: string, section: string, data: string) => {
+    const parsed = JSON.parse(data);
+    await saveProjectSection(projectDir, section as 'timeline' | 'aiAnalysis' | 'script', parsed);
+  },
+);
+
+ipcMain.handle('load-global-settings', async () => {
+  const userDataPath = app.getPath('userData');
+  const settings = await loadGlobalSettings(userDataPath);
+  return settings ? JSON.stringify(settings) : null;
+});
+
+ipcMain.handle('save-global-settings', async (_event, data: string) => {
+  const userDataPath = app.getPath('userData');
+  const settings = JSON.parse(data) as GlobalSettingsFile;
+  await saveGlobalSettings(userDataPath, settings);
+});
 
 ipcMain.handle('save-timeline', async (_event, projectDir: string, data: string) => {
   await fs.mkdir(projectDir, { recursive: true });
@@ -734,110 +715,142 @@ ipcMain.handle(
       text: string;
       voiceId: string;
       speed: number;
+      vol: number;
+      pitch: number;
+      emotion: string;
+      model: string;
       apiKey: string;
-      groupId: string;
       projectDir: string;
     },
   ) => {
-    const { requestId, text, voiceId, speed, apiKey, groupId, projectDir } = args;
+    const { requestId, text, voiceId, speed, vol, pitch, emotion, model, apiKey, projectDir } =
+      args;
     const controller = new AbortController();
     activeTtsRequests.set(requestId, controller);
     mainWindow?.webContents.send('tts-progress', 0);
 
     try {
-      const response = await fetch('https://api.minimax.chat/v1/t2a_pro', {
+      const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
-          GroupId: groupId,
         },
         signal: controller.signal,
-        body: JSON.stringify({
-          model: 'speech-01-turbo',
-          text,
-          stream: true,
-          voice_setting: { voice_id: voiceId, speed, pitch: 0 },
-          audio_setting: { sample_rate: 32000, bitrate: 128000, format: 'mp3' },
-          subtitle_enable: true,
-          language_boost: 'zh',
-        }),
+        body: JSON.stringify(
+          buildMinimaxTtsRequestBody({
+            text,
+            voiceId,
+            speed,
+            vol,
+            pitch,
+            emotion,
+            model,
+          }),
+        ),
       });
 
-      if (!response.ok || !response.body) {
+      if (!response.ok) {
         const errText = await response.text().catch(() => String(response.status));
         throw new Error(`MiniMax TTS 请求失败: ${errText}`);
       }
 
-      const audioChunks: Buffer[] = [];
-      let subtitleWords: MinimaxSubtitleWord[] = [];
-      let receivedChunks = 0;
-      let estimatedTotal = 50;
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let lineBuffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!value) continue;
-
-        lineBuffer += decoder.decode(value, { stream: true });
-        const lines = lineBuffer.split('\n');
-        lineBuffer = lines.pop() ?? '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          const jsonStr = line.slice(6).trim();
-          if (!jsonStr || jsonStr === '[DONE]') continue;
-
-          try {
-            const parsed = JSON.parse(jsonStr) as {
-              data?: {
-                audio?: string;
-                status?: number;
-                subtitle?: { subtitles?: MinimaxSubtitleWord[] };
-              };
-            };
-
-            const audioBase64 = parsed?.data?.audio;
-            const status = parsed?.data?.status;
-
-            if (audioBase64) {
-              audioChunks.push(Buffer.from(audioBase64, 'base64'));
-              receivedChunks += 1;
-            }
-
-            if (status === 2 && Array.isArray(parsed?.data?.subtitle?.subtitles)) {
-              subtitleWords = parsed.data.subtitle.subtitles;
-              estimatedTotal = Math.max(estimatedTotal, receivedChunks);
-            }
-
-            if (status === 1) {
-              estimatedTotal = Math.max(estimatedTotal, receivedChunks + 3);
-            }
-
-            const pct = Math.round(Math.min(90, (receivedChunks / estimatedTotal) * 90));
-            mainWindow?.webContents.send('tts-progress', pct);
-          } catch {
-            // 忽略单行 SSE 解析异常，继续消费后续块
-          }
-        }
+      const result = (await response.json()) as MinimaxTtsResponse;
+      const baseResp = result.base_resp;
+      if (baseResp && typeof baseResp.status_code === 'number' && baseResp.status_code !== 0) {
+        throw new Error(
+          `MiniMax TTS 接口错误: [${baseResp.status_code}] ${baseResp.status_msg ?? '未知错误'}`,
+        );
       }
+
+      writeAppLog(
+        'info',
+        'tts',
+        'TTS 同步响应接收完成',
+        `audio=${result.data?.audio ? '已返回' : '未返回'}, subtitle=${result.data?.subtitle_file ? '已返回' : '未返回'}`,
+      );
+      mainWindow?.webContents.send('tts-progress', 35);
 
       await fs.mkdir(projectDir, { recursive: true });
 
+      const audioField = result.data?.audio ?? '';
+      if (!audioField) {
+        throw new Error('MiniMax TTS 未返回任何音频数据，请检查 API Key 及配置');
+      }
+
+      let audioBuf: Buffer;
+      if (/^https?:\/\//.test(audioField)) {
+        const audioResponse = await fetch(audioField, { signal: controller.signal });
+        if (!audioResponse.ok) {
+          throw new Error(`MiniMax 音频下载失败: HTTP ${audioResponse.status}`);
+        }
+        audioBuf = Buffer.from(await audioResponse.arrayBuffer());
+      } else {
+        audioBuf = decodeMinimaxAudioData(audioField);
+      }
+
       const audioPath = path.join(projectDir, 'podcast-audio.mp3');
-      const audioBuffer = Buffer.concat(audioChunks);
-      await fs.writeFile(audioPath, audioBuffer);
+      await fs.writeFile(audioPath, audioBuf);
+      writeAppLog(
+        'info',
+        'tts',
+        `音频已保存，大小=${audioBuf.byteLength} 字节，路径=${audioPath}`,
+      );
+
+      if (audioBuf.byteLength === 0) {
+        throw new Error('MiniMax TTS 未返回任何音频数据，请检查 API Key 及配置');
+      }
+      mainWindow?.webContents.send('tts-progress', 70);
+
+      let subtitleSentences: MinimaxSubtitleSentence[] = [];
+      if (result.data?.subtitle_file) {
+        try {
+          const subtitleResp = await fetch(result.data.subtitle_file, { signal: controller.signal });
+          if (!subtitleResp.ok) {
+            throw new Error(`字幕文件下载失败: HTTP ${subtitleResp.status}`);
+          }
+          subtitleSentences = extractMinimaxSubtitleSentences(await subtitleResp.json());
+          writeAppLog(
+            'info',
+            'tts',
+            `字幕下载成功，句数=${subtitleSentences.length}`,
+          );
+        } catch (err) {
+          writeAppLog(
+            'warn',
+            'tts',
+            '字幕文件下载失败，SRT 将为空',
+            err instanceof Error ? err.message : String(err),
+          );
+        }
+      } else {
+        subtitleSentences = extractMinimaxSubtitleSentences(result.data);
+        writeAppLog(
+          'warn',
+          'tts',
+          subtitleSentences.length > 0 ? '未获取到字幕文件 URL，已回退为内联字幕数据' : '未获取到字幕文件 URL，SRT 将为空',
+        );
+      }
 
       const srtPath = path.join(projectDir, 'podcast-subtitles.srt');
-      const srtContent = assembleSRT(subtitleWords);
-      await fs.writeFile(srtPath, srtContent, 'utf-8');
+      await fs.writeFile(srtPath, subtitleJsonToSRT(subtitleSentences), 'utf-8');
+      mainWindow?.webContents.send('tts-progress', 85);
 
-      const lastWord = subtitleWords[subtitleWords.length - 1];
-      const durationMs = lastWord ? lastWord.time_ms + lastWord.duration_ms : 0;
+      let durationMs = getMinimaxDurationMs(result, subtitleSentences);
+      if (durationMs <= 0) {
+        try {
+          const metadata = await getVideoMetadata(audioPath);
+          durationMs = Math.max(1_000, Math.round((metadata.durationInSeconds ?? 0) * 1000));
+        } catch (error) {
+          writeAppLog(
+            'warn',
+            'tts',
+            '读取音频时长失败，将使用 1 秒兜底',
+            error instanceof Error ? error.message : String(error),
+          );
+          durationMs = 1_000;
+        }
+      }
       mainWindow?.webContents.send('tts-progress', 100);
 
       return { audioPath, srtPath, durationMs };
