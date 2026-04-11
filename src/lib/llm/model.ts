@@ -8,7 +8,9 @@ function normalizeBaseUrl(baseUrl: string): string {
 function buildModelKwargs(settings: AISettings): Record<string, unknown> | undefined {
   if (settings.enableThinking === false) {
     return {
-        enable_thinking: false
+      extra_body: {
+        enable_thinking: false,
+      },
     };
   }
 
