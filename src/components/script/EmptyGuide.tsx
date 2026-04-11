@@ -6,6 +6,7 @@ interface EmptyGuideProps {
   hasProjectDir: boolean;
   onSelectProjectDir: () => void;
   onImportText: () => void;
+  onImportDouyin: () => void;
   onCreateBlank: () => void;
   onDropFile?: (relativePath: string) => void;
 }
@@ -21,6 +22,7 @@ export function EmptyGuide({
   hasProjectDir,
   onSelectProjectDir,
   onImportText,
+  onImportDouyin,
   onCreateBlank,
   onDropFile,
 }: EmptyGuideProps) {
@@ -169,6 +171,10 @@ export function EmptyGuide({
             <button type="button" onClick={onImportText} style={secondaryBtnStyle}>
               <Import size={16} />
               导入文本文件
+            </button>
+            <button type="button" onClick={onImportDouyin} style={secondaryBtnStyle}>
+              <Import size={16} />
+              导入抖音视频
             </button>
             <button type="button" onClick={onCreateBlank} style={secondaryBtnStyle}>
               <PenSquare size={16} />

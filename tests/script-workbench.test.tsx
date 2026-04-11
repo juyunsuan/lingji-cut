@@ -39,6 +39,7 @@ describe('ScriptWorkbench', () => {
 
     expect(html).toContain('选择工作目录');
     expect(html).toContain('导入文本文件');
+    expect(html).toContain('导入抖音视频');
   });
 
   it('renders the review workspace when original text is available', () => {
@@ -120,5 +121,35 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('workflowOverlay');
     expect(source).toContain('断点重试');
     expect(source).toContain('cancelWorkflow');
+  });
+
+  it('wires a douyin import dialog into the workbench shell', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('DouyinImportDialog');
+    expect(source).toContain('handleImportDouyin');
+  });
+
+  it('routes standard video preview json files into a custom preview pane', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('VideoImportPreviewPane');
+    expect(source).toContain('isVideoImportPreviewFile');
+    expect(source).toContain('activeFileIsVideoPreview');
+  });
+
+  it('advances the workbench step after a script is generated', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('setCurrentStep(2)');
   });
 });

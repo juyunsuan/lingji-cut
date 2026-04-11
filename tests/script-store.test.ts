@@ -242,6 +242,62 @@ describe('script store', () => {
     });
   });
 
+  describe('video import state', () => {
+    it('tracks the latest video import progress and result', () => {
+      useScriptStore.getState().setVideoImportProgress({
+        importId: 'douyin_001',
+        sourceType: 'douyin',
+        status: 'transcribing',
+        progress: 72,
+        stepLabel: '正在进行 bcut 转录',
+      });
+      useScriptStore.getState().setLastVideoImport({
+        importId: 'douyin_001',
+        sourceType: 'douyin',
+        videoId: '001',
+        title: '测试视频',
+        projectDir: '/tmp/demo',
+        importDir: '/tmp/demo/imports/douyin/001',
+        videoPath: '/tmp/demo/imports/douyin/001/video.mp4',
+        audioPath: '/tmp/demo/imports/douyin/001/audio.mp3',
+        transcriptPath: '/tmp/demo/imports/douyin/001/transcript.md',
+        transcriptSrtPath: '/tmp/demo/imports/douyin/001/transcript.srt',
+        originalPath: '/tmp/demo/original.md',
+        sourceMetadataPath: '/tmp/demo/imports/douyin/001/source.json',
+        resultMetadataPath: '/tmp/demo/imports/douyin/001/import-result.json',
+        previewMetadataPath: '/tmp/demo/imports/douyin/001/preview.json',
+        sourceUrl: 'https://v.douyin.com/demo',
+        resolvedPageUrl: 'https://www.douyin.com/video/001',
+        engine: 'bcut',
+        syncedToOriginal: true,
+        createdAt: '2026-04-10T00:00:00.000Z',
+      });
+
+      const state = useScriptStore.getState();
+      expect(state.videoImportStatus).toBe('transcribing');
+      expect(state.videoImportProgress?.progress).toBe(72);
+      expect(state.lastVideoImport?.videoId).toBe('001');
+    });
+
+    it('reset clears video import state', () => {
+      useScriptStore.getState().setVideoImportProgress({
+        importId: 'douyin_001',
+        sourceType: 'douyin',
+        status: 'error',
+        progress: 100,
+        stepLabel: '失败',
+        error: 'network',
+      });
+
+      useScriptStore.getState().reset();
+
+      const state = useScriptStore.getState();
+      expect(state.videoImportStatus).toBeNull();
+      expect(state.videoImportProgress).toBeNull();
+      expect(state.lastVideoImport).toBeNull();
+    });
+  });
+
   describe('clearProjectSession', () => {
     it('fully clears the active project and transient editor state', () => {
       useScriptStore.setState({

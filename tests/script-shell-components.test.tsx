@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { FileEntry } from '../src/lib/electron-api';
@@ -120,5 +121,29 @@ describe('script shell components', () => {
     expect(html).toContain('original.md');
     expect(html).toContain('script.md');
     expect(html).toContain('⚠');
+  });
+
+  it('avoids conditional hook execution inside VersionDropdown', () => {
+    const source = readFileSync(
+      new URL('../src/components/script/VersionDropdown.tsx', import.meta.url),
+      'utf8',
+    );
+
+    const firstUseEffectIndex = source.indexOf('useEffect(() => {');
+    const openedFileGuardIndex = source.indexOf("if (openedFile !== 'script.md') return null;");
+
+    expect(firstUseEffectIndex).toBeGreaterThan(-1);
+    expect(openedFileGuardIndex).toBe(-1);
+  });
+
+  it('prefers the generate-script branch when currentStep indicates a fresh original draft', () => {
+    const source = readFileSync(
+      new URL('../src/components/script/QuickActionBar.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('const currentStep = useScriptStore((s) => s.currentStep);');
+    expect(source).toContain('const shouldPromptGenerate = hasOriginal && currentStep <= 1;');
+    expect(source).toContain('if (shouldPromptGenerate || (hasOriginal && !hasScript))');
   });
 });

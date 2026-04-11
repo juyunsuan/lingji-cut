@@ -1,4 +1,6 @@
-import { FileText, X } from 'lucide-react';
+import { FileText, Film, X } from 'lucide-react';
+import { isVideoImportPreviewFile } from '../../lib/video-import-preview';
+import { VersionDropdown } from './VersionDropdown';
 
 interface FileTabsProps {
   tabs: string[];
@@ -36,6 +38,7 @@ export function FileTabs({
         const active = tab === openedFile;
         const dirty = fileDirtyMap[tab];
         const conflict = fileConflictMap[tab];
+        const previewFile = isVideoImportPreviewFile(tab);
 
         return (
           <div
@@ -69,7 +72,7 @@ export function FileTabs({
                 fontWeight: 600,
               }}
             >
-              <FileText size={14} />
+              {previewFile ? <Film size={14} /> : <FileText size={14} />}
               <span>{tab}</span>
               {dirty ? (
                 <span
@@ -127,6 +130,13 @@ export function FileTabs({
           </div>
         );
       })}
+
+      {/* 版本历史下拉：仅在查看 script.md 时挂载，避免无意义重渲染 */}
+      {openedFile === 'script.md' ? (
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center' }}>
+          <VersionDropdown />
+        </div>
+      ) : null}
     </div>
   );
 }

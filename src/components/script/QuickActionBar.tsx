@@ -13,6 +13,7 @@ interface QuickActionBarProps {
 
 /** 内容区顶部快捷操作栏：根据工作流状态展示不同操作按钮 */
 export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarProps) {
+  const currentStep = useScriptStore((s) => s.currentStep);
   const workspaceFiles = useScriptStore((s) => s.workspaceFiles);
   const agentOperation = useScriptStore((s) => s.agentOperation);
   const reviewState = useScriptStore((s) => s.reviewState);
@@ -29,6 +30,7 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
   const isOperating = agentOperation.isOperating;
   const hasOriginal = workspaceFiles.hasOriginalFile;
   const hasScript = workspaceFiles.hasScriptFile;
+  const shouldPromptGenerate = hasOriginal && currentStep <= 1;
   const hasActionableAnnotations = annotations.some(
     (a) => a.status === 'pending' && !a.stale,
   );
@@ -118,8 +120,8 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
     );
   }
 
-  // 有原稿、无口播稿 → 生成
-  if (hasOriginal && !hasScript) {
+  // 新原稿已导入，优先提示生成口播稿
+  if (shouldPromptGenerate || (hasOriginal && !hasScript)) {
     return (
       <div className={styles.bar}>
         <div className={styles.hint}>原稿已就绪</div>

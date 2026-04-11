@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MENU_ACTIONS, isProjectRequiredCommand } from '../src/lib/electron-api';
+import { readFileSync } from 'node:fs';
 
 describe('electron menu actions', () => {
   it('defines the shared command list used by toolbar and native menu', () => {
@@ -27,5 +28,15 @@ describe('electron menu actions', () => {
     expect(isProjectRequiredCommand('undo')).toBe(true);
     expect(isProjectRequiredCommand('replace-srt')).toBe(true);
     expect(isProjectRequiredCommand('export')).toBe(true);
+  });
+
+  it('declares video import APIs for the script workbench bridge', () => {
+    const source = readFileSync(
+      new URL('../src/lib/electron-api.ts', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('importVideoSource');
+    expect(source).toContain('getVideoImportStatus');
   });
 });

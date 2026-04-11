@@ -7,6 +7,7 @@ import { resolve, isAbsolute } from 'node:path';
 import { ipcMain, type BrowserWindow } from 'electron';
 import { z } from 'zod/v4';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { getVideoImportService } from '../video-import/import-service';
 
 // ─── 默认超时（毫秒） ─────────────────────────────────────
 const DEFAULT_TIMEOUT = 30_000;
@@ -133,6 +134,7 @@ export function registerTools(
 ): void {
   // 缓存窗口引用供日志转发使用
   _getMainWindow = getMainWindow;
+  const videoImportService = getVideoImportService();
 
   // ─── 1. 获取编辑器状态 ─────────────────────────────────
   server.registerTool(
@@ -149,6 +151,59 @@ export function registerTools(
       const result = await ipcRequest(win, 'mcp:get-editor-state');
       return jsonResult(result);
     }),
+  );
+
+  server.registerTool(
+    'lingji_import_video_source',
+    {
+      title: '导入视频来源为原稿',
+      description: '导入抖音视频到当前项目，自动下载、转录并同步为 original.md。',
+      inputSchema: {
+        sourceType: z.literal('douyin').describe('当前仅支持 douyin'),
+        url: z.string().describe('抖音分享链接'),
+        projectDir: z.string().describe('目标项目目录'),
+        syncToOriginal: z.boolean().optional().describe('是否同步为 original.md，默认 true'),
+      },
+    },
+    async ({ sourceType, url, projectDir, syncToOriginal }) =>
+      withToolLog(
+        'lingji_import_video_source',
+        { sourceType, url, projectDir, syncToOriginal },
+        async () => {
+          try {
+            const result = await videoImportService.importVideoSource({
+              sourceType,
+              url,
+              projectDir,
+              syncToOriginal: syncToOriginal ?? true,
+            });
+            return jsonResult(result);
+          } catch (error) {
+            return errorResult(
+              error instanceof Error ? error.message : '视频导入失败',
+            );
+          }
+        },
+      ),
+  );
+
+  server.registerTool(
+    'lingji_get_video_import_status',
+    {
+      title: '查询视频导入状态',
+      description: '根据 importId 查询视频导入进度、错误信息或最终结果。',
+      inputSchema: {
+        importId: z.string().describe('视频导入任务 ID'),
+      },
+    },
+    async ({ importId }) =>
+      withToolLog('lingji_get_video_import_status', { importId }, async () => {
+        const status = videoImportService.getImportStatus(importId);
+        if (!status) {
+          return errorResult(`未找到导入任务: ${importId}`);
+        }
+        return jsonResult(status);
+      }),
   );
 
   // ─── 2. 读取脚本内容 ───────────────────────────────────

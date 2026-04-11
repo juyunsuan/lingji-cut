@@ -698,14 +698,14 @@ ipcMain.handle('start-watching', async (_event, dir: string) => {
   await fileWatcher?.close();
 
   fileWatcher = chokidar.watch(dir, {
-    depth: 1,
+    depth: 3,
     ignoreInitial: true,
     ignored: /(^|[/\\])\../,
   });
 
   fileWatcher.on('change', async (filePath: string) => {
     const relative = path.relative(dir, filePath);
-    if (!relative.endsWith('.md')) return;
+    if (!relative.endsWith('.md') && !relative.endsWith('.json')) return;
 
     try {
       const content = await fs.readFile(filePath, 'utf-8');
@@ -745,7 +745,7 @@ ipcMain.handle('read-directory', async (_event, dir: string) => {
     for (const entry of entries) {
       if (entry.name.startsWith('.')) continue;
 
-      if (entry.isDirectory() && currentDepth < 1) {
+      if (entry.isDirectory() && currentDepth < 3) {
         const children = await readDir(path.join(dirPath, entry.name), currentDepth + 1);
         result.push({ name: entry.name, type: 'directory', children });
         continue;

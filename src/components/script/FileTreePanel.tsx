@@ -3,12 +3,14 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  Film,
   Folder,
   FolderOpen,
   Settings2,
 } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import type { FileEntry } from '../../lib/electron-api';
+import { isVideoImportPreviewFile } from '../../lib/video-import-preview';
 import styles from './FileTreePanel.module.css';
 
 interface FileTreePanelProps {
@@ -51,6 +53,10 @@ function isOpenableFile(relativePath: string): boolean {
 function getFileIcon(entry: FileEntry): ReactNode {
   if (entry.name === 'script-state.json') {
     return <Settings2 size={14} strokeWidth={1.8} />;
+  }
+
+  if (entry.name === 'preview.json') {
+    return <Film size={14} strokeWidth={1.8} />;
   }
 
   return <FileText size={14} strokeWidth={1.8} />;
@@ -162,6 +168,7 @@ function TreeNode({
 
   const active = openedFile === relativePath;
   const openable = isOpenableFile(relativePath);
+  const previewFile = isVideoImportPreviewFile(relativePath);
   const dirty = Boolean(fileDirtyMap[relativePath]);
   const conflict = Boolean(fileConflictMap[relativePath]);
   const className = [
@@ -203,6 +210,7 @@ function TreeNode({
       </span>
       <span className={styles.treeLabel}>{entry.name}</span>
       <span className={styles.metaSlot} aria-hidden="true">
+        {previewFile ? <span style={{ fontSize: 10, opacity: 0.7 }}>预览</span> : null}
         {dirty ? <span className={styles.dirtyDot} /> : null}
         {conflict ? <span className={styles.conflictMark}>⚠</span> : null}
       </span>

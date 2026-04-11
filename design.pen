@@ -9691,7 +9691,8 @@
                       "fill": "#EBEBF599",
                       "content": "数据分析",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -9725,7 +9726,8 @@
                       "fill": "#EBEBF599",
                       "content": "团队",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -9759,7 +9761,8 @@
                       "fill": "#EBEBF599",
                       "content": "设置",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -25803,7 +25806,8 @@
                       "fill": "#EBEBF599",
                       "content": "口播模板管理",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -25838,7 +25842,8 @@
                       "fill": "#EBEBF599",
                       "content": "审查规范配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -25873,7 +25878,8 @@
                       "fill": "#EBEBF599",
                       "content": "TTS 语音配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -25918,7 +25924,8 @@
                   "fill": "#EBEBF599",
                   "content": "配置大语言模型和即梦 API 的连接参数",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -26018,7 +26025,8 @@
                               "fill": "#EBEBF54D",
                               "content": "https://api.openai.com/v1",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -26068,7 +26076,8 @@
                               "fill": "#EBEBF54D",
                               "content": "sk-••••••••••••••••••••",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -26119,7 +26128,8 @@
                               "fill": "#EBEBF5CC",
                               "content": "gpt-4o",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -26235,7 +26245,8 @@
                               "fill": "#EBEBF54D",
                               "content": "https://jimeng.jianying.com/...",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -26285,7 +26296,8 @@
                               "fill": "#EBEBF54D",
                               "content": "输入 Session ID",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -26555,7 +26567,8 @@
                       "fill": "#EBEBF599",
                       "content": "AI 基础配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -26627,7 +26640,8 @@
                       "fill": "#EBEBF599",
                       "content": "审查规范配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -26662,7 +26676,8 @@
                       "fill": "#EBEBF599",
                       "content": "TTS 语音配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -26707,7 +26722,8 @@
                   "fill": "#EBEBF599",
                   "content": "管理内置模板和自定义口播稿提示词模板",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -26814,7 +26830,8 @@
                               "width": "fill_container",
                               "content": "严谨客观，数据驱动，适合行业资讯",
                               "fontFamily": "Inter",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -26918,7 +26935,8 @@
                               "width": "fill_container",
                               "content": "轻松专业，适合产品和技术解读",
                               "fontFamily": "Inter",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -27022,7 +27040,8 @@
                               "width": "fill_container",
                               "content": "通俗易懂，生动形象，适合大众传播",
                               "fontFamily": "Inter",
-                              "fontSize": 12
+                              "fontSize": 12,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "frame",
@@ -27329,7 +27348,8 @@
                           "width": "fill_container",
                           "content": "对话式深入探讨，层层递进，适合专业话题深度分析",
                           "fontFamily": "Inter",
-                          "fontSize": 12
+                          "fontSize": 12,
+                          "fontWeight": "normal"
                         },
                         {
                           "type": "frame",
@@ -27368,7 +27388,8 @@
                               "content": "你是一位资深的深度访谈节目主持人，擅长用循序渐进的方式引导听众理解复杂话题。请将以下报告内容改写为...",
                               "lineHeight": 1.5,
                               "fontFamily": "Inter",
-                              "fontSize": 11
+                              "fontSize": 11,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -27551,7 +27572,8 @@
                       "fill": "#EBEBF599",
                       "content": "AI 基础配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -27586,7 +27608,8 @@
                       "fill": "#EBEBF599",
                       "content": "口播模板管理",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -27658,7 +27681,8 @@
                       "fill": "#EBEBF599",
                       "content": "TTS 语音配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 }
@@ -27703,7 +27727,8 @@
                   "fill": "#EBEBF599",
                   "content": "自定义 AI 审查口播稿时的额外审查要点",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -27743,7 +27768,8 @@
                       "content": "系统已内置基础审查规则（返回格式约束、批注结构要求等），不展示给用户。以下自定义审查要点将追加到系统规则之后。",
                       "lineHeight": 1.6,
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -27802,7 +27828,8 @@
                       "width": "fill_container",
                       "content": "输入你希望 AI 在审查口播稿时额外关注的维度和要求",
                       "fontFamily": "Inter",
-                      "fontSize": 12
+                      "fontSize": 12,
+                      "fontWeight": "normal"
                     },
                     {
                       "type": "rectangle",
@@ -27838,7 +27865,8 @@
                           "content": "请重点关注：\n1. 数据引用是否标注来源\n2. 是否有过于书面化的表达\n3. 段落过渡是否自然\n4. 是否包含听众不易理解的专业术语\n5. 口播节奏是否适合 3-5 分钟的短视频",
                           "lineHeight": 1.8,
                           "fontFamily": "Inter",
-                          "fontSize": 13
+                          "fontSize": 13,
+                          "fontWeight": "normal"
                         }
                       ]
                     }
@@ -27880,7 +27908,8 @@
                       "fill": "#EBEBF54D",
                       "content": "Prompt 叠加逻辑：系统内置审查规则 + 用户自定义审查要点",
                       "fontFamily": "Inter",
-                      "fontSize": 11
+                      "fontSize": 11,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -28104,7 +28133,8 @@
                       "fill": "#EBEBF599",
                       "content": "AI 基础配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -28139,7 +28169,8 @@
                       "fill": "#EBEBF599",
                       "content": "口播模板管理",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -28174,7 +28205,8 @@
                       "fill": "#EBEBF599",
                       "content": "审查规范配置",
                       "fontFamily": "Inter",
-                      "fontSize": 13
+                      "fontSize": 13,
+                      "fontWeight": "normal"
                     }
                   ]
                 },
@@ -28256,7 +28288,8 @@
                   "fill": "#EBEBF599",
                   "content": "配置 MiniMax 语音合成参数（第二期功能预留）",
                   "fontFamily": "Inter",
-                  "fontSize": 13
+                  "fontSize": 13,
+                  "fontWeight": "normal"
                 },
                 {
                   "type": "frame",
@@ -28397,7 +28430,8 @@
                               "fill": "#EBEBF54D",
                               "content": "输入 MiniMax API Key",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             }
                           ]
                         }
@@ -28504,7 +28538,8 @@
                               "fill": "#EBEBF5CC",
                               "content": "青年男声 — 自然",
                               "fontFamily": "Inter",
-                              "fontSize": 13
+                              "fontSize": 13,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "icon_font",
@@ -28615,7 +28650,8 @@
                               "fill": "#EBEBF54D",
                               "content": "0.5x",
                               "fontFamily": "Inter",
-                              "fontSize": 10
+                              "fontSize": 10,
+                              "fontWeight": "normal"
                             },
                             {
                               "type": "text",
@@ -28624,7 +28660,8 @@
                               "fill": "#EBEBF54D",
                               "content": "2.0x",
                               "fontFamily": "Inter",
-                              "fontSize": 10
+                              "fontSize": 10,
+                              "fontWeight": "normal"
                             }
                           ]
                         }

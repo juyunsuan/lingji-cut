@@ -23,21 +23,31 @@ import {
 } from '../lib/script-utils';
 import { ReviewCursorAnimator } from '../lib/review-cursor-animator';
 import { useScriptStore } from '../store/script';
+import { loadAISettings } from '../store/ai';
 import { useTimelineStore } from '../store/timeline';
+import { resolveProvider } from '../lib/llm/provider-utils';
 import { getAllTemplates, getRoleById } from '../lib/script-templates';
 import { replaceEditorContent } from '../lib/editor-document';
 import { clearVirtualCursor } from '../lib/virtual-cursor';
 import { waitForValue } from '../lib/wait-for-value';
 import { AnnotationList } from '../components/script/AnnotationList';
 import { ConflictDialog } from '../components/script/ConflictDialog';
+import { DouyinImportDialog } from '../components/script/DouyinImportDialog';
 import { EmptyGuide } from '../components/script/EmptyGuide';
 import { FileTabs } from '../components/script/FileTabs';
 import { FileTreePanel } from '../components/script/FileTreePanel';
 import { QuickActionBar } from '../components/script/QuickActionBar';
+import { VideoImportPreviewPane } from '../components/script/VideoImportPreviewPane';
+import { VersionPreviewBar } from '../components/script/VersionPreviewBar';
 import { ReviewStatusBar } from '../components/script/ReviewStatusBar';
 import { SideDrawer } from '../components/script/SideDrawer';
 import { TemplateDrawerContent } from '../components/script/TemplateDrawerContent';
 import { ThinkingBlock } from '../components/agent/ThinkingBlock';
+import {
+  getProjectRelativePath,
+  isVideoImportPreviewFile,
+  parseVideoImportPreviewDocument,
+} from '../lib/video-import-preview';
 import { ScriptEditor } from '../ui/components/script-editor';
 import { AlertProvider } from '../ui/components/alert';
 import { Button } from '../ui';
@@ -116,6 +126,14 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     setShowReviewBanner,
     reviewCursorPos,
     reviewBreathing,
+    videoImportProgress,
+    lastVideoImport,
+    setVideoImportProgress,
+    setLastVideoImport,
+    clearVideoImportState,
+    historyPreview,
+    selectedProviderId,
+    selectedModel,
   } = useScriptStore();
 
   const hasAICardOverlays = useTimelineStore(
@@ -128,6 +146,9 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
   /** 用户显式关闭的标签页（包括 special 文件），阻止 tabs 自动重现 */
   const [closedTabs, setClosedTabs] = useState<Set<string>>(new Set());
   const [thinkingText, setThinkingText] = useState('');
+  const [douyinImportOpen, setDouyinImportOpen] = useState(false);
+  const [douyinImportBusy, setDouyinImportBusy] = useState(false);
+  const [douyinImportError, setDouyinImportError] = useState<string | null>(null);
 
   const editorViewRef = useRef<EditorView | null>(null);
   const liveStreamingRef = useRef<LiveStreamingEditor | null>(null);
@@ -183,6 +204,22 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     if (openedFile && !closedTabs.has(openedFile)) return openedFile;
     return null;
   }, [openedFile, closedTabs]);
+
+  const activePreviewDocument = useMemo(() => {
+    if (!activeFile || !isVideoImportPreviewFile(activeFile)) {
+      return null;
+    }
+
+    return parseVideoImportPreviewDocument(extraFileContents[activeFile] ?? '');
+  }, [activeFile, extraFileContents]);
+
+  const activeFileIsVideoPreview = Boolean(
+    activeFile && isVideoImportPreviewFile(activeFile),
+  );
+
+  const activePreviewPending = Boolean(
+    activeFileIsVideoPreview && !(activeFile! in extraFileContents),
+  );
 
   const tabs = useMemo(() => {
     const collected = new Set<string>();
@@ -446,7 +483,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
       } else if (file === 'script.md') {
         const content = await window.electronAPI.loadScriptFile(projectDir, file);
         if (content !== null) setScriptText(content);
-      } else if (!(file in useScriptStore.getState().extraFileContents)) {
+      } else if (
+        isVideoImportPreviewFile(file) ||
+        !(file in useScriptStore.getState().extraFileContents)
+      ) {
         const content = await window.electronAPI.loadScriptFile(projectDir, file);
         if (content !== null) setExtraFileContent(file, content);
       }
@@ -524,6 +564,116 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     setOriginalText,
     setScriptText,
   ]);
+
+  const finalizeVideoImport = useCallback(
+    async (dir: string) => {
+      const [originalFromDisk, entries] = await Promise.all([
+        window.electronAPI.loadScriptFile(dir, 'original.md'),
+        refreshFileTree(dir),
+      ]);
+
+      const hasOriginal = entries.some((entry) => entry.name === 'original.md');
+      const hasScript = entries.some((entry) => entry.name === 'script.md');
+
+      setWorkspaceFiles({ hasOriginalFile: hasOriginal, hasScriptFile: hasScript });
+      setOriginalText(originalFromDisk ?? '');
+      setCurrentStep(originalFromDisk?.trim() ? 1 : 0);
+      setAnnotations([]);
+      openFileTab('original.md');
+      setFileDirty('original.md', false);
+    },
+    [
+      openFileTab,
+      refreshFileTree,
+      setAnnotations,
+      setCurrentStep,
+      setFileDirty,
+      setOriginalText,
+      setWorkspaceFiles,
+    ],
+  );
+
+  const waitForVideoImport = useCallback(
+    async (importId: string, dir: string) => {
+      for (let attempt = 0; attempt < 240; attempt += 1) {
+        const status = await window.electronAPI.getVideoImportStatus(importId);
+        if (status) {
+          setVideoImportProgress(status);
+          if (status.status === 'done' && status.result) {
+            setLastVideoImport(status.result);
+            await finalizeVideoImport(dir);
+            setDouyinImportBusy(false);
+            return;
+          }
+          if (status.status === 'error') {
+            setDouyinImportError(status.error ?? '抖音导入失败');
+            setDouyinImportBusy(false);
+            return;
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      setDouyinImportError('导入状态查询超时，请稍后重试');
+      setDouyinImportBusy(false);
+    },
+    [
+      finalizeVideoImport,
+      setLastVideoImport,
+      setVideoImportProgress,
+    ],
+  );
+
+  const handleImportDouyin = useCallback(
+    async (url?: string) => {
+      const link = url?.trim();
+      if (!link) {
+        setDouyinImportError('请先粘贴抖音分享链接');
+        return;
+      }
+
+      const dir = await ensureProjectDirectory();
+      if (!dir) return;
+
+      clearVideoImportState();
+      setDouyinImportBusy(true);
+      setDouyinImportError(null);
+
+      try {
+        const initialProgress = await window.electronAPI.importVideoSource({
+          sourceType: 'douyin',
+          url: link,
+          projectDir: dir,
+          syncToOriginal: true,
+        });
+        setVideoImportProgress(initialProgress);
+        await waitForVideoImport(initialProgress.importId, dir);
+      } catch (error) {
+        setDouyinImportError(
+          error instanceof Error ? error.message : '抖音导入失败',
+        );
+        setDouyinImportBusy(false);
+      }
+    },
+    [
+      clearVideoImportState,
+      ensureProjectDirectory,
+      setVideoImportProgress,
+      waitForVideoImport,
+    ],
+  );
+
+  const handleOpenImportPreview = useCallback(() => {
+    const state = useScriptStore.getState();
+    const result = state.lastVideoImport;
+    const dir = state.projectDir;
+    if (!result || !dir) return;
+
+    const relativePath = getProjectRelativePath(dir, result.previewMetadataPath);
+    setDouyinImportOpen(false);
+    void handleOpenFile(relativePath);
+  }, [handleOpenFile]);
 
   const runInternalGenerateScript = useCallback(
     async ({
@@ -614,6 +764,13 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
         state.setActiveStream({ phase: 'streaming' });
         let didEnqueueStreamText = false;
 
+        // 解析当前选择的 Provider / Model
+        const aiSettings = await loadAISettings();
+        const currentProvider = aiSettings
+          ? resolveProvider(aiSettings.llmProviders, state.selectedProviderId, aiSettings.defaultProviderId)
+          : null;
+        const currentModel = state.selectedModel ?? undefined;
+
         // 流式调用 LLM：chunk 先进入实时播放器，再逐段写入编辑器
         const result = await generateScriptDraftStream(
           rawText,
@@ -638,6 +795,8 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
               if (!chunk) return;
               setThinkingText((prev) => prev + chunk);
             },
+            provider: currentProvider ?? undefined,
+            model: currentModel,
           },
         );
 
@@ -655,6 +814,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
         // 生成完成：同步 store 并退出操作状态
         const finalState = useScriptStore.getState();
         finalState.setScriptText(result);
+        finalState.setCurrentStep(2);
         finalState.setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: true });
         finalState.stopAgentOperation();
         finalState.setShowReviewBanner(true);
@@ -676,6 +836,19 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
           await window.electronAPI.saveScriptFile(dir, 'original.md', rawText);
           await window.electronAPI.saveScriptFile(dir, 'script.md', result);
           await refreshFileTree(dir);
+
+          // 创建版本历史记录
+          if (result && window.scriptHistoryAPI) {
+            void window.scriptHistoryAPI.create({
+              projectId: dir,
+              fileName: 'script.md',
+              content: result,
+              source: 'ai_generate',
+              providerId: currentProvider?.id ?? null,
+              providerName: currentProvider?.name ?? null,
+              modelName: currentModel ?? aiSettings?.defaultModel ?? null,
+            });
+          }
         }
 
         if (replyChannel) {
@@ -874,6 +1047,8 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     try {
       const result = await generateScriptDraft(originalText, selectedTemplate);
       setScriptText(result);
+      setCurrentStep(2);
+      setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: true });
       openFileTab('script.md');
       setFileDirty('script.md', true);
     } catch (error) {
@@ -882,7 +1057,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     } finally {
       setGenerating(false);
     }
-  }, [originalText, selectedTemplate, bumpScriptDocVersion, setAnnotations, setFileDirty, setGenerating, openFileTab, setReviewState, setScriptText]);
+  }, [originalText, selectedTemplate, bumpScriptDocVersion, setAnnotations, setCurrentStep, setFileDirty, setGenerating, openFileTab, setReviewState, setScriptText, setWorkspaceFiles]);
 
   const handleReview = useCallback(async () => {
     if (!scriptText.trim()) return;
@@ -1424,9 +1599,18 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
             onCloseTab={handleCloseTab}
           />
 
+          {/* 版本预览横幅 */}
+          <VersionPreviewBar />
+
           {/* 快捷操作栏：根据工作流状态展示导入/生成/审稿等操作 */}
           {projectDir && (
-            <QuickActionBar onImportText={() => { void handleImportText(); }} />
+            <QuickActionBar
+              onImportText={() => { void handleImportText(); }}
+              onImportDouyin={() => {
+                setDouyinImportError(null);
+                setDouyinImportOpen(true);
+              }}
+            />
           )}
           {projectDir ? (
             <div className={styles.workflowBar}>
@@ -1526,6 +1710,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                   onImportText={() => {
                     void handleImportText();
                   }}
+                  onImportDouyin={() => {
+                    setDouyinImportError(null);
+                    setDouyinImportOpen(true);
+                  }}
                   onCreateBlank={() => {
                     void handleCreateBlank();
                   }}
@@ -1568,60 +1756,94 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                   )}
 
                   <div className={styles.editorContainer}>
-                    <ScriptEditor
-                      value={
-                        activeFile === 'script.md'
-                          ? scriptText
-                          : activeFile === 'original.md'
-                            ? originalText
-                            : extraFileContents[activeFile] ?? ''
-                      }
-                      onChange={handleEditorChange}
-                      placeholder={
-                        activeFile === 'script.md'
-                          ? '口播稿内容...'
-                          : activeFile === 'original.md'
-                            ? '报告原文内容...'
-                            : `${activeFile}`
-                      }
-                      annotations={activeFile === 'script.md' ? annotations : undefined}
-                      onAcceptAnnotation={activeFile === 'script.md' ? acceptAnnotation : undefined}
-                      onDismissAnnotation={activeFile === 'script.md' ? dismissAnnotation : undefined}
-                      editorViewRef={editorViewRef}
-                      readOnly={editorAgent.readOnly}
-                      streamingActive={editorAgent.streamingActive}
-                      mcpChangeHighlightLines={mcpChangeHighlightLines}
-                    />
-                    {activeFile === 'script.md' &&
-                      activeStream.filePath === activeFile &&
-                      !(agentOperation.isOperating && agentOperation.backgrounded) &&
-                      (activeStream.phase === 'preparing' ||
-                        activeStream.phase === 'streaming' ||
-                        activeStream.phase === 'finalizing') && (
-                        <div className={
-                          agentOperation.operationType === 'review'
-                            ? styles.agentReviewIndicator
-                            : styles.agentTypingIndicator
-                        }>
-                          {agentOperation.operationType === 'review'
-                            ? activeStream.phase === 'preparing'
-                              ? 'AI 正在准备审稿'
-                              : activeStream.phase === 'finalizing'
-                                ? 'AI 正在标注问题'
-                                : 'AI 正在审阅全文'
-                            : activeStream.kind === 'update'
-                              ? activeStream.phase === 'preparing'
-                                ? 'AI 正在准备更新'
-                                : activeStream.phase === 'finalizing'
-                                  ? 'AI 正在同步修改'
-                                  : 'AI 正在写入改动'
-                              : activeStream.phase === 'preparing'
-                                ? 'AI 正在准备写稿'
-                                : activeStream.phase === 'finalizing'
-                                  ? 'AI 正在收尾保存'
-                                  : 'AI 正在打字'}
+                    {activeFileIsVideoPreview ? (
+                      activePreviewDocument ? (
+                        <VideoImportPreviewPane
+                          document={activePreviewDocument}
+                          filePath={activeFile}
+                        />
+                      ) : (
+                        <div
+                          style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: 12,
+                            width: '100%',
+                            height: '100%',
+                            padding: 24,
+                            color: 'var(--color-text-secondary)',
+                          }}
+                        >
+                          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                            {activePreviewPending ? '正在加载抖音预览…' : '预览文件格式无效'}
+                          </div>
+                          <div style={{ maxWidth: 520, textAlign: 'center', lineHeight: 1.7 }}>
+                            {activePreviewPending
+                              ? '工作台正在读取 preview.json，并准备视频播放器与字幕预览。'
+                              : '这个 preview.json 没有通过标准校验，暂时无法按视频预览模式渲染。'}
+                          </div>
                         </div>
-                      )}
+                      )
+                    ) : (
+                      <>
+                        <ScriptEditor
+                          value={
+                            activeFile === 'script.md'
+                              ? (historyPreview.active ? historyPreview.content ?? '' : scriptText)
+                              : activeFile === 'original.md'
+                                ? originalText
+                                : extraFileContents[activeFile] ?? ''
+                          }
+                          onChange={handleEditorChange}
+                          placeholder={
+                            activeFile === 'script.md'
+                              ? '口播稿内容...'
+                              : activeFile === 'original.md'
+                                ? '报告原文内容...'
+                                : `${activeFile}`
+                          }
+                          annotations={activeFile === 'script.md' ? annotations : undefined}
+                          onAcceptAnnotation={activeFile === 'script.md' ? acceptAnnotation : undefined}
+                          onDismissAnnotation={activeFile === 'script.md' ? dismissAnnotation : undefined}
+                          editorViewRef={editorViewRef}
+                          readOnly={editorAgent.readOnly || historyPreview.active}
+                          streamingActive={editorAgent.streamingActive}
+                          mcpChangeHighlightLines={mcpChangeHighlightLines}
+                        />
+                        {activeFile === 'script.md' &&
+                          activeStream.filePath === activeFile &&
+                          !(agentOperation.isOperating && agentOperation.backgrounded) &&
+                          (activeStream.phase === 'preparing' ||
+                            activeStream.phase === 'streaming' ||
+                            activeStream.phase === 'finalizing') && (
+                            <div className={
+                              agentOperation.operationType === 'review'
+                                ? styles.agentReviewIndicator
+                                : styles.agentTypingIndicator
+                            }>
+                              {agentOperation.operationType === 'review'
+                                ? activeStream.phase === 'preparing'
+                                  ? 'AI 正在准备审稿'
+                                  : activeStream.phase === 'finalizing'
+                                    ? 'AI 正在标注问题'
+                                    : 'AI 正在审阅全文'
+                                : activeStream.kind === 'update'
+                                  ? activeStream.phase === 'preparing'
+                                    ? 'AI 正在准备更新'
+                                    : activeStream.phase === 'finalizing'
+                                      ? 'AI 正在同步修改'
+                                      : 'AI 正在写入改动'
+                                  : activeStream.phase === 'preparing'
+                                    ? 'AI 正在准备写稿'
+                                    : activeStream.phase === 'finalizing'
+                                      ? 'AI 正在收尾保存'
+                                      : 'AI 正在打字'}
+                            </div>
+                          )}
+                      </>
+                    )}
                   </div>
 
                   {/* 审稿状态栏：仅在查看 script.md 且有批注时显示 */}
@@ -1654,6 +1876,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                   }}
                   onImportText={() => {
                     void handleImportText();
+                  }}
+                  onImportDouyin={() => {
+                    setDouyinImportError(null);
+                    setDouyinImportOpen(true);
                   }}
                   onCreateBlank={() => {
                     void handleCreateBlank();
@@ -1720,6 +1946,21 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
         onConfirm={() => {
           void handleConfirmConflicts();
         }}
+      />
+      <DouyinImportDialog
+        open={douyinImportOpen}
+        busy={douyinImportBusy}
+        progress={videoImportProgress}
+        lastResult={lastVideoImport}
+        onOpenPreview={handleOpenImportPreview}
+        errorMessage={douyinImportError}
+        onOpenChange={(open) => {
+          setDouyinImportOpen(open);
+          if (!open && !douyinImportBusy) {
+            setDouyinImportError(null);
+          }
+        }}
+        onSubmit={handleImportDouyin}
       />
     </AlertProvider>
   );

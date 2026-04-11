@@ -37,15 +37,13 @@ export function VersionDropdown() {
   const openedFile = useScriptStore((s) => s.openedFile);
   const projectDir = useScriptStore((s) => s.projectDir);
   const enterHistoryPreview = useScriptStore((s) => s.enterHistoryPreview);
+  const shouldRender = openedFile === 'script.md';
 
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState<FilterTab>('全部');
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [loading, setLoading] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-
-  // 只在 script.md 时渲染
-  if (openedFile !== 'script.md') return null;
 
   // 打开时加载版本列表
   const loadVersions = async () => {
@@ -101,6 +99,8 @@ export function VersionDropdown() {
   });
 
   const filterTabs: FilterTab[] = ['全部', '仅AI', '仅手动'];
+
+  if (!shouldRender) return null;
 
   return (
     <div ref={rootRef} style={{ position: 'relative', display: 'inline-flex' }}>
