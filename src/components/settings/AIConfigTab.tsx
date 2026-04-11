@@ -82,7 +82,7 @@ export function AIConfigTab() {
 
         <Field
           label="开启思考模式"
-          hint="默认开启；关闭后会向兼容 OpenAI 的接口追加 extra_body.enable_thinking=false"
+          hint="默认开启；关闭后会向兼容 OpenAI 的接口追加 enable_thinking=false"
         >
           <Switch checked={enableThinking} onChange={setEnableThinking} />
         </Field>

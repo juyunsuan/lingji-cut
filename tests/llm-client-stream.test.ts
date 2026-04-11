@@ -102,9 +102,7 @@ describe('streamText', () => {
     expect(chatOpenAIMock).toHaveBeenCalledWith(
       expect.objectContaining({
         modelKwargs: {
-          extra_body: {
-            enable_thinking: false,
-          },
+          enable_thinking: false,
         },
       }),
     );

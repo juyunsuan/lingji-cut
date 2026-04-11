@@ -8,9 +8,7 @@ function normalizeBaseUrl(baseUrl: string): string {
 function buildModelKwargs(settings: AISettings): Record<string, unknown> | undefined {
   if (settings.enableThinking === false) {
     return {
-      extra_body: {
-        enable_thinking: false,
-      },
+        enable_thinking: false
     };
   }
 
@@ -39,7 +37,7 @@ export function createChatModelFromProvider(
 ): ChatOpenAI {
   const modelKwargs =
     options?.enableThinking === false
-      ? { extra_body: { enable_thinking: false } }
+      ? { enable_thinking: false }
       : undefined;
 
   return new ChatOpenAI({

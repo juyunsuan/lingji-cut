@@ -72,9 +72,7 @@ describe('llm-client langchain adapter', () => {
           baseURL: 'https://example.com/v1',
         },
         modelKwargs: {
-          extra_body: {
-            enable_thinking: false,
-          },
+          enable_thinking: false,
         },
       }),
     );
