@@ -34,7 +34,8 @@ export function toFileSrc(filePath: string): string {
   }
 
   const normalizedPath = filePath.replace(/\\/g, '/');
-  return `file://${encodeURI(normalizedPath)}`;
+  // encodeURI 不编码 # 和 ?，但它们在 URL 中有特殊含义，会导致 file:// 路径解析错误
+  return `file://${encodeURI(normalizedPath).replace(/#/g, '%23').replace(/\?/g, '%3F')}`;
 }
 
 export function clamp(value: number, min: number, max: number): number {

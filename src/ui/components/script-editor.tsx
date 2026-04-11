@@ -12,6 +12,8 @@ import {
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages } from '@codemirror/language-data';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { search, searchKeymap, highlightSelectionMatches } from '@codemirror/search';
+import { createSearchPanel } from './script-editor-search';
 import type { Annotation, AnnotationSeverity } from '../../store/script';
 import { scriptEditorTheme } from './script-editor-theme';
 import {
@@ -240,7 +242,9 @@ export function ScriptEditor({
           scriptEditorTheme,
           markdown({ base: markdownLanguage, codeLanguages: languages }),
           history(),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
+          keymap.of([...searchKeymap, ...defaultKeymap, ...historyKeymap]),
+          search({ top: true, createPanel: createSearchPanel }),
+          highlightSelectionMatches(),
           placeholderCompartment.current.of(cmPlaceholder(placeholder ?? '')),
           annotationField,
           annotationHoverTooltip,

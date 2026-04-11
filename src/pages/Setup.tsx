@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Plus, Sparkles, Music, FolderOpen, FolderSearch, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Sparkles, Music, Video, FolderOpen, FolderSearch, CheckCircle2, AlertCircle, Link, Loader2 } from 'lucide-react';
 import { getFileNameFromPath } from '../lib/utils';
 import type { RecentProjectEntry } from '../lib/electron-api';
 import {
@@ -27,6 +27,8 @@ interface SetupProps {
   onRemoveRecentProject?: (projectDir: string) => Promise<void> | void;
   onStartScriptWorkbench: () => void;
   onOpenSettings: () => void;
+  /** 抖音导入完成回调：传入父目录、标题和原始链接，由 App 层创建项目并自动触发下载转录 */
+  onDouyinImport: (parentDir: string, title: string, douyinUrl: string) => Promise<void>;
 }
 
 interface ScanResult {
@@ -45,12 +47,23 @@ export function Setup({
   onRemoveRecentProject,
   onStartScriptWorkbench,
   onOpenSettings,
+  onDouyinImport,
 }: SetupProps) {
+  // ── 音频导入弹窗状态 ──
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [selectedAudio, setSelectedAudio] = useState<string | null>(null);
   const [selectedSrt, setSelectedSrt] = useState<string | null>(null);
+
+  // ── 抖音导入弹窗状态 ──
+  const [douyinDialogOpen, setDouyinDialogOpen] = useState(false);
+  const [douyinUrl, setDouyinUrl] = useState('');
+  const [douyinResolving, setDouyinResolving] = useState(false);
+  const [douyinTitle, setDouyinTitle] = useState<string | null>(null);
+  const [douyinParentDir, setDouyinParentDir] = useState<string | null>(null);
+  const [douyinError, setDouyinError] = useState<string | null>(null);
+  const [douyinCreating, setDouyinCreating] = useState(false);
 
   const canImport = useMemo(
     () => Boolean(selectedAudio && selectedSrt && !busy),
@@ -63,6 +76,58 @@ export function Setup({
     setSelectedSrt(null);
     setImportDialogOpen(true);
   }, []);
+
+  // ── 抖音导入弹窗操作 ──
+  const handleOpenDouyinDialog = useCallback(() => {
+    setDouyinUrl('');
+    setDouyinTitle(null);
+    setDouyinParentDir(null);
+    setDouyinError(null);
+    setDouyinResolving(false);
+    setDouyinCreating(false);
+    setDouyinDialogOpen(true);
+  }, []);
+
+  /** 解析抖音链接，提取视频标题 */
+  const handleResolveDouyinUrl = useCallback(async () => {
+    if (!douyinUrl.trim()) return;
+    setDouyinResolving(true);
+    setDouyinError(null);
+    setDouyinTitle(null);
+
+    try {
+      const { title } = await window.electronAPI.resolveDouyinUrl(douyinUrl);
+      setDouyinTitle(title);
+    } catch (err) {
+      setDouyinError(err instanceof Error ? err.message : '解析失败，请检查链接是否有效');
+    } finally {
+      setDouyinResolving(false);
+    }
+  }, [douyinUrl]);
+
+  /** 选择项目存放的父目录 */
+  const handleSelectDouyinDir = useCallback(async () => {
+    const dir = await window.electronAPI.selectProjectDirectory();
+    if (dir) setDouyinParentDir(dir);
+  }, []);
+
+  /** 确认创建项目：在父目录下建立以标题命名的文件夹，携带原始链接自动触发下载转录 */
+  const handleDouyinConfirm = useCallback(async () => {
+    if (!douyinTitle || !douyinParentDir || !douyinUrl.trim()) return;
+    setDouyinCreating(true);
+    setDouyinError(null);
+
+    try {
+      await onDouyinImport(douyinParentDir, douyinTitle, douyinUrl.trim());
+      setDouyinDialogOpen(false);
+    } catch (err) {
+      setDouyinError(err instanceof Error ? err.message : '创建项目失败');
+    } finally {
+      setDouyinCreating(false);
+    }
+  }, [douyinTitle, douyinParentDir, douyinUrl, onDouyinImport]);
+
+  const canCreateDouyinProject = Boolean(douyinTitle && douyinParentDir && !douyinCreating);
 
   const handleSelectDirectory = useCallback(async () => {
     const dir = await window.electronAPI.selectProjectDirectory();
@@ -134,6 +199,17 @@ export function Setup({
               <Music size={22} strokeWidth={1.5} />
             </div>
             <span className={styles.quickItemLabel}>导入音频</span>
+          </button>
+          {/* 抖音导入入口：解析抖音链接 → 提取标题 → 创建项目 */}
+          <button
+            type="button"
+            className={styles.quickItem}
+            onClick={handleOpenDouyinDialog}
+          >
+            <div className={styles.quickItemIcon}>
+              <Video size={22} strokeWidth={1.5} />
+            </div>
+            <span className={styles.quickItemLabel}>抖音导入</span>
           </button>
         </div>
 
@@ -268,6 +344,106 @@ export function Setup({
               onClick={handleImportConfirm}
             >
               {busy ? '正在初始化...' : '导入并开始'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── 抖音导入弹窗：解析链接 → 选择目录 → 创建项目 ── */}
+      <Dialog open={douyinDialogOpen} onOpenChange={setDouyinDialogOpen}>
+        <DialogContent size="md">
+          <DialogClose />
+          <DialogHeader>
+            <DialogTitle>抖音视频导入</DialogTitle>
+            <DialogDescription>
+              粘贴抖音分享链接，自动解析视频标题并创建同名项目文件夹
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {/* 链接输入 + 解析按钮 */}
+            <div className={styles.douyinUrlRow}>
+              <div className={styles.douyinUrlInputWrap}>
+                <Link size={16} strokeWidth={1.5} className={styles.douyinUrlIcon} />
+                <input
+                  type="text"
+                  value={douyinUrl}
+                  onChange={(e) => setDouyinUrl(e.target.value)}
+                  placeholder="粘贴抖音分享链接，如 https://v.douyin.com/..."
+                  className={styles.douyinUrlInput}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && douyinUrl.trim() && !douyinResolving) {
+                      void handleResolveDouyinUrl();
+                    }
+                  }}
+                />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={() => void handleResolveDouyinUrl()}
+                disabled={!douyinUrl.trim() || douyinResolving}
+              >
+                {douyinResolving ? (
+                  <>
+                    <Loader2 size={14} className={styles.spinIcon} />
+                    解析中
+                  </>
+                ) : '解析链接'}
+              </Button>
+            </div>
+
+            {/* 解析成功：显示标题 */}
+            {douyinTitle && (
+              <div className={styles.douyinResultCard}>
+                <CheckCircle2 size={16} strokeWidth={2} className={styles.douyinResultIcon} />
+                <div className={styles.douyinResultBody}>
+                  <span className={styles.douyinResultLabel}>视频标题</span>
+                  <span className={styles.douyinResultTitle}>{douyinTitle}</span>
+                </div>
+              </div>
+            )}
+
+            {/* 选择项目存放目录 */}
+            {douyinTitle && (
+              <button
+                type="button"
+                className={styles.dirPickerButton}
+                onClick={() => void handleSelectDouyinDir()}
+                style={{ marginTop: 12 }}
+              >
+                <FolderSearch size={20} strokeWidth={1.5} />
+                <span className={styles.dirPickerText}>
+                  {douyinParentDir
+                    ? douyinParentDir
+                    : '选择项目存放目录'}
+                </span>
+              </button>
+            )}
+
+            {/* 预览最终项目路径 */}
+            {douyinTitle && douyinParentDir && (
+              <div className={styles.douyinProjectPath}>
+                <FolderOpen size={14} strokeWidth={1.5} />
+                <span>项目将创建在：{douyinParentDir}/{douyinTitle}</span>
+              </div>
+            )}
+
+            {/* 错误提示 */}
+            {douyinError && (
+              <div className={styles.importError} style={{ marginTop: 12 }}>
+                {douyinError}
+              </div>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="ghost">取消</Button>
+            </DialogClose>
+            <Button
+              variant="primary"
+              disabled={!canCreateDouyinProject}
+              onClick={() => void handleDouyinConfirm()}
+            >
+              {douyinCreating ? '创建中...' : '创建项目并开始创作'}
             </Button>
           </DialogFooter>
         </DialogContent>

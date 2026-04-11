@@ -1,6 +1,13 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import type { AppLogEntry } from '../src/lib/app-log';
-import type { FileEntry, MenuContext, MenuEvent, ProjectMetadata } from '../src/lib/electron-api';
+import type {
+  FileEntry,
+  MenuContext,
+  MenuEvent,
+  ProjectMetadata,
+  WorkbenchTabContextMenuRequest,
+  WorkbenchTabMenuEvent,
+} from '../src/lib/electron-api';
 import type { ExportConfig } from '../src/lib/export-settings';
 import type { SrtEntry } from '../src/types';
 import type { AICard, AISettings } from '../src/types/ai';
@@ -83,6 +90,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   toggleDevTools: () => ipcRenderer.invoke('toggle-devtools'),
   showItemInFolder: (filePath: string) => ipcRenderer.send('show-item-in-folder', filePath),
+  openExternal: (url: string) => ipcRenderer.send('open-external', url),
   saveScriptFile: (projectDir: string, filename: string, content: string) =>
     ipcRenderer.invoke('save-script-file', projectDir, filename, content),
   loadScriptFile: (projectDir: string, filename: string) =>
@@ -93,6 +101,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('load-script-state', projectDir),
   selectTextFile: () =>
     ipcRenderer.invoke('select-text-file') as Promise<{ path: string; content: string } | null>,
+  // 轻量级抖音链接解析：仅返回标题和视频 ID
+  resolveDouyinUrl: (url: string) =>
+    ipcRenderer.invoke('resolve-douyin-url', url) as Promise<{ title: string; videoId: string }>,
   importVideoSource: (request: VideoImportRequest) =>
     ipcRenderer.invoke('import-video-source', request),
   getVideoImportStatus: (importId: string) =>
@@ -132,6 +143,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   cancelTTS: (requestId: string) => ipcRenderer.invoke('cancel-tts', requestId),
   selectOutputPath: () => ipcRenderer.invoke('select-output-path'),
   showEditorContextMenu: () => ipcRenderer.invoke('show-editor-context-menu'),
+  showWorkbenchTabContextMenu: (request: WorkbenchTabContextMenuRequest) =>
+    ipcRenderer.invoke('show-workbench-tab-context-menu', request),
+  onWorkbenchTabMenuAction: (callback: (event: WorkbenchTabMenuEvent) => void) => {
+    const handler = (_event: unknown, payload: WorkbenchTabMenuEvent) => callback(payload);
+    ipcRenderer.on('workbench-tab-menu-action', handler);
+    return () => ipcRenderer.removeListener('workbench-tab-menu-action', handler);
+  },
   loadRecentProjects: () => ipcRenderer.invoke('load-recent-projects'),
   addRecentProject: (projectDir: string, projectName?: string) =>
     ipcRenderer.invoke('add-recent-project', projectDir, projectName),

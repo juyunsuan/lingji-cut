@@ -1,5 +1,6 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, FolderOpen, PlaySquare, Quote } from 'lucide-react';
-import type { VideoImportPreviewDocument } from '../../lib/video-import-types';
+import type { VideoImportPreviewDocument, TranscriptSegment } from '../../lib/video-import-types';
 import { formatTime, getFileNameFromPath, toFileSrc } from '../../lib/utils';
 
 interface VideoImportPreviewPaneProps {
@@ -24,6 +25,20 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+const isMac = navigator.platform.toUpperCase().includes('MAC');
+
+function findActiveSegmentIndex(
+  segments: TranscriptSegment[],
+  currentMs: number,
+): number {
+  for (let i = 0; i < segments.length; i++) {
+    if (currentMs >= segments[i].startMs && currentMs < segments[i].endMs) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 export function VideoImportPreviewPane({
   document,
   filePath,
@@ -31,6 +46,54 @@ export function VideoImportPreviewPane({
   const segmentCount = document.transcript.segments.length;
   const lastSegment = document.transcript.segments[segmentCount - 1];
   const durationLabel = lastSegment ? formatTime(lastSegment.endMs) : '00:00';
+
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const segmentListRef = useRef<HTMLDivElement>(null);
+  const activeSegmentRef = useRef<HTMLDivElement>(null);
+  const [activeSegmentIndex, setActiveSegmentIndex] = useState(-1);
+  const [videoError, setVideoError] = useState(false);
+
+  // 视频时间更新 → 字幕高亮同步
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const currentMs = video.currentTime * 1000;
+    const idx = findActiveSegmentIndex(document.transcript.segments, currentMs);
+    setActiveSegmentIndex(idx);
+  }, [document.transcript.segments]);
+
+  // 自动滚动到当前高亮字幕
+  useEffect(() => {
+    if (activeSegmentIndex < 0 || !activeSegmentRef.current || !segmentListRef.current) return;
+    const container = segmentListRef.current;
+    const target = activeSegmentRef.current;
+    const containerRect = container.getBoundingClientRect();
+    const targetRect = target.getBoundingClientRect();
+    // 仅当元素不在可视区域内时滚动
+    if (targetRect.top < containerRect.top || targetRect.bottom > containerRect.bottom) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [activeSegmentIndex]);
+
+  // 点击字幕跳转视频时间
+  const handleSegmentClick = useCallback((segment: TranscriptSegment) => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.currentTime = segment.startMs / 1000;
+    if (video.paused) {
+      video.play();
+    }
+  }, []);
+
+  // 在 Finder/Explorer 中显示
+  const handleShowInFolder = useCallback(() => {
+    window.electronAPI.showItemInFolder(document.media.videoPath);
+  }, [document.media.videoPath]);
+
+  // 用系统默认浏览器打开来源页
+  const handleOpenSourcePage = useCallback(() => {
+    window.electronAPI.openExternal(document.metadata.resolvedPageUrl);
+  }, [document.metadata.resolvedPageUrl]);
 
   return (
     <div
@@ -103,7 +166,7 @@ export function VideoImportPreviewPane({
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button
               type="button"
-              onClick={() => window.electronAPI.showItemInFolder(document.media.videoPath)}
+              onClick={handleShowInFolder}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -117,12 +180,11 @@ export function VideoImportPreviewPane({
               }}
             >
               <FolderOpen size={14} />
-              定位视频
+              {isMac ? '在 Finder 中显示' : '在资源管理器中显示'}
             </button>
-            <a
-              href={document.metadata.resolvedPageUrl}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              onClick={handleOpenSourcePage}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -132,12 +194,12 @@ export function VideoImportPreviewPane({
                 background: 'var(--color-window-bg)',
                 color: 'var(--color-text-primary)',
                 padding: '8px 12px',
-                textDecoration: 'none',
+                cursor: 'pointer',
               }}
             >
               <ExternalLink size={14} />
               打开来源页
-            </a>
+            </button>
           </div>
         </div>
 
@@ -150,18 +212,39 @@ export function VideoImportPreviewPane({
             minHeight: 240,
           }}
         >
-          <video
-            controls
-            preload="metadata"
-            src={toFileSrc(document.media.videoPath)}
-            poster={document.media.coverUrl ? toFileSrc(document.media.coverUrl) : undefined}
-            style={{
-              display: 'block',
-              width: '100%',
-              maxHeight: 420,
-              background: '#000',
-            }}
-          />
+          {videoError ? (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: 240,
+                color: 'var(--color-text-secondary)',
+                fontSize: 13,
+                gap: 8,
+              }}
+            >
+              <span>视频文件加载失败</span>
+              <span style={{ fontSize: 11 }}>{document.media.videoPath}</span>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              controls
+              preload="metadata"
+              src={toFileSrc(document.media.videoPath)}
+              poster={document.media.coverUrl ?? undefined}
+              onTimeUpdate={handleTimeUpdate}
+              onError={() => setVideoError(true)}
+              style={{
+                display: 'block',
+                width: '100%',
+                maxHeight: 420,
+                background: '#000',
+              }}
+            />
+          )}
         </div>
 
         <div
@@ -219,6 +302,7 @@ export function VideoImportPreviewPane({
           </div>
 
           <div
+            ref={segmentListRef}
             style={{
               display: 'flex',
               flexDirection: 'column',
@@ -228,38 +312,48 @@ export function VideoImportPreviewPane({
               paddingRight: 6,
             }}
           >
-            {document.transcript.segments.map((segment, index) => (
-              <div
-                key={`${segment.startMs}-${index}`}
-                style={{
-                  borderRadius: 12,
-                  border: '1px solid var(--color-border-subtle)',
-                  background: 'var(--color-window-bg)',
-                  padding: '10px 12px',
-                }}
-              >
+            {document.transcript.segments.map((segment, index) => {
+              const isActive = index === activeSegmentIndex;
+              return (
                 <div
+                  key={`${segment.startMs}-${index}`}
+                  ref={isActive ? activeSegmentRef : undefined}
+                  onClick={() => handleSegmentClick(segment)}
                   style={{
-                    marginBottom: 6,
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: 'var(--color-text-secondary)',
+                    borderRadius: 12,
+                    border: `1px solid ${isActive ? 'var(--color-system-blue)' : 'var(--color-border-subtle)'}`,
+                    background: isActive
+                      ? 'color-mix(in srgb, var(--color-system-blue) 10%, var(--color-window-bg))'
+                      : 'var(--color-window-bg)',
+                    padding: '10px 12px',
+                    cursor: 'pointer',
+                    transition: 'border-color 0.2s, background 0.2s',
                   }}
                 >
-                  {formatTime(segment.startMs)} - {formatTime(segment.endMs)}
+                  <div
+                    style={{
+                      marginBottom: 6,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: isActive ? 'var(--color-system-blue)' : 'var(--color-text-secondary)',
+                      transition: 'color 0.2s',
+                    }}
+                  >
+                    {formatTime(segment.startMs)} - {formatTime(segment.endMs)}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      lineHeight: 1.7,
+                      color: 'var(--color-text-primary)',
+                      whiteSpace: 'pre-wrap',
+                    }}
+                  >
+                    {segment.text}
+                  </div>
                 </div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    lineHeight: 1.7,
-                    color: 'var(--color-text-primary)',
-                    whiteSpace: 'pre-wrap',
-                  }}
-                >
-                  {segment.text}
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             <div
               style={{

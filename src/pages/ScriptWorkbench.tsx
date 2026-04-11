@@ -51,6 +51,11 @@ import {
 import { ScriptEditor } from '../ui/components/script-editor';
 import { AlertProvider } from '../ui/components/alert';
 import { Button } from '../ui';
+import {
+  getNextOpenedWorkbenchTab,
+  getWorkbenchTabCloseTargets,
+  type WorkbenchTabCloseAction,
+} from '../lib/script-tab-actions';
 import styles from './ScriptWorkbench.module.css';
 
 interface ScriptWorkbenchProps {
@@ -134,6 +139,8 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     historyPreview,
     selectedProviderId,
     selectedModel,
+    pendingDouyinUrl,
+    setPendingDouyinUrl,
   } = useScriptStore();
 
   const hasAICardOverlays = useTimelineStore(
@@ -497,24 +504,64 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     [projectDir, openFileTab, setOriginalText, setScriptText, setExtraFileContent],
   );
 
+  const closeTabs = useCallback(
+    (files: string[]) => {
+      const closingFiles = tabs.filter((tab) => files.includes(tab));
+      if (!closingFiles.length) return;
+
+      for (const file of closingFiles) {
+        if (!SPECIAL_FILES.has(file)) {
+          removeExtraFile(file);
+        }
+        setFileDirty(file, false);
+      }
+
+      setClosedTabs((prev) => {
+        const next = new Set(prev);
+        closingFiles.forEach((file) => next.add(file));
+        return next;
+      });
+
+      const nextOpenedFile = getNextOpenedWorkbenchTab(tabs, activeFile, closingFiles);
+      if (nextOpenedFile !== activeFile) {
+        setOpenedFile(nextOpenedFile);
+      }
+    },
+    [activeFile, removeExtraFile, setFileDirty, setOpenedFile, tabs],
+  );
+
   // 关闭标签页
   const handleCloseTab = useCallback(
     (file: string) => {
-      // 清除非 special 文件的缓存内容
-      if (!SPECIAL_FILES.has(file)) {
-        removeExtraFile(file);
-      }
-      // 标记为已关闭（special 文件也可以关闭标签）
-      setClosedTabs((prev) => new Set(prev).add(file));
-      // 如果关闭的是当前打开的文件，切到其他 tab
-      if (file === activeFile) {
-        const remaining = tabs.filter((t) => t !== file);
-        setOpenedFile(remaining.length > 0 ? remaining[remaining.length - 1] : null);
-      }
-      setFileDirty(file, false);
+      closeTabs([file]);
     },
-    [activeFile, tabs, setOpenedFile, setFileDirty, removeExtraFile],
+    [closeTabs],
   );
+
+  const handleTabMenuAction = useCallback(
+    (action: WorkbenchTabCloseAction, file: string) => {
+      closeTabs(getWorkbenchTabCloseTargets(tabs, file, action));
+    },
+    [closeTabs, tabs],
+  );
+
+  const handleShowTabContextMenu = useCallback(
+    async (file: string) => {
+      await window.electronAPI.showWorkbenchTabContextMenu({
+        file,
+        projectDir,
+        tabIndex: tabs.indexOf(file),
+        tabCount: tabs.length,
+      });
+    },
+    [projectDir, tabs],
+  );
+
+  useEffect(() => {
+    return window.electronAPI.onWorkbenchTabMenuAction(({ action, file }) => {
+      handleTabMenuAction(action, file);
+    });
+  }, [handleTabMenuAction]);
 
   const handleImportText = useCallback(async () => {
     const dir = await ensureProjectDirectory();
@@ -1210,6 +1257,17 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     handleSave,
   ]);
 
+  // ── 从欢迎页带入的抖音链接：自动触发下载 + 转录，无需用户二次操作 ──
+  useEffect(() => {
+    if (!pendingDouyinUrl) return;
+    const url = pendingDouyinUrl;
+    // 立即清除，避免重复触发
+    setPendingDouyinUrl(null);
+    // 打开导入弹窗并自动开始导入
+    setDouyinImportOpen(true);
+    void handleImportDouyin(url);
+  }, [pendingDouyinUrl, setPendingDouyinUrl, handleImportDouyin]);
+
   // 后台化操作已移除：用户点击编辑器区域不再中断 AI 流式输出。
   // 如需后台化功能，应由用户主动触发（如 QuickActionBar 按钮），而非全局 pointerdown。
 
@@ -1597,6 +1655,9 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
               void handleOpenFile(file);
             }}
             onCloseTab={handleCloseTab}
+            onTabContextMenu={(file) => {
+              void handleShowTabContextMenu(file);
+            }}
           />
 
           {/* 版本预览横幅 */}

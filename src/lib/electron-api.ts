@@ -16,6 +16,18 @@ export interface FileEntry {
   children?: FileEntry[];
 }
 
+export interface WorkbenchTabContextMenuRequest {
+  file: string;
+  projectDir: string | null;
+  tabIndex: number;
+  tabCount: number;
+}
+
+export interface WorkbenchTabMenuEvent {
+  action: 'close-current' | 'close-others' | 'close-right';
+  file: string;
+}
+
 export const MENU_ACTIONS = [
   'new-project',
   'open-project',
@@ -149,12 +161,15 @@ export interface ElectronAPI {
   onAppLog: (callback: (entry: AppLogEntry) => void) => () => void;
   toggleDevTools: () => Promise<void>;
   showItemInFolder: (filePath: string) => void;
+  openExternal: (url: string) => void;
   // Script workbench
   saveScriptFile: (projectDir: string, filename: string, content: string) => Promise<void>;
   loadScriptFile: (projectDir: string, filename: string) => Promise<string | null>;
   saveScriptState: (projectDir: string, state: string) => Promise<void>;
   loadScriptState: (projectDir: string) => Promise<string | null>;
   selectTextFile: () => Promise<{ path: string; content: string } | null>;
+  /** 轻量级抖音链接解析：仅返回标题和视频 ID，不下载视频 */
+  resolveDouyinUrl: (url: string) => Promise<{ title: string; videoId: string }>;
   importVideoSource: (request: VideoImportRequest) => Promise<VideoImportProgress>;
   getVideoImportStatus: (importId: string) => Promise<VideoImportProgress | null>;
   startWatching: (dir: string) => Promise<void>;
@@ -179,6 +194,8 @@ export interface ElectronAPI {
   cancelTTS: (requestId: string) => Promise<void>;
   selectOutputPath: () => Promise<string | null>;
   showEditorContextMenu: () => Promise<void>;
+  showWorkbenchTabContextMenu: (request: WorkbenchTabContextMenuRequest) => Promise<void>;
+  onWorkbenchTabMenuAction: (callback: (event: WorkbenchTabMenuEvent) => void) => () => void;
   // 最近项目管理
   loadRecentProjects: () => Promise<RecentProjectEntry[]>;
   addRecentProject: (projectDir: string, projectName?: string) => Promise<RecentProjectEntry[]>;

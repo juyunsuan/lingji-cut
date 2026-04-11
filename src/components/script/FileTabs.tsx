@@ -9,6 +9,7 @@ interface FileTabsProps {
   fileConflictMap: Record<string, boolean>;
   onOpenFile: (file: string) => void;
   onCloseTab?: (file: string) => void;
+  onTabContextMenu?: (file: string) => void;
 }
 
 export function FileTabs({
@@ -18,6 +19,7 @@ export function FileTabs({
   fileConflictMap,
   onOpenFile,
   onCloseTab,
+  onTabContextMenu,
 }: FileTabsProps) {
   if (!tabs.length) {
     return null;
@@ -43,6 +45,10 @@ export function FileTabs({
         return (
           <div
             key={tab}
+            onContextMenu={(event) => {
+              event.preventDefault();
+              onTabContextMenu?.(tab);
+            }}
             style={{
               display: 'inline-flex',
               alignItems: 'center',

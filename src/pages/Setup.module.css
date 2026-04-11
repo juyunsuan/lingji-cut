@@ -280,3 +280,107 @@
   color: #FF453A;
   font-size: 12px;
 }
+
+/* ── 抖音导入弹窗样式 ── */
+
+.douyinUrlRow {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.douyinUrlInputWrap {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: #2C2C2E;
+  border: 1px solid #48484A;
+  border-radius: 10px;
+  transition: border-color 0.15s ease;
+}
+
+.douyinUrlInputWrap:focus-within {
+  border-color: #0A84FF;
+}
+
+.douyinUrlIcon {
+  color: #EBEBF580;
+  flex-shrink: 0;
+}
+
+.douyinUrlInput {
+  flex: 1;
+  min-width: 0;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #EBEBF5;
+  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+}
+
+.douyinUrlInput::placeholder {
+  color: #EBEBF54D;
+}
+
+.douyinResultCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(50, 215, 75, 0.08);
+  border: 1px solid rgba(50, 215, 75, 0.2);
+  border-radius: 10px;
+}
+
+.douyinResultIcon {
+  color: #32D74B;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.douyinResultBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.douyinResultLabel {
+  font-size: 11px;
+  color: #EBEBF580;
+  font-weight: 500;
+}
+
+.douyinResultTitle {
+  font-size: 13px;
+  color: #EBEBF5;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.douyinProjectPath {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(10, 132, 255, 0.08);
+  border-radius: 8px;
+  font-size: 12px;
+  color: #EBEBF599;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.spinIcon {
+  animation: spin 1s linear infinite;
+}

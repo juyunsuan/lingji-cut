@@ -139,6 +139,8 @@ interface ScriptState {
   };
   selectedProviderId: string | null;
   selectedModel: string | null;
+  /** 从欢迎页传入的待处理抖音链接，进入工作台后自动触发导入 */
+  pendingDouyinUrl: string | null;
 }
 
 interface ScriptActions {
@@ -208,6 +210,7 @@ interface ScriptActions {
   enterHistoryPreview: (versionId: number, content: string, meta: ScriptState['historyPreview']['versionMeta']) => void;
   exitHistoryPreview: () => void;
   setSelectedProvider: (providerId: string | null, model: string | null) => void;
+  setPendingDouyinUrl: (url: string | null) => void;
 }
 
 const initialState: ScriptState = {
@@ -278,6 +281,7 @@ const initialState: ScriptState = {
   },
   selectedProviderId: null,
   selectedModel: null,
+  pendingDouyinUrl: null,
 };
 
 export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => ({
@@ -564,6 +568,8 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
 
   setSelectedProvider: (providerId, model) =>
     set({ selectedProviderId: providerId, selectedModel: model }),
+
+  setPendingDouyinUrl: (url) => set({ pendingDouyinUrl: url }),
 }));
 
 // 自动保存：当 reviewState / scriptDocVersion / template / annotations 变化时，

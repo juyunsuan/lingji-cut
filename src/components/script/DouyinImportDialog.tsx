@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Button,
+  Progress,
 } from '../../ui';
 import type { VideoImportProgress, VideoImportResult } from '../../lib/video-import-types';
 import { getFileNameFromPath, toFileSrc } from '../../lib/utils';
@@ -79,26 +80,48 @@ export function DouyinImportDialog({
               }}
             />
 
+            {/* 导入进度：标签 + 进度条 + 状态文本 */}
             {progress ? (
               <div
                 style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 10,
                   borderRadius: 12,
-                  border: '1px solid var(--color-border-subtle)',
-                  background: 'var(--color-window-bg)',
-                  padding: '12px 14px',
+                  border: '1px solid var(--color-separator, #38383A)',
+                  background: 'var(--color-panel-bg, #1E1E20)',
+                  padding: '14px 16px',
                 }}
               >
-                <div style={{ fontSize: 13, fontWeight: 600 }}>
-                  {progress.stepLabel}
-                </div>
+                {/* 步骤标签行：左侧步骤名，右侧百分比 */}
                 <div
                   style={{
-                    marginTop: 8,
-                    fontSize: 12,
-                    color: 'var(--color-text-secondary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                   }}
                 >
-                  {progress.progress}% · {progress.status}
+                  <span style={{ fontSize: 12, color: 'var(--color-text-secondary, #EBEBF599)' }}>
+                    {progress.stepLabel}
+                  </span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-system-blue, #0A84FF)' }}>
+                    {progress.progress}%
+                  </span>
+                </div>
+                {/* 进度条 */}
+                <Progress
+                  value={progress.progress}
+                  size="sm"
+                  variant={progress.status === 'done' ? 'success' : 'default'}
+                />
+                {/* 状态文本 */}
+                <div style={{ fontSize: 11, color: 'var(--color-text-secondary, #EBEBF599)' }}>
+                  {progress.status === 'downloading' && '正在下载视频…'}
+                  {progress.status === 'extracting_audio' && '正在提取音频…'}
+                  {progress.status === 'transcribing' && '正在转录字幕…'}
+                  {progress.status === 'syncing' && '正在同步到项目…'}
+                  {progress.status === 'done' && '导入完成'}
+                  {progress.status === 'error' && '导入失败'}
                 </div>
               </div>
             ) : null}

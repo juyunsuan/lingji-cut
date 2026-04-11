@@ -1,7 +1,7 @@
 import { bundle } from '@remotion/bundler';
 import { getVideoMetadata, renderMedia, selectComposition } from '@remotion/renderer';
 import chokidar from 'chokidar';
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } from 'electron';
 import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import os from 'node:os';
@@ -45,7 +45,9 @@ import {
   type RecentProjectEntry,
 } from './recent-projects';
 import { getVideoImportService } from './video-import/import-service';
+import { resolveDouyinVideoSource } from './video-import/douyin-downloader';
 import type { VideoImportRequest } from '../src/lib/video-import-types';
+import { createWorkbenchTabContextMenuTemplate } from './workbench-tab-context-menu';
 
 let mainWindow: BrowserWindow | null = null;
 let menuContext: MenuContext = {
@@ -472,6 +474,50 @@ ipcMain.handle('show-editor-context-menu', async (event) => {
   menu.popup({ window: win });
 });
 
+ipcMain.handle(
+  'show-workbench-tab-context-menu',
+  async (
+    event,
+    request: {
+      file: string;
+      projectDir: string | null;
+      tabIndex: number;
+      tabCount: number;
+    },
+  ) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return;
+
+    const absolutePath = request.projectDir
+      ? path.resolve(request.projectDir, request.file)
+      : null;
+
+    const menu = Menu.buildFromTemplate(
+      createWorkbenchTabContextMenuTemplate({
+        file: request.file,
+        tabIndex: request.tabIndex,
+        tabCount: request.tabCount,
+        hasResolvedPath: Boolean(absolutePath),
+        onMenuAction: (action, file) => {
+          win.webContents.send('workbench-tab-menu-action', { action, file });
+        },
+        onCopyPath: () => {
+          if (absolutePath) {
+            clipboard.writeText(absolutePath);
+          }
+        },
+        onRevealInFileManager: () => {
+          if (absolutePath) {
+            shell.showItemInFolder(absolutePath);
+          }
+        },
+      }),
+    );
+
+    menu.popup({ window: win });
+  },
+);
+
 ipcMain.handle('select-project-directory', async () => {
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -678,6 +724,13 @@ ipcMain.handle('select-text-file', async () => {
   const filePath = result.filePaths[0];
   const content = await fs.readFile(filePath, 'utf-8');
   return { path: filePath, content };
+});
+
+// 轻量级抖音链接解析：仅获取标题和视频 ID，不下载视频
+ipcMain.handle('resolve-douyin-url', async (_event, url: string) => {
+  writeAppLog('info', 'douyin-resolve', '解析抖音链接', url);
+  const result = await resolveDouyinVideoSource(url);
+  return { title: result.title, videoId: result.videoId };
 });
 
 ipcMain.handle('import-video-source', async (_event, request: VideoImportRequest) => {
@@ -956,6 +1009,10 @@ ipcMain.handle('toggle-devtools', () => {
 
 ipcMain.on('show-item-in-folder', (_event, filePath: string) => {
   shell.showItemInFolder(filePath);
+});
+
+ipcMain.on('open-external', (_event, url: string) => {
+  shell.openExternal(url);
 });
 
 // ── 最近项目管理 ──

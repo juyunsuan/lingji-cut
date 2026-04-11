@@ -358,6 +358,30 @@ export default function App() {
     setPage('script-workbench');
   }, [clearAIAnalysis, setSrtEntries, setTimeline, syncWorkspaceState]);
 
+  /**
+   * 抖音导入回调：在指定父目录下创建以视频标题命名的项目文件夹，
+   * 初始化空白脚本项目状态，保存抖音链接到 store，
+   * 导航到脚本工作台后自动触发完整的视频下载+转录流程。
+   */
+  const handleDouyinImport = useCallback(async (parentDir: string, title: string, douyinUrl: string) => {
+    const projectDir = `${parentDir}/${title}`;
+
+    clearCurrentProject();
+    useScriptStore.getState().clearProjectSession();
+    useScriptStore.getState().restoreState(createBlankScriptProjectState(projectDir));
+    // 设置待处理的抖音链接，进入工作台后自动触发导入
+    useScriptStore.getState().setPendingDouyinUrl(douyinUrl);
+
+    setTimeline(createDefaultTimeline());
+    setSrtEntries([]);
+    clearAIAnalysis();
+    setProjectDir(projectDir);
+    await window.electronAPI.addRecentProject(projectDir);
+    void syncWorkspaceState();
+    setSetupError(null);
+    setPage('script-workbench');
+  }, [clearAIAnalysis, setSrtEntries, setTimeline, syncWorkspaceState]);
+
   const handleCloseProject = useCallback(() => {
     clearCurrentProject();
     void syncWorkspaceState();
@@ -732,6 +756,7 @@ export default function App() {
                     void handleCreateScriptProject();
                   }}
                   onOpenSettings={() => setPage('settings')}
+                  onDouyinImport={handleDouyinImport}
                 />
               ) : page === 'settings' ? (
                 <Settings onBack={() => setPage(previousPage)} />
