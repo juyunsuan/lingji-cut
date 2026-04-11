@@ -8,6 +8,7 @@ import {
   useAIStore,
 } from '../store/ai';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
+import { useTaskProgressStore } from '../store/task-progress';
 import {
   buildAICardTimelineDraft,
   type AIAnalysisResult,
@@ -91,6 +92,7 @@ export function useAIVideoWorkflow() {
       scriptText: string,
       projectDir: string,
     ) => {
+      const workflowTaskId = `ai-workflow-${Date.now()}`;
       const currentRequestId = workflowSession.requestId;
       const isStaleRun = () =>
         workflowSession.cancelled || workflowSession.requestId !== currentRequestId;
@@ -158,8 +160,26 @@ export function useAIVideoWorkflow() {
           canCancel: true,
         });
 
+        useTaskProgressStore.getState().startTask({
+          id: workflowTaskId,
+          category: 'tts',
+          label: 'TTS 语音合成',
+          mode: 'determinate',
+          progress: 0,
+          phase: '生成语音',
+          level: 2,
+          canCancel: true,
+          onCancel: () => {
+            workflowSession.cancelled = true;
+            if (currentRequestId) {
+              void window.electronAPI.cancelTTS(currentRequestId);
+            }
+          },
+        });
+
         const cleanupProgress = window.electronAPI.onTTSProgress((pct) => {
           setWorkflow({ progress: pct });
+          useTaskProgressStore.getState().updateTask(workflowTaskId, { progress: pct });
         });
 
         try {
@@ -213,13 +233,15 @@ export function useAIVideoWorkflow() {
             return;
           }
 
+          const ttsErrorMsg = buildWorkflowError('语音生成失败', error);
           setWorkflow({
             step: 'error',
             progress: 0,
             stepLabel: '',
-            error: buildWorkflowError('语音生成失败', error),
+            error: ttsErrorMsg,
             canCancel: false,
           });
+          useTaskProgressStore.getState().failTask(workflowTaskId, ttsErrorMsg);
           workflowSession.retryStep = 'tts_generating';
           return;
         }
@@ -238,6 +260,12 @@ export function useAIVideoWorkflow() {
           canCancel: false,
         });
 
+        useTaskProgressStore.getState().updateTask(workflowTaskId, {
+          label: 'AI 内容分析',
+          phase: '分析中',
+          progress: 12,
+        });
+
         try {
           const analysisResult = (await window.electronAPI.analyzeSrt({
             entries: useTimelineStore.getState().srtEntries,
@@ -254,16 +282,23 @@ export function useAIVideoWorkflow() {
             error: null,
             canCancel: false,
           });
+          useTaskProgressStore.getState().updateTask(workflowTaskId, {
+            label: '封面图生成',
+            phase: '生成中',
+            progress: 36,
+          });
           workflowSession.retryStep = 'cover_generating';
           fromStep = 'cover_generating';
         } catch (error) {
+          const analyzeErrorMsg = buildWorkflowError('内容分析失败', error);
           setWorkflow({
             step: 'error',
             progress: 0,
             stepLabel: '',
-            error: buildWorkflowError('内容分析失败', error),
+            error: analyzeErrorMsg,
             canCancel: false,
           });
+          useTaskProgressStore.getState().failTask(workflowTaskId, analyzeErrorMsg);
           workflowSession.retryStep = 'ai_analyzing';
           return;
         }
@@ -358,14 +393,17 @@ export function useAIVideoWorkflow() {
             error: null,
             canCancel: false,
           });
+          useTaskProgressStore.getState().completeTask(workflowTaskId);
         } catch (error) {
+          const arrangingErrorMsg = buildWorkflowError('时间轴排布失败', error);
           setWorkflow({
             step: 'error',
             progress: 0,
             stepLabel: '',
-            error: buildWorkflowError('时间轴排布失败', error),
+            error: arrangingErrorMsg,
             canCancel: false,
           });
+          useTaskProgressStore.getState().failTask(workflowTaskId, arrangingErrorMsg);
           workflowSession.retryStep = 'arranging';
         }
       }
