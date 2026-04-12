@@ -29,7 +29,7 @@ describe('ScriptWorkbench', () => {
   });
 
   it('renders the file-tree empty guide before the workspace is initialized', () => {
-    useScriptStore.setState({ currentStep: 0 as never, originalText: '', projectDir: null });
+    useScriptStore.setState({ originalText: '', projectDir: null });
 
     const html = renderToStaticMarkup(
       <OverlayProvider>
@@ -44,10 +44,13 @@ describe('ScriptWorkbench', () => {
 
   it('renders the review workspace when original text is available', () => {
     useScriptStore.setState({
-      currentStep: 1,
       projectDir: '/tmp/script-project',
       openedFile: 'original.md',
       originalText: '# 测试报告\n\n正文内容。',
+      workspaceFiles: {
+        hasOriginalFile: true,
+        hasScriptFile: false,
+      },
     });
 
     // CM6 uses imperative DOM — renderToStaticMarkup produces the container div
@@ -155,12 +158,22 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('activeFileIsVideoPreview');
   });
 
-  it('advances the workbench step after a script is generated', () => {
+  it('marks script workspace files after a script is generated', () => {
     const source = readFileSync(
       new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
       'utf8',
     );
 
-    expect(source).toContain('setCurrentStep(2)');
+    expect(source).toContain("setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: true })");
+  });
+
+  it('rehydrates the existing script project state when the workbench mounts with a projectDir', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('await hydrateRef.current(dir);');
+    expect(source).not.toContain('await refreshFileTree(dir);\n        return;');
   });
 });

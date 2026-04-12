@@ -1,3 +1,4 @@
+import type { WorkbenchStage } from './script-workbench-stage';
 import type { TimelineData } from '../types';
 import type { AIAnalysisResult, CoverCandidate } from '../types/ai';
 
@@ -6,6 +7,9 @@ export interface ProjectScriptState {
   annotations: unknown[];
   reviewState: 'idle' | 'issues' | 'clean';
   lastReviewedDocVersion: number;
+  manualStageOverride?: WorkbenchStage | null;
+  selectedProviderId?: string | null;
+  selectedModel?: string | null;
 }
 
 export interface ProjectAIAnalysis {

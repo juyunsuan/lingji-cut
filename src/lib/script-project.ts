@@ -1,8 +1,8 @@
+import type { WorkbenchStage } from './script-workbench-stage';
 import type { WorkspaceFilesState } from '../store/script';
 
 export function createBlankScriptProjectState(projectDir: string): {
   projectDir: string;
-  currentStep: 0;
   originalText: string;
   scriptText: string;
   selectedTemplate: 'news-broadcast';
@@ -10,10 +10,10 @@ export function createBlankScriptProjectState(projectDir: string): {
   workspaceFiles: WorkspaceFilesState;
   reviewState: 'idle';
   scriptDocVersion: 0;
+  manualStageOverride: WorkbenchStage | null;
 } {
   return {
     projectDir,
-    currentStep: 0,
     originalText: '',
     scriptText: '',
     selectedTemplate: 'news-broadcast',
@@ -24,5 +24,6 @@ export function createBlankScriptProjectState(projectDir: string): {
     },
     reviewState: 'idle',
     scriptDocVersion: 0,
+    manualStageOverride: null,
   };
 }

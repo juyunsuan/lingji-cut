@@ -1,5 +1,5 @@
-// src/lib/script-persistence.ts
 import type { Annotation, ReviewState } from '../store/script';
+import type { WorkbenchStage } from './script-workbench-stage';
 
 // v2 持久化格式
 export interface PersistedScriptState {
@@ -8,6 +8,9 @@ export interface PersistedScriptState {
   annotations: Annotation[];
   reviewState: ReviewState;
   lastReviewedDocVersion: number;
+  manualStageOverride?: WorkbenchStage | null;
+  selectedProviderId?: string | null;
+  selectedModel?: string | null;
   createdAt: string;
   updatedAt: string;
   lastOperation?: string;
@@ -49,7 +52,12 @@ export function createPersistedScriptState(
   scriptDocVersion: number,
   templateId: string,
   annotations: Annotation[],
-  createdAt?: string,
+  options?: {
+    createdAt?: string;
+    manualStageOverride?: WorkbenchStage | null;
+    selectedProviderId?: string | null;
+    selectedModel?: string | null;
+  },
 ): PersistedScriptState {
   return {
     version: 2,
@@ -57,7 +65,10 @@ export function createPersistedScriptState(
     annotations,
     reviewState,
     lastReviewedDocVersion: scriptDocVersion,
-    createdAt: createdAt ?? new Date().toISOString(),
+    manualStageOverride: options?.manualStageOverride ?? null,
+    selectedProviderId: options?.selectedProviderId ?? null,
+    selectedModel: options?.selectedModel ?? null,
+    createdAt: options?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 }
@@ -194,10 +205,46 @@ export async function loadScriptState(
   projectDir: string,
 ): Promise<PersistedScriptState | null> {
   const raw = await window.electronAPI.loadScriptState(projectDir);
-  if (!raw) return null;
+  if (raw) {
+    try {
+      return parsePersistedScriptState(JSON.parse(raw));
+    } catch {
+      return null;
+    }
+  }
 
   try {
-    return parsePersistedScriptState(JSON.parse(raw));
+    const projectRaw = await window.electronAPI.loadProject(projectDir);
+    if (!projectRaw) return null;
+
+    const project = JSON.parse(projectRaw) as {
+      createdAt?: string;
+      updatedAt?: string;
+      script?: {
+        templateId?: string;
+        annotations?: Annotation[];
+        reviewState?: ReviewState;
+        lastReviewedDocVersion?: number;
+        manualStageOverride?: WorkbenchStage | null;
+        selectedProviderId?: string | null;
+        selectedModel?: string | null;
+      };
+    };
+
+    if (!project.script) return null;
+
+    return {
+      version: 2,
+      templateId: project.script.templateId ?? 'news-broadcast',
+      annotations: project.script.annotations ?? [],
+      reviewState: project.script.reviewState ?? 'idle',
+      lastReviewedDocVersion: project.script.lastReviewedDocVersion ?? 0,
+      manualStageOverride: project.script.manualStageOverride ?? null,
+      selectedProviderId: project.script.selectedProviderId ?? null,
+      selectedModel: project.script.selectedModel ?? null,
+      createdAt: project.createdAt ?? new Date().toISOString(),
+      updatedAt: project.updatedAt ?? new Date().toISOString(),
+    };
   } catch {
     return null;
   }

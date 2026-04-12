@@ -157,14 +157,53 @@ describe('script shell components', () => {
     expect(openedFileGuardIndex).toBe(-1);
   });
 
-  it('prefers the generate-script branch when currentStep indicates a fresh original draft', () => {
+  it('prefers the generate-script branch from the derived workbench stage instead of currentStep', () => {
     const source = readFileSync(
       new URL('../src/components/script/QuickActionBar.tsx', import.meta.url),
       'utf8',
     );
 
-    expect(source).toContain('const currentStep = useScriptStore((s) => s.currentStep);');
-    expect(source).toContain('const shouldPromptGenerate = hasOriginal && currentStep <= 1;');
-    expect(source).toContain('if (shouldPromptGenerate || (hasOriginal && !hasScript))');
+    expect(source).toContain('selectEffectiveWorkbenchStage');
+    expect(source).not.toContain('const currentStep = useScriptStore((s) => s.currentStep);');
+    expect(source).toContain("workbenchStage === 'original_ready'");
+  });
+
+  it('keeps action availability separate from the displayed stage label', () => {
+    const source = readFileSync(
+      new URL('../src/components/script/QuickActionBar.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('const canGenerateScript =');
+    expect(source).toContain('const canReviewScript =');
+    expect(source).toContain('const canRegenerateScript =');
+    expect(source).toContain('const stageHint = (() => {');
+    expect(source).toContain("effectiveWorkbenchStage === 'review_clean'");
+    expect(source).toContain("'重新审查'");
+    expect(source).toContain("'AI 审稿'");
+  });
+
+  it('derives original availability from readiness instead of raw workspace flags', () => {
+    const source = readFileSync(
+      new URL('../src/components/script/QuickActionBar.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('selectScriptFileReadiness');
+    expect(source).toContain("const hasOriginal = originalReadiness !== 'missing';");
+    expect(source).toContain("const hasScript = scriptReadiness !== 'missing';");
+    expect(source).not.toContain('const hasOriginal = workspaceFiles.hasOriginalFile;');
+    expect(source).not.toContain('const hasScript = workspaceFiles.hasScriptFile;');
+  });
+
+  it('gates review actions by ready script content instead of file-tree flags alone', () => {
+    const source = readFileSync(
+      new URL('../src/components/script/QuickActionBar.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain("const canReviewScript = scriptReadiness === 'ready' && Boolean(reviewScriptCb);");
+    expect(source).toContain("const canRegenerateScript = scriptReadiness === 'ready' && Boolean(regenerateScript);");
+    expect(source).toContain("const canCopyScript = scriptReadiness === 'ready' && Boolean(scriptText.trim());");
   });
 });

@@ -57,7 +57,6 @@ describe('script store', () => {
 
     store.restoreState({
       projectDir: '/tmp/script-project',
-      currentStep: 0,
       originalText: '# original',
       scriptText: '# script',
       selectedTemplate: 'news-broadcast',
@@ -222,6 +221,16 @@ describe('script store', () => {
     });
   });
 
+  describe('workbench stage override', () => {
+    it('stores and clears the manual stage override', () => {
+      useScriptStore.getState().setManualStageOverride('review_clean');
+      expect(useScriptStore.getState().manualStageOverride).toBe('review_clean');
+
+      useScriptStore.getState().clearManualStageOverride();
+      expect(useScriptStore.getState().manualStageOverride).toBeNull();
+    });
+  });
+
   describe('reset clears new state fields', () => {
     it('reset restores all new fields to initial values', () => {
       useScriptStore.getState().startAgentOperation('generate');
@@ -302,7 +311,6 @@ describe('script store', () => {
     it('fully clears the active project and transient editor state', () => {
       useScriptStore.setState({
         projectDir: '/tmp/old-project',
-        currentStep: 2,
         originalText: '旧原稿',
         scriptText: '旧口播稿',
         openedFile: 'script.md',
@@ -315,7 +323,6 @@ describe('script store', () => {
 
       const state = useScriptStore.getState();
       expect(state.projectDir).toBeNull();
-      expect(state.currentStep).toBe(0);
       expect(state.originalText).toBe('');
       expect(state.scriptText).toBe('');
       expect(state.openedFile).toBeNull();
