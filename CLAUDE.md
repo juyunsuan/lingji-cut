@@ -270,3 +270,13 @@ TypeScript 严格模式，无独立 lint 命令（tsc 兼任类型检查）。
 - **分类颜色**：`ai-write` 紫色 / `ai-review` 绿色 / `import` 琥珀 / `export` 系统蓝 / `tts` 粉色 / `cover` 浅紫 / `io` 灰色
 
 **所有 AI Agent 在实现涉及耗时操作的功能时，必须遵循 PROGRESS-SPEC.md 的接入协议。**
+
+---
+
+## 前端 UI 交付审查工作流（强制）
+
+完成前端界面开发后，**必须**执行 `/ui-review` skill（`.claude/skills/ui-review/SKILL.md`）进行交付审查。
+
+**触发条件**：新增页面/功能模块 UI 完成、较大范围 UI 改动、多组件联动交互完成。
+
+**禁止**跳过 UI 审查直接声称开发完成。

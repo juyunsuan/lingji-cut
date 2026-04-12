@@ -76,7 +76,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     workflow,
   } = useAIVideoWorkflow();
   const {
-    currentStep,
     originalText,
     scriptText,
     selectedTemplate,
@@ -84,7 +83,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     annotations,
     generating,
     reviewing,
-    setCurrentStep,
     setProjectDir,
     setOriginalText,
     setScriptText,
@@ -235,6 +233,9 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     lastVideoImport && lastVideoImport.sourceType === 'douyin',
   );
 
+  // 正在/已经完成 hydrate 的目录，避免挂载恢复与 projectDir 监听重复执行
+  const hydratedDirRef = useRef<string | null>(null);
+
   const tabs = useMemo(() => {
     const collected = new Set<string>();
 
@@ -270,71 +271,66 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
 
   const hydrateProjectDirectory = useCallback(
     async (dir: string) => {
-      setProjectDir(dir);
-      await window.electronAPI.startWatching(dir);
+      hydratedDirRef.current = dir;
 
-      const entries = await refreshFileTree(dir);
-      const fullState = await loadFullScriptState(dir);
+      try {
+        setProjectDir(dir);
+        await window.electronAPI.startWatching(dir);
 
-      const hasOriginal = entries.some((e) => e.name === 'original.md');
-      const hasScript = entries.some((e) => e.name === 'script.md');
-      setWorkspaceFiles({ hasOriginalFile: hasOriginal, hasScriptFile: hasScript });
+        const entries = await refreshFileTree(dir);
+        const fullState = await loadFullScriptState(dir);
 
-      if (fullState) {
-        const { persisted } = fullState;
-        const derivedStep =
-          persisted.reviewState === 'clean'
-            ? 4
-            : persisted.reviewState === 'issues'
-              ? 3
-              : fullState.scriptText.length > 0
-                ? 2
-                : fullState.originalText.length > 0
-                  ? 1
-                  : 0;
+        const hasOriginal = entries.some((e) => e.name === 'original.md');
+        const hasScript = entries.some((e) => e.name === 'script.md');
+        setWorkspaceFiles({ hasOriginalFile: hasOriginal, hasScriptFile: hasScript });
+
+        if (fullState) {
+          const { persisted } = fullState;
+          restoreState({
+            projectDir: dir,
+            originalText: fullState.originalText,
+            scriptText: fullState.scriptText,
+            selectedTemplate: persisted.templateId,
+            annotations: persisted.annotations,
+            reviewState: persisted.reviewState,
+            scriptDocVersion: persisted.lastReviewedDocVersion,
+            manualStageOverride: persisted.manualStageOverride ?? null,
+            workspaceFiles: { hasOriginalFile: hasOriginal, hasScriptFile: hasScript },
+          });
+          setFileEntries(entries);
+          if (!openedFile) {
+            const fileToOpen = hasScript ? 'script.md' : hasOriginal ? 'original.md' : null;
+            if (fileToOpen) openFileTab(fileToOpen);
+          }
+          return dir;
+        }
+
+        const [originalFromDisk, scriptFromDisk] = await Promise.all([
+          window.electronAPI.loadScriptFile(dir, 'original.md'),
+          window.electronAPI.loadScriptFile(dir, 'script.md'),
+        ]);
 
         restoreState({
           projectDir: dir,
-          currentStep: derivedStep as 0 | 1 | 2 | 3 | 4,
-          originalText: fullState.originalText,
-          scriptText: fullState.scriptText,
-          selectedTemplate: persisted.templateId,
-          annotations: persisted.annotations,
-          reviewState: persisted.reviewState,
-          scriptDocVersion: persisted.lastReviewedDocVersion,
+          originalText: originalFromDisk ?? '',
+          scriptText: scriptFromDisk ?? '',
+          selectedTemplate: 'news-broadcast',
+          annotations: [],
+          manualStageOverride: null,
           workspaceFiles: { hasOriginalFile: hasOriginal, hasScriptFile: hasScript },
         });
         setFileEntries(entries);
         if (!openedFile) {
-          const fileToOpen = hasScript ? 'script.md' : hasOriginal ? 'original.md' : null;
+          const fileToOpen = originalFromDisk !== null ? 'original.md' : scriptFromDisk !== null ? 'script.md' : null;
           if (fileToOpen) openFileTab(fileToOpen);
         }
-        hydratedDirRef.current = dir;
         return dir;
+      } catch (error) {
+        if (hydratedDirRef.current === dir) {
+          hydratedDirRef.current = null;
+        }
+        throw error;
       }
-
-      const [originalFromDisk, scriptFromDisk] = await Promise.all([
-        window.electronAPI.loadScriptFile(dir, 'original.md'),
-        window.electronAPI.loadScriptFile(dir, 'script.md'),
-      ]);
-
-      const nextStep = originalFromDisk !== null ? 1 : 0;
-      restoreState({
-        projectDir: dir,
-        currentStep: nextStep as 0 | 1,
-        originalText: originalFromDisk ?? '',
-        scriptText: scriptFromDisk ?? '',
-        selectedTemplate: 'news-broadcast',
-        annotations: [],
-        workspaceFiles: { hasOriginalFile: hasOriginal, hasScriptFile: hasScript },
-      });
-      setFileEntries(entries);
-      if (!openedFile) {
-        const fileToOpen = originalFromDisk !== null ? 'original.md' : scriptFromDisk !== null ? 'script.md' : null;
-        if (fileToOpen) openFileTab(fileToOpen);
-      }
-      hydratedDirRef.current = dir;
-      return dir;
     },
     [openedFile, refreshFileTree, restoreState, setFileEntries, openFileTab, setProjectDir, setWorkspaceFiles],
   );
@@ -349,8 +345,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     return hydrateProjectDirectory(dir);
   }, [hydrateProjectDirectory]);
 
-  // 已完成 hydrate 的目录，防止重复加载
-  const hydratedDirRef = useRef<string | null>(null);
   // hydrateProjectDirectory 引用不稳定（依赖 openedFile 等），用 ref 打断 effect 循环
   const hydrateRef = useRef(hydrateProjectDirectory);
   hydrateRef.current = hydrateProjectDirectory;
@@ -358,22 +352,15 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
   // 1. 挂载初始化：从 store / localStorage 恢复工作目录
   useEffect(() => {
     const restore = async () => {
-      if (useScriptStore.getState().projectDir) {
-        const dir = useScriptStore.getState().projectDir!;
-        hydratedDirRef.current = dir;
-        await window.electronAPI.startWatching(dir);
-        await refreshFileTree(dir);
-        return;
-      }
-
-      const savedDir = loadPersistedScriptProjectDir();
-      if (!savedDir) return;
+      const dir =
+        useScriptStore.getState().projectDir ?? loadPersistedScriptProjectDir();
+      if (!dir) return;
 
       setRestoring(true);
       try {
-        await hydrateRef.current(savedDir);
-        hydratedDirRef.current = savedDir;
+        await hydrateRef.current(dir);
       } catch (error) {
+        hydratedDirRef.current = null;
         console.error('恢复口播稿状态失败:', error);
       } finally {
         setRestoring(false);
@@ -386,7 +373,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
       void window.electronAPI.stopWatching();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrateRef 是稳定 ref
-  }, [refreshFileTree]);
+  }, []);
 
   // 2. 外部目录变更：App.tsx 同步了新的 projectDir 时重新加载
   useEffect(() => {
@@ -396,8 +383,8 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
       setRestoring(true);
       try {
         await hydrateRef.current(projectDir);
-        hydratedDirRef.current = projectDir;
       } catch (error) {
+        hydratedDirRef.current = null;
         console.error('切换工作目录失败:', error);
       } finally {
         setRestoring(false);
@@ -580,7 +567,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     setOriginalText(result.content);
     setScriptText('');
     setAnnotations([]);
-    setCurrentStep(1);
+    setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: false });
     openFileTab('original.md');
     setFileDirty('original.md', false);
     await window.electronAPI.saveScriptFile(dir, 'original.md', result.content);
@@ -589,11 +576,11 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     ensureProjectDirectory,
     refreshFileTree,
     setAnnotations,
-    setCurrentStep,
     setFileDirty,
     openFileTab,
     setOriginalText,
     setScriptText,
+    setWorkspaceFiles,
   ]);
 
   const handleCreateBlank = useCallback(async () => {
@@ -604,7 +591,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     setOriginalText('');
     setScriptText('');
     setAnnotations([]);
-    setCurrentStep(1);
+    setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: false });
     openFileTab('original.md');
     setFileDirty('original.md', false);
     await refreshFileTree(dir);
@@ -612,11 +599,11 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     ensureProjectDirectory,
     refreshFileTree,
     setAnnotations,
-    setCurrentStep,
     setFileDirty,
     openFileTab,
     setOriginalText,
     setScriptText,
+    setWorkspaceFiles,
   ]);
 
   const finalizeVideoImport = useCallback(
@@ -631,7 +618,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
 
       setWorkspaceFiles({ hasOriginalFile: hasOriginal, hasScriptFile: hasScript });
       setOriginalText(originalFromDisk ?? '');
-      setCurrentStep(originalFromDisk?.trim() ? 1 : 0);
       setAnnotations([]);
       openFileTab('original.md');
       setFileDirty('original.md', false);
@@ -640,7 +626,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
       openFileTab,
       refreshFileTree,
       setAnnotations,
-      setCurrentStep,
       setFileDirty,
       setOriginalText,
       setWorkspaceFiles,
@@ -907,7 +892,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
         // 生成完成：同步 store 并退出操作状态
         const finalState = useScriptStore.getState();
         finalState.setScriptText(result);
-        finalState.setCurrentStep(2);
         finalState.setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: true });
         finalState.stopAgentOperation();
         useTaskProgressStore.getState().completeTask(streamId);
@@ -1157,7 +1141,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     try {
       const result = await generateScriptDraft(originalText, selectedTemplate);
       setScriptText(result);
-      setCurrentStep(2);
       setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: true });
       openFileTab('script.md');
       setFileDirty('script.md', true);
@@ -1167,7 +1150,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     } finally {
       setGenerating(false);
     }
-  }, [originalText, selectedTemplate, bumpScriptDocVersion, setAnnotations, setCurrentStep, setFileDirty, setGenerating, openFileTab, setReviewState, setScriptText, setWorkspaceFiles]);
+  }, [originalText, selectedTemplate, bumpScriptDocVersion, setAnnotations, setFileDirty, setGenerating, openFileTab, setReviewState, setScriptText, setWorkspaceFiles]);
 
   const handleReview = useCallback(async () => {
     if (!scriptText.trim()) return;
@@ -1227,6 +1210,11 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
         useScriptStore.getState().scriptDocVersion,
         useScriptStore.getState().selectedTemplate,
         useScriptStore.getState().annotations,
+        {
+          manualStageOverride: useScriptStore.getState().manualStageOverride,
+          selectedProviderId: useScriptStore.getState().selectedProviderId,
+          selectedModel: useScriptStore.getState().selectedModel,
+        },
       ),
     );
     await refreshFileTree(projectDir);
@@ -1272,13 +1260,12 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
       setOriginalText(content);
       setScriptText('');
       setAnnotations([]);
-      setCurrentStep(1);
+      setWorkspaceFiles({ hasOriginalFile: true, hasScriptFile: false });
       openFileTab('original.md');
       setFileDirty('original.md', false);
-      setWorkspaceFiles({ hasOriginalFile: true });
       await refreshFileTree(dir);
     },
-    [ensureProjectDirectory, refreshFileTree, setAnnotations, setCurrentStep, setFileDirty, openFileTab, setOriginalText, setScriptText, setWorkspaceFiles],
+    [ensureProjectDirectory, refreshFileTree, setAnnotations, setFileDirty, openFileTab, setOriginalText, setScriptText, setWorkspaceFiles],
   );
 
   // 注册工作台回调供 GuideCards 等组件调用

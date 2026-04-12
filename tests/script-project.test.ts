@@ -5,7 +5,6 @@ describe('createBlankScriptProjectState', () => {
   it('creates a fresh script-workbench state for a newly selected directory', () => {
     expect(createBlankScriptProjectState('/tmp/new-project')).toEqual({
       projectDir: '/tmp/new-project',
-      currentStep: 0,
       originalText: '',
       scriptText: '',
       selectedTemplate: 'news-broadcast',
@@ -16,6 +15,7 @@ describe('createBlankScriptProjectState', () => {
       },
       reviewState: 'idle',
       scriptDocVersion: 0,
+      manualStageOverride: null,
     });
   });
 });

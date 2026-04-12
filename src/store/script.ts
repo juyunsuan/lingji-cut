@@ -3,6 +3,7 @@ import {
   debouncedSaveScriptSection,
   persistScriptProjectDir,
 } from '../lib/script-persistence';
+import type { WorkbenchStage } from '../lib/script-workbench-stage';
 import { loadSelectedRole, saveSelectedRole } from '../lib/settings-storage';
 import type { FileEntry } from '../lib/electron-api';
 import type {
@@ -10,10 +11,6 @@ import type {
   VideoImportResult,
   VideoImportStatus,
 } from '../lib/video-import-types';
-
-// --- 保留旧类型供外部未迁移文件暂时使用 ---
-/** @deprecated 将在集成阶段移除，请勿新增使用 */
-export type ScriptStep = 0 | 1 | 2 | 3 | 4;
 
 export type AnnotationSeverity = 'error' | 'warning' | 'info';
 export type AnnotationStatus = 'pending' | 'accepted' | 'dismissed';
@@ -84,8 +81,6 @@ export interface WorkbenchCallbacks {
 
 interface ScriptState {
   projectDir: string | null;
-  /** @deprecated 将在集成阶段移除 */
-  currentStep: ScriptStep;
   originalText: string;
   scriptText: string;
   selectedTemplate: string;
@@ -123,6 +118,8 @@ interface ScriptState {
   reviewBreathing: boolean;
   /** 写稿工作台是否已挂载 */
   workbenchMounted: boolean;
+  /** 用户手动校准工作台阶段，null 表示继续自动判断 */
+  manualStageOverride: WorkbenchStage | null;
   videoImportStatus: VideoImportStatus | null;
   videoImportProgress: VideoImportProgress | null;
   lastVideoImport: VideoImportResult | null;
@@ -149,8 +146,6 @@ interface ScriptState {
 
 interface ScriptActions {
   setProjectDir: (dir: string | null) => void;
-  /** @deprecated 将在集成阶段移除 */
-  setCurrentStep: (step: ScriptStep) => void;
   setOriginalText: (text: string) => void;
   setScriptText: (text: string) => void;
   setSelectedTemplate: (id: string) => void;
@@ -174,7 +169,6 @@ interface ScriptActions {
   dismissAllAnnotations: () => void;
   restoreState: (params: {
     projectDir: string;
-    currentStep: ScriptStep;
     originalText: string;
     scriptText: string;
     selectedTemplate: string;
@@ -182,6 +176,7 @@ interface ScriptActions {
     workspaceFiles?: WorkspaceFilesState;
     reviewState?: ReviewState;
     scriptDocVersion?: number;
+    manualStageOverride?: WorkbenchStage | null;
   }) => void;
   reset: () => void;
   clearProjectSession: () => void;
@@ -208,6 +203,8 @@ interface ScriptActions {
   setReviewCursorPos: (pos: { x: number; y: number } | null) => void;
   setReviewBreathing: (active: boolean) => void;
   setWorkbenchMounted: (mounted: boolean) => void;
+  setManualStageOverride: (stage: WorkbenchStage | null) => void;
+  clearManualStageOverride: () => void;
   setVideoImportProgress: (progress: VideoImportProgress | null) => void;
   setLastVideoImport: (result: VideoImportResult | null) => void;
   clearVideoImportState: () => void;
@@ -219,7 +216,6 @@ interface ScriptActions {
 
 const initialState: ScriptState = {
   projectDir: null,
-  currentStep: 0,
   originalText: '',
   scriptText: '',
   selectedTemplate: 'news-broadcast',
@@ -276,6 +272,7 @@ const initialState: ScriptState = {
   reviewCursorPos: null,
   reviewBreathing: false,
   workbenchMounted: false,
+  manualStageOverride: null,
   videoImportStatus: null,
   videoImportProgress: null,
   lastVideoImport: null,
@@ -297,7 +294,6 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
     set({ projectDir: dir });
     persistScriptProjectDir(dir);
   },
-  setCurrentStep: (step) => set({ currentStep: step }),
   setOriginalText: (text) => set({ originalText: text }),
   setScriptText: (text) => set({ scriptText: text }),
   setSelectedTemplate: (id) => set({ selectedTemplate: id }),
@@ -423,7 +419,6 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
   restoreState: (params) =>
     set({
       projectDir: params.projectDir,
-      currentStep: params.currentStep,
       originalText: params.originalText,
       scriptText: params.scriptText,
       selectedTemplate: params.selectedTemplate,
@@ -443,6 +438,7 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
       },
       reviewState: params.reviewState ?? 'idle',
       scriptDocVersion: params.scriptDocVersion ?? 0,
+      manualStageOverride: params.manualStageOverride ?? null,
     }),
 
   reset: () => {
@@ -547,6 +543,8 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
   setReviewCursorPos: (pos) => set({ reviewCursorPos: pos }),
   setReviewBreathing: (active) => set({ reviewBreathing: active }),
   setWorkbenchMounted: (mounted) => set({ workbenchMounted: mounted }),
+  setManualStageOverride: (stage) => set({ manualStageOverride: stage }),
+  clearManualStageOverride: () => set({ manualStageOverride: null }),
   setVideoImportProgress: (progress) =>
     set({
       videoImportStatus: progress?.status ?? null,
@@ -588,6 +586,7 @@ useScriptStore.subscribe((state, prevState) => {
     state.scriptDocVersion !== prevState.scriptDocVersion ||
     state.selectedTemplate !== prevState.selectedTemplate ||
     state.annotations !== prevState.annotations ||
+    state.manualStageOverride !== prevState.manualStageOverride ||
     state.selectedProviderId !== prevState.selectedProviderId ||
     state.selectedModel !== prevState.selectedModel;
 
@@ -598,6 +597,7 @@ useScriptStore.subscribe((state, prevState) => {
     annotations: state.annotations,
     reviewState: state.reviewState,
     lastReviewedDocVersion: state.scriptDocVersion,
+    manualStageOverride: state.manualStageOverride,
     selectedProviderId: state.selectedProviderId,
     selectedModel: state.selectedModel,
   };
