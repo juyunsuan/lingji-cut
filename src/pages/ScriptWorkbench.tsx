@@ -231,6 +231,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     activeFileIsVideoPreview && !(activeFile! in extraFileContents),
   );
 
+  const hasDouyinDetailAction = Boolean(
+    lastVideoImport && lastVideoImport.sourceType === 'douyin',
+  );
+
   const tabs = useMemo(() => {
     const collected = new Set<string>();
 
@@ -1750,16 +1754,29 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
               {(workflow.step === 'idle' ||
                 workflow.step === 'error') &&
                 !hasAICardOverlays ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={!scriptText.trim()}
-                  className={styles.workflowButton}
-                  onClick={handleGenerateVideo}
-                >
-                  <AppIcon name="film" size={14} />
-                  <span>生成视频</span>
-                </Button>
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!scriptText.trim()}
+                    className={styles.workflowButton}
+                    onClick={handleGenerateVideo}
+                  >
+                    <AppIcon name="film" size={14} />
+                    <span>生成视频</span>
+                  </Button>
+                  {hasDouyinDetailAction ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={styles.workflowButton}
+                      onClick={handleOpenImportPreview}
+                    >
+                      <AppIcon name="folder-open" size={14} />
+                      <span>查看抖音详情</span>
+                    </Button>
+                  ) : null}
+                </>
               ) : null}
               {workflow.step !== 'idle' &&
               workflow.step !== 'done' &&

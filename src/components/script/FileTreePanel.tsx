@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -8,7 +8,7 @@ import {
   FolderOpen,
   Settings2,
 } from 'lucide-react';
-import type { CSSProperties, ReactNode } from 'react';
+import type { CSSProperties, ReactNode, RefObject } from 'react';
 import type { FileEntry } from '../../lib/electron-api';
 import { isVideoImportPreviewFile } from '../../lib/video-import-preview';
 import { EmptyState, PanelHeader } from '../../ui';
@@ -32,6 +32,7 @@ interface FileTreeProps {
   fileConflictMap: Record<string, boolean>;
   onToggleDirectory: (path: string) => void;
   onOpenFile: (file: string) => void;
+  treeRef?: RefObject<HTMLDivElement | null>;
 }
 
 function getProjectName(projectDir: string): string {
@@ -97,6 +98,34 @@ export function reconcileExpandedDirectories(
     next[path] = previous[path] ?? true;
     return next;
   }, {});
+}
+
+export function getAncestorDirectoryPaths(filePath: string): string[] {
+  const parts = filePath.split('/').filter(Boolean);
+  if (parts.length <= 1) {
+    return [];
+  }
+
+  return parts.slice(0, -1).map((_, index) => parts.slice(0, index + 1).join('/'));
+}
+
+export function revealPathInExpandedDirectories(
+  previous: Record<string, boolean>,
+  filePath: string | null,
+): Record<string, boolean> {
+  if (!filePath) {
+    return previous;
+  }
+
+  let changed = false;
+  const next = { ...previous };
+  for (const path of getAncestorDirectoryPaths(filePath)) {
+    if (next[path] !== true) {
+      next[path] = true;
+      changed = true;
+    }
+  }
+  return changed ? next : previous;
 }
 
 function TreeNode({
@@ -227,9 +256,10 @@ export function FileTree({
   fileConflictMap,
   onToggleDirectory,
   onOpenFile,
+  treeRef,
 }: FileTreeProps) {
   return (
-    <div className={styles.treeList} role="tree" aria-label="工作文件树">
+    <div className={styles.treeList} role="tree" aria-label="工作文件树" ref={treeRef}>
       {fileEntries.map((entry) => (
         <TreeNode
           key={entry.name}
@@ -257,6 +287,7 @@ export function FileTreePanel({
   onSelectProjectDir,
   onOpenFile,
 }: FileTreePanelProps) {
+  const treeRef = useRef<HTMLDivElement | null>(null);
   const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>(() =>
     reconcileExpandedDirectories(fileEntries, {}),
   );
@@ -264,6 +295,24 @@ export function FileTreePanel({
   useEffect(() => {
     setExpandedDirectories((previous) => reconcileExpandedDirectories(fileEntries, previous));
   }, [fileEntries]);
+
+  useEffect(() => {
+    setExpandedDirectories((previous) => revealPathInExpandedDirectories(previous, openedFile));
+  }, [openedFile]);
+
+  useEffect(() => {
+    if (!openedFile || !treeRef.current) {
+      return;
+    }
+
+    const selector = `[data-file-path="${openedFile.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+    const rafId = window.requestAnimationFrame(() => {
+      const target = treeRef.current?.querySelector<HTMLElement>(selector);
+      target?.scrollIntoView({ block: 'nearest' });
+    });
+
+    return () => window.cancelAnimationFrame(rafId);
+  }, [openedFile, expandedDirectories]);
 
   function handleToggleDirectory(path: string) {
     setExpandedDirectories((previous) => ({
@@ -302,6 +351,7 @@ export function FileTreePanel({
             fileConflictMap={fileConflictMap}
             onToggleDirectory={handleToggleDirectory}
             onOpenFile={onOpenFile}
+            treeRef={treeRef}
           />
         </>
       ) : (

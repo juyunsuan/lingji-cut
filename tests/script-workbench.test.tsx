@@ -112,6 +112,17 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('useAIVideoWorkflow');
   });
 
+  it('declares a quick douyin detail action beside the AI video workflow entry', () => {
+    const source = readFileSync(
+      new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
+      'utf8',
+    );
+
+    expect(source).toContain('查看抖音详情');
+    expect(source).toContain('hasDouyinDetailAction');
+    expect(source).toContain('handleOpenImportPreview');
+  });
+
   it('renders workflow overlay controls for cancel and retry', () => {
     const source = readFileSync(
       new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),

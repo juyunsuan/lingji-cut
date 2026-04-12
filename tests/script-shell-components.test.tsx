@@ -105,6 +105,27 @@ describe('script shell components', () => {
     expect(html).toContain('drafts/chapter-1.md');
   });
 
+  it('reveals preview file ancestors when asked to locate a nested douyin import entry', async () => {
+    const { revealPathInExpandedDirectories } = await import('../src/components/script/FileTreePanel');
+
+    expect(
+      revealPathInExpandedDirectories(
+        {
+          imports: false,
+          'imports/douyin': false,
+          'imports/douyin/123': false,
+          drafts: false,
+        },
+        'imports/douyin/123/preview.json',
+      ),
+    ).toEqual({
+      imports: true,
+      'imports/douyin': true,
+      'imports/douyin/123': true,
+      drafts: false,
+    });
+  });
+
   it('renders tabs for available files and keeps the active file visible', async () => {
     const { FileTabs } = await import('../src/components/script/FileTabs');
 
