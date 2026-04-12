@@ -8,6 +8,7 @@ import {
   type WorkbenchStage,
 } from '../../lib/script-workbench-stage';
 import { getAllRoles } from '../../lib/script-templates';
+import { Select, type SelectOption } from '../../ui';
 import { useScriptStore } from '../../store/script';
 import { ModelSelector } from './ModelSelector';
 import styles from './QuickActionBar.module.css';
@@ -46,6 +47,7 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
   const reviewScriptCb = useScriptStore((s) => s.workbenchCallbacks.reviewScript);
 
   const roles = getAllRoles();
+  const roleOptions: SelectOption[] = roles.map((role) => ({ value: role.id, label: role.name }));
   const isOperating = agentOperation.isOperating;
   const hasOriginal = originalReadiness !== 'missing';
   const hasScript = scriptReadiness !== 'missing';
@@ -86,21 +88,21 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
   const roleSelector = (
     <div className={styles.roleSelector}>
       <User size={12} className={styles.roleIcon} />
-      <select
-        className={styles.roleSelect}
+      <Select
+        options={roleOptions}
         value={selectedRole}
         onChange={(event) => setSelectedRole(event.target.value)}
         disabled={isOperating}
-        title="选择口播角色"
-      >
-        {roles.map((role) => (
-          <option key={role.id} value={role.id}>
-            {role.name}
-          </option>
-        ))}
-      </select>
+        className={styles.roleSelectWrap}
+        controlClassName={styles.compactControl}
+      />
     </div>
   );
+
+  const stageOptions: SelectOption[] = [
+    { value: '__auto__', label: '自动判断' },
+    ...STAGE_OPTIONS.map((stage) => ({ value: stage, label: WORKBENCH_STAGE_LABELS[stage] })),
+  ];
 
   const stageControls = (
     <div className={styles.stageControls}>
@@ -108,8 +110,8 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
         当前阶段：{WORKBENCH_STAGE_LABELS[effectiveWorkbenchStage]}
         {manualStageOverride ? '（手动）' : '（自动）'}
       </span>
-      <select
-        className={styles.stageSelect}
+      <Select
+        options={stageOptions}
         value={manualStageOverride ?? '__auto__'}
         onChange={(event) => {
           const nextValue = event.target.value;
@@ -119,15 +121,9 @@ export function QuickActionBar({ onImportText, onImportDouyin }: QuickActionBarP
           }
           setManualStageOverride(nextValue as WorkbenchStage);
         }}
-        title="手动校准工作台阶段"
-      >
-        <option value="__auto__">自动判断</option>
-        {STAGE_OPTIONS.map((stage) => (
-          <option key={stage} value={stage}>
-            {WORKBENCH_STAGE_LABELS[stage]}
-          </option>
-        ))}
-      </select>
+        className={styles.stageSelectWrap}
+        controlClassName={styles.compactControl}
+      />
       {manualStageOverride ? (
         <button
           type="button"

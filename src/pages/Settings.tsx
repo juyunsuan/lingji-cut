@@ -6,6 +6,7 @@ import { ReviewCriteriaTab } from '../components/settings/ReviewCriteriaTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
 import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import { McpSettingsTab } from '../components/settings/McpSettingsTab';
+import { Button } from '../ui';
 import styles from './Settings.module.css';
 
 type SettingsTab = 'ai-config' | 'templates' | 'review' | 'tts' | 'agent' | 'mcp';
@@ -41,27 +42,32 @@ export function Settings({ onBack }: SettingsProps) {
     <div className={styles.page}>
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
-          <button
+          <Button.Icon
             type="button"
             onClick={onBack}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EBEBF599', padding: 0 }}
+            variant="ghost"
+            size="sm"
+            className={styles.backButton}
+            aria-label="返回上一级"
           >
             <ArrowLeft size={18} />
-          </button>
+          </Button.Icon>
           <span className={styles.sidebarTitle}>系统设置</span>
         </div>
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
-            <button
+            <Button
               key={tab.id}
               type="button"
               onClick={() => setActiveTab(tab.id)}
+              variant={activeTab === tab.id ? 'accent' : 'ghost'}
+              size="sm"
               className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabButtonActive : ''}`}
             >
               <Icon size={16} />
               {tab.label}
-            </button>
+            </Button>
           );
         })}
       </div>

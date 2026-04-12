@@ -3,7 +3,7 @@ import type { AppPage, MenuAction } from '../lib/electron-api';
 import type { SaveStatus } from '../store/timeline';
 import { useAgentStore } from '../store/agent';
 import { AppIcon } from './AppIcon';
-import { Button } from '../ui';
+import { Button, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
 import styles from './Toolbar.module.css';
 
 interface ToolbarProps {
@@ -73,30 +73,38 @@ export function Toolbar({
 
         {isEditorPage && (
           <div className={styles.historyActions} data-toolbar-history="true">
-            <Button.Icon
-              variant="ghost"
-              aria-label="撤销"
-              title="撤销"
-              className={styles.historyButton}
-              data-command="undo"
-              data-enabled={canUndo ? 'true' : 'false'}
-              disabled={!canUndo}
-              onClick={() => onCommand('undo')}
-            >
-              <AppIcon name="undo-2" size={14} />
-            </Button.Icon>
-            <Button.Icon
-              variant="ghost"
-              aria-label="重做"
-              title="重做"
-              className={styles.historyButton}
-              data-command="redo"
-              data-enabled={canRedo ? 'true' : 'false'}
-              disabled={!canRedo}
-              onClick={() => onCommand('redo')}
-            >
-              <AppIcon name="redo-2" size={14} />
-            </Button.Icon>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button.Icon
+                  variant="ghost"
+                  aria-label="撤销"
+                  className={styles.historyButton}
+                  data-command="undo"
+                  data-enabled={canUndo ? 'true' : 'false'}
+                  disabled={!canUndo}
+                  onClick={() => onCommand('undo')}
+                >
+                  <AppIcon name="undo-2" size={14} />
+                </Button.Icon>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">撤销</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button.Icon
+                  variant="ghost"
+                  aria-label="重做"
+                  className={styles.historyButton}
+                  data-command="redo"
+                  data-enabled={canRedo ? 'true' : 'false'}
+                  disabled={!canRedo}
+                  onClick={() => onCommand('redo')}
+                >
+                  <AppIcon name="redo-2" size={14} />
+                </Button.Icon>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">重做</TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -109,19 +117,23 @@ export function Toolbar({
 
       {/* 右侧操作区 */}
       <div className={styles.actions}>
-        <Button.Icon
-          variant="ghost"
-          aria-label="AI Agent"
-          title="AI Agent (⌘⇧A)"
-          onClick={toggleAgent}
-        >
-          <BotMessageSquare
-            size={16}
-            style={{
-              color: agentStatus === 'connected' || agentStatus === 'prompting' ? '#32D74B' : undefined,
-            }}
-          />
-        </Button.Icon>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button.Icon
+              variant="ghost"
+              aria-label="AI Agent"
+              onClick={toggleAgent}
+            >
+              <BotMessageSquare
+                size={16}
+                style={{
+                  color: agentStatus === 'connected' || agentStatus === 'prompting' ? '#32D74B' : undefined,
+                }}
+              />
+            </Button.Icon>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">AI Agent (⌘⇧A)</TooltipContent>
+        </Tooltip>
         {isEditorPage ? (
           <Button
             variant="primary"

@@ -4,7 +4,7 @@ import { fitPreviewStage } from '../lib/preview';
 import { formatTime, msToFrame } from '../lib/utils';
 import { PodcastComposition } from '../remotion/PodcastComposition';
 import { useTimelineStore } from '../store/timeline';
-import { Button, Card } from '../ui';
+import { Button, Card, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
 import { AppIcon } from './AppIcon';
 import { CanvasInteractionLayer } from './CanvasInteractionLayer';
 import type { OverlayPosition } from '../types';
@@ -103,15 +103,22 @@ function PreviewPanelComponent({
       {/* Header */}
       <div className={styles.header}>
         <span className={styles.headerTitle}>预览</span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className={styles.resolutionPill}
-          title={`分辨率: ${timeline.width}×${timeline.height} · ${fps}fps`}
-        >
-          <AppIcon name="monitor" size={12} />
-          <span>{timeline.width}×{timeline.height}</span>
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={styles.resolutionPill}
+              aria-label={`分辨率 ${timeline.width}×${timeline.height}，帧率 ${fps}`}
+            >
+              <AppIcon name="monitor" size={12} />
+              <span>{timeline.width}×{timeline.height}</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {`分辨率: ${timeline.width}×${timeline.height} · ${fps}fps`}
+          </TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Stage 区域 */}
@@ -172,45 +179,68 @@ function PreviewPanelComponent({
 
         {/* 中段 — 播放控件 */}
         <div className={styles.footerCenter}>
-          <Button variant="ghost" size="icon" className={styles.skipButton} title="上一段" aria-label="上一段">
-            <AppIcon name="skip-back" size={18} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={styles.playButton}
-            onClick={onTogglePlay}
-            title={isPlaying ? '暂停' : '播放'}
-            aria-label={isPlaying ? '暂停' : '播放'}
-          >
-            {isPlaying
-              ? <AppIcon name="pause" size={16} className={styles.playIcon} />
-              : <AppIcon name="play" size={16} className={styles.playIcon} />
-            }
-          </Button>
-          <Button variant="ghost" size="icon" className={styles.skipButton} title="下一段" aria-label="下一段">
-            <AppIcon name="skip-forward" size={18} />
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className={styles.skipButton} aria-label="上一段">
+                <AppIcon name="skip-back" size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">上一段</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={styles.playButton}
+                onClick={onTogglePlay}
+                aria-label={isPlaying ? '暂停' : '播放'}
+              >
+                {isPlaying
+                  ? <AppIcon name="pause" size={16} className={styles.playIcon} />
+                  : <AppIcon name="play" size={16} className={styles.playIcon} />
+                }
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{isPlaying ? '暂停' : '播放'}</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="icon" className={styles.skipButton} aria-label="下一段">
+                <AppIcon name="skip-forward" size={18} />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">下一段</TooltipContent>
+          </Tooltip>
         </div>
 
         {/* 右段 — 辅助控件 */}
         <div className={styles.footerRight}>
-          <Button variant="ghost" size="sm" className={styles.speedButton} title="播放速度" aria-label="播放速度">
-            1×
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className={styles.auxButton}
-            title={isFullscreen ? '退出全屏' : '全屏'}
-            aria-label={isFullscreen ? '退出全屏' : '全屏'}
-            onClick={handleToggleFullscreen}
-          >
-            {isFullscreen
-              ? <AppIcon name="minimize-2" size={14} />
-              : <AppIcon name="maximize-2" size={14} />
-            }
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className={styles.speedButton} aria-label="播放速度">
+                1×
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">播放速度</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={styles.auxButton}
+                aria-label={isFullscreen ? '退出全屏' : '全屏'}
+                onClick={handleToggleFullscreen}
+              >
+                {isFullscreen
+                  ? <AppIcon name="minimize-2" size={14} />
+                  : <AppIcon name="maximize-2" size={14} />
+                }
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="top">{isFullscreen ? '退出全屏' : '全屏'}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </Card>

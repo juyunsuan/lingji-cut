@@ -24,7 +24,7 @@ import { shouldUpdatePlaybackTime } from '../lib/playback';
 import { frameToMs, getFileNameFromPath, msToFrame } from '../lib/utils';
 import { loadAISettings, useAIStore } from '../store/ai';
 import { useTimelineStore } from '../store/timeline';
-import { Button } from '../ui';
+import { Button, ConfirmDialog } from '../ui';
 import { AppIcon } from '../components/AppIcon';
 import styles from './Editor.module.css';
 
@@ -82,6 +82,10 @@ export function Editor({
   const [exportProgress, setExportProgress] = useState(0);
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [missingScriptDialogOpen, setMissingScriptDialogOpen] = useState(false);
+  const [pendingReanalyzeEntries, setPendingReanalyzeEntries] = useState<
+    ReturnType<typeof useTimelineStore.getState>['srtEntries'] | null
+  >(null);
   const [activePanel, setActivePanel] = useState<'assets' | 'ai'>(initialActivePanel);
   const [inspectorSelection, setInspectorSelection] = useState<InspectorSelection>({ type: 'empty' });
   const [projectMeta, setProjectMeta] = useState<ProjectOverviewMeta | null>(null);
@@ -412,14 +416,8 @@ export function Editor({
     store.setSrtEntries(entries);
     store.setPodcast(store.timeline.podcast?.audioPath ?? '', srtPath, durationMs);
 
-    const shouldReanalyze = window.confirm(
-      '替换字幕后，AI 卡片分析将失效。是否立即重新分析？',
-    );
-
-    if (shouldReanalyze) {
-      await rerunAiAnalysisForCurrentSrt(entries);
-    }
-  }, [rerunAiAnalysisForCurrentSrt, store]);
+    setPendingReanalyzeEntries(entries);
+  }, [store]);
 
   const handleStartAIClip = useCallback(async () => {
     if (!projectDir) {
@@ -431,7 +429,7 @@ export function Editor({
       .catch(() => null);
 
     if (!scriptContent?.trim()) {
-      window.alert('未找到 script.md，请先在文稿工作台完成口播稿生成。');
+      setMissingScriptDialogOpen(true);
       return;
     }
 
@@ -746,6 +744,34 @@ export function Editor({
         timelineHeight={timeline.height}
         onClose={() => setIsExportSettingsOpen(false)}
         onConfirm={handleConfirmExport}
+      />
+      <ConfirmDialog
+        open={Boolean(pendingReanalyzeEntries)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingReanalyzeEntries(null);
+          }
+        }}
+        title="替换字幕后重新分析？"
+        description="替换字幕后，现有 AI 卡片分析会失效。建议立即重新分析以保持卡片内容准确。"
+        confirmText="立即重新分析"
+        cancelText="稍后再说"
+        onConfirm={() => {
+          if (!pendingReanalyzeEntries) {
+            return;
+          }
+          void rerunAiAnalysisForCurrentSrt(pendingReanalyzeEntries);
+          setPendingReanalyzeEntries(null);
+        }}
+      />
+      <ConfirmDialog
+        open={missingScriptDialogOpen}
+        onOpenChange={setMissingScriptDialogOpen}
+        title="未找到 script.md"
+        description="请先在文稿工作台完成口播稿生成，再启动 AI 一键成片。"
+        confirmText="我知道了"
+        showCancel={false}
+        onConfirm={() => setMissingScriptDialogOpen(false)}
       />
     </div>
   );

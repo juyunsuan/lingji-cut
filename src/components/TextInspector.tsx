@@ -7,8 +7,19 @@ import type {
 } from '../types';
 import { useTimelineStore } from '../store/timeline';
 import { TEXT_TEMPLATES } from '../lib/text-templates';
-import { AppIcon } from './AppIcon';
-import { Button } from '../ui';
+import { AppIcon, type AppIconName } from './AppIcon';
+import {
+  Button,
+  ColorField,
+  NumberField,
+  Select,
+  Slider,
+  Textarea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  type SelectOption,
+} from '../ui';
 import styles from './TextInspector.module.css';
 
 // ── 动画预设 ──
@@ -58,6 +69,15 @@ const TEMPLATE_DESCRIPTIONS: Record<string, string> = {
   'text-template:fancy': '红色描边花字效果',
 };
 
+const FONT_OPTIONS: SelectOption[] = [
+  { value: 'PingFang SC', label: 'PingFang SC' },
+  { value: 'Noto Sans SC', label: 'Noto Sans SC' },
+  { value: 'Helvetica Neue', label: 'Helvetica Neue' },
+  { value: 'Arial', label: 'Arial' },
+  { value: 'STHeiti', label: 'STHeiti' },
+  { value: 'SimHei', label: 'SimHei' },
+];
+
 // ── 组件 ──
 
 type TabKey = 'basic' | 'animation' | 'template';
@@ -100,15 +120,16 @@ export function TextInspector({ overlayId, onDelete }: TextInspectorProps) {
       {/* Tab 栏 */}
       <div className={styles.tabs}>
         {tabs.map((t) => (
-          <button
+          <Button
             key={t.key}
-            className={[styles.tab, activeTab === t.key ? styles.active : '']
-              .filter(Boolean)
-              .join(' ')}
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={buildToggleClass(styles.tab, activeTab === t.key)}
             onClick={() => setActiveTab(t.key)}
           >
             {t.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -153,10 +174,12 @@ function BasicTab({
       {/* 内容 */}
       <section className={styles.section}>
         <label className={styles.label}>内容</label>
-        <textarea
+        <Textarea
+          size="sm"
           className={styles.textarea}
           value={textData.content}
-          onChange={(e) => updateTextData({ content: e.target.value })}
+          resize="vertical"
+          onChange={(event) => updateTextData({ content: event.target.value })}
           rows={3}
         />
       </section>
@@ -164,102 +187,68 @@ function BasicTab({
       {/* 字体 */}
       <section className={styles.section}>
         <label className={styles.label}>字体</label>
-        <select
+        <Select
           className={styles.select}
+          controlClassName={styles.selectControl}
           value={textData.fontFamily}
-          onChange={(e) => updateTextData({ fontFamily: e.target.value })}
-        >
-          <option value="PingFang SC">PingFang SC</option>
-          <option value="Noto Sans SC">Noto Sans SC</option>
-          <option value="Helvetica Neue">Helvetica Neue</option>
-          <option value="Arial">Arial</option>
-          <option value="STHeiti">STHeiti</option>
-          <option value="SimHei">SimHei</option>
-        </select>
+          options={FONT_OPTIONS}
+          onChange={(event) => updateTextData({ fontFamily: event.target.value })}
+        />
         <div className={styles.row}>
-          <input
-            type="number"
-            className={styles.numberInput}
+          <NumberField
+            className={styles.numberField}
             value={textData.fontSize}
             min={12}
             max={200}
-            onChange={(e) => updateTextData({ fontSize: Number(e.target.value) })}
+            onChange={(value) => updateTextData({ fontSize: value })}
           />
-          <input
-            type="color"
-            className={styles.colorInput}
+          <ColorField
+            className={styles.colorField}
+            swatchClassName={styles.colorSwatch}
             value={textData.fontColor}
-            onChange={(e) => updateTextData({ fontColor: e.target.value })}
-            title="字体颜色"
+            onChange={(value) => updateTextData({ fontColor: value })}
           />
         </div>
         <div className={styles.row}>
           <div className={styles.toggleGroup}>
-            <button
-              className={[styles.toggleBtn, textData.bold ? styles.active : '']
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ bold: !textData.bold })}
+            <IconToggleButton
+              active={textData.bold}
               title="加粗"
-            >
-              <AppIcon name="bold" size={14} />
-            </button>
-            <button
-              className={[styles.toggleBtn, textData.italic ? styles.active : '']
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ italic: !textData.italic })}
+              iconName="bold"
+              onClick={() => updateTextData({ bold: !textData.bold })}
+            />
+            <IconToggleButton
+              active={textData.italic}
               title="斜体"
-            >
-              <AppIcon name="italic" size={14} />
-            </button>
-            <button
-              className={[styles.toggleBtn, textData.underline ? styles.active : '']
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ underline: !textData.underline })}
+              iconName="italic"
+              onClick={() => updateTextData({ italic: !textData.italic })}
+            />
+            <IconToggleButton
+              active={textData.underline}
               title="下划线"
-            >
-              <AppIcon name="underline" size={14} />
-            </button>
+              iconName="underline"
+              onClick={() => updateTextData({ underline: !textData.underline })}
+            />
           </div>
           <div className={styles.toggleGroup}>
-            <button
-              className={[
-                styles.toggleBtn,
-                textData.textAlign === 'left' ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ textAlign: 'left' })}
+            <IconToggleButton
+              active={textData.textAlign === 'left'}
               title="左对齐"
-            >
-              <AppIcon name="align-left" size={14} />
-            </button>
-            <button
-              className={[
-                styles.toggleBtn,
-                textData.textAlign === 'center' ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ textAlign: 'center' })}
+              iconName="align-left"
+              onClick={() => updateTextData({ textAlign: 'left' })}
+            />
+            <IconToggleButton
+              active={textData.textAlign === 'center'}
               title="居中"
-            >
-              <AppIcon name="align-center" size={14} />
-            </button>
-            <button
-              className={[
-                styles.toggleBtn,
-                textData.textAlign === 'right' ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-              onClick={() => updateTextData({ textAlign: 'right' })}
+              iconName="align-center"
+              onClick={() => updateTextData({ textAlign: 'center' })}
+            />
+            <IconToggleButton
+              active={textData.textAlign === 'right'}
               title="右对齐"
-            >
-              <AppIcon name="align-right" size={14} />
-            </button>
+              iconName="align-right"
+              onClick={() => updateTextData({ textAlign: 'right' })}
+            />
           </div>
         </div>
       </section>
@@ -268,24 +257,24 @@ function BasicTab({
       <section className={styles.section}>
         <label className={styles.label}>背景</label>
         <div className={styles.row}>
-          <input
-            type="color"
-            className={styles.colorInput}
+          <ColorField
+            className={styles.colorField}
+            swatchClassName={styles.colorSwatch}
             value={
               textData.backgroundColor === 'transparent'
                 ? '#000000'
                 : textData.backgroundColor
             }
-            onChange={(e) => updateTextData({ backgroundColor: e.target.value })}
-            title="背景颜色"
+            onChange={(value) => updateTextData({ backgroundColor: value })}
           />
-          <button
-            className={[
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={buildToggleClass(
               styles.toggleBtn,
-              textData.backgroundColor === 'transparent' ? styles.active : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
+              textData.backgroundColor === 'transparent',
+            )}
             onClick={() =>
               updateTextData({
                 backgroundColor:
@@ -296,7 +285,7 @@ function BasicTab({
             }
           >
             {textData.backgroundColor === 'transparent' ? '透明' : '有色'}
-          </button>
+          </Button>
         </div>
       </section>
 
@@ -304,67 +293,50 @@ function BasicTab({
       <section className={styles.section}>
         <label className={styles.label}>描边</label>
         <div className={styles.row}>
-          <input
-            type="color"
-            className={styles.colorInput}
+          <ColorField
+            className={styles.colorField}
+            swatchClassName={styles.colorSwatch}
             value={textData.strokeColor}
-            onChange={(e) => updateTextData({ strokeColor: e.target.value })}
-            title="描边颜色"
+            onChange={(value) => updateTextData({ strokeColor: value })}
           />
-          <input
-            type="number"
-            className={styles.numberInput}
+          <NumberField
+            className={styles.numberField}
             value={textData.strokeWidth}
             min={0}
             max={10}
-            onChange={(e) =>
-              updateTextData({ strokeWidth: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ strokeWidth: value })}
           />
         </div>
         <label className={styles.label}>阴影</label>
         <div className={styles.row}>
-          <input
-            type="color"
-            className={styles.colorInput}
+          <ColorField
+            className={styles.colorField}
+            swatchClassName={styles.colorSwatch}
             value={textData.shadowColor}
-            onChange={(e) => updateTextData({ shadowColor: e.target.value })}
-            title="阴影颜色"
+            onChange={(value) => updateTextData({ shadowColor: value })}
           />
-          <input
-            type="number"
-            className={styles.numberInput}
+          <NumberField
+            className={styles.numberField}
             value={textData.shadowBlur}
             min={0}
             max={50}
-            placeholder="模糊"
-            onChange={(e) =>
-              updateTextData({ shadowBlur: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ shadowBlur: value })}
           />
         </div>
         <div className={styles.row}>
-          <input
-            type="number"
-            className={styles.numberInput}
+          <NumberField
+            className={styles.numberField}
             value={textData.shadowOffsetX}
             min={-50}
             max={50}
-            placeholder="X偏移"
-            onChange={(e) =>
-              updateTextData({ shadowOffsetX: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ shadowOffsetX: value })}
           />
-          <input
-            type="number"
-            className={styles.numberInput}
+          <NumberField
+            className={styles.numberField}
             value={textData.shadowOffsetY}
             min={-50}
             max={50}
-            placeholder="Y偏移"
-            onChange={(e) =>
-              updateTextData({ shadowOffsetY: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ shadowOffsetY: value })}
           />
         </div>
       </section>
@@ -374,29 +346,25 @@ function BasicTab({
         <label className={styles.label}>间距</label>
         <div className={styles.sliderRow}>
           <span className={styles.sliderLabel}>字间距</span>
-          <input
-            type="range"
+          <Slider
+            className={styles.sliderControl}
             min={-5}
             max={20}
             step={0.5}
             value={textData.letterSpacing}
-            onChange={(e) =>
-              updateTextData({ letterSpacing: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ letterSpacing: value })}
           />
           <span className={styles.sliderValue}>{textData.letterSpacing}px</span>
         </div>
         <div className={styles.sliderRow}>
           <span className={styles.sliderLabel}>行间距</span>
-          <input
-            type="range"
+          <Slider
+            className={styles.sliderControl}
             min={1}
             max={3}
             step={0.1}
             value={textData.lineHeight}
-            onChange={(e) =>
-              updateTextData({ lineHeight: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ lineHeight: value })}
           />
           <span className={styles.sliderValue}>{textData.lineHeight}</span>
         </div>
@@ -407,15 +375,13 @@ function BasicTab({
         <label className={styles.label}>变换</label>
         <div className={styles.sliderRow}>
           <span className={styles.sliderLabel}>透明度</span>
-          <input
-            type="range"
+          <Slider
+            className={styles.sliderControl}
             min={0}
             max={1}
             step={0.05}
             value={textData.opacity}
-            onChange={(e) =>
-              updateTextData({ opacity: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ opacity: value })}
           />
           <span className={styles.sliderValue}>
             {Math.round(textData.opacity * 100)}%
@@ -423,15 +389,13 @@ function BasicTab({
         </div>
         <div className={styles.sliderRow}>
           <span className={styles.sliderLabel}>旋转</span>
-          <input
-            type="range"
+          <Slider
+            className={styles.sliderControl}
             min={0}
             max={360}
             step={1}
             value={textData.rotation}
-            onChange={(e) =>
-              updateTextData({ rotation: Number(e.target.value) })
-            }
+            onChange={(value) => updateTextData({ rotation: value })}
           />
           <span className={styles.sliderValue}>{textData.rotation}°</span>
         </div>
@@ -474,14 +438,12 @@ function AnimationTab({
         <label className={styles.label}>入场</label>
         <div className={styles.presetGrid}>
           {ENTER_PRESETS.map((p) => (
-            <button
+            <Button
               key={p.value}
-              className={[
-                styles.presetCard,
-                anim.enter === p.value ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={buildToggleClass(styles.presetCard, anim.enter === p.value)}
               onClick={() =>
                 updateTextData({
                   animation: { ...anim, enter: p.value },
@@ -489,7 +451,7 @@ function AnimationTab({
               }
             >
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       </section>
@@ -499,14 +461,12 @@ function AnimationTab({
         <label className={styles.label}>循环</label>
         <div className={styles.presetGrid}>
           {LOOP_PRESETS.map((p) => (
-            <button
+            <Button
               key={p.value}
-              className={[
-                styles.presetCard,
-                anim.loop === p.value ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={buildToggleClass(styles.presetCard, anim.loop === p.value)}
               onClick={() =>
                 updateTextData({
                   animation: { ...anim, loop: p.value },
@@ -514,7 +474,7 @@ function AnimationTab({
               }
             >
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       </section>
@@ -524,14 +484,12 @@ function AnimationTab({
         <label className={styles.label}>出场</label>
         <div className={styles.presetGrid}>
           {EXIT_PRESETS.map((p) => (
-            <button
+            <Button
               key={p.value}
-              className={[
-                styles.presetCard,
-                anim.exit === p.value ? styles.active : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
+              type="button"
+              variant="ghost"
+              size="sm"
+              className={buildToggleClass(styles.presetCard, anim.exit === p.value)}
               onClick={() =>
                 updateTextData({
                   animation: { ...anim, exit: p.value },
@@ -539,14 +497,17 @@ function AnimationTab({
               }
             >
               {p.label}
-            </button>
+            </Button>
           ))}
         </div>
       </section>
 
       {/* 高级设置 */}
       <section className={styles.section}>
-        <button
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
           className={styles.advancedToggle}
           onClick={() => setAdvancedOpen(!advancedOpen)}
         >
@@ -555,23 +516,22 @@ function AnimationTab({
             : <AppIcon name="chevron-right" size={14} />
           }
           <span>高级设置</span>
-        </button>
+        </Button>
         {advancedOpen && (
           <div className={styles.advancedContent}>
             <div className={styles.row}>
               <span className={styles.sliderLabel}>入场时长</span>
-              <input
-                type="number"
-                className={styles.numberInput}
+              <NumberField
+                className={styles.numberField}
                 value={anim.enterDurationMs}
                 min={100}
                 max={3000}
                 step={100}
-                onChange={(e) =>
+                onChange={(value) =>
                   updateTextData({
                     animation: {
                       ...anim,
-                      enterDurationMs: Number(e.target.value),
+                      enterDurationMs: value,
                     },
                   })
                 }
@@ -580,18 +540,17 @@ function AnimationTab({
             </div>
             <div className={styles.row}>
               <span className={styles.sliderLabel}>出场时长</span>
-              <input
-                type="number"
-                className={styles.numberInput}
+              <NumberField
+                className={styles.numberField}
                 value={anim.exitDurationMs}
                 min={100}
                 max={3000}
                 step={100}
-                onChange={(e) =>
+                onChange={(value) =>
                   updateTextData({
                     animation: {
                       ...anim,
-                      exitDurationMs: Number(e.target.value),
+                      exitDurationMs: value,
                     },
                   })
                 }
@@ -619,8 +578,11 @@ function TemplateTab({
       <label className={styles.label}>文字模板</label>
       <div className={styles.templateGrid}>
         {TEXT_TEMPLATES.map((tpl) => (
-          <button
+          <Button
             key={tpl.id}
+            type="button"
+            variant="ghost"
+            size="sm"
             className={styles.templateCard}
             onClick={() => {
               const currentContent = textData.content;
@@ -631,9 +593,46 @@ function TemplateTab({
             <span className={styles.templateDesc}>
               {TEMPLATE_DESCRIPTIONS[tpl.id] ?? ''}
             </span>
-          </button>
+          </Button>
         ))}
       </div>
     </section>
   );
+}
+
+interface IconToggleButtonProps {
+  active: boolean;
+  iconName: AppIconName;
+  title: string;
+  onClick: () => void;
+}
+
+function IconToggleButton({
+  active,
+  iconName,
+  title,
+  onClick,
+}: IconToggleButtonProps) {
+  return (
+    <Tooltip delayDuration={120}>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className={buildToggleClass(styles.toggleBtn, active)}
+          aria-label={title}
+          aria-pressed={active}
+          onClick={onClick}
+        >
+          <AppIcon name={iconName} size={14} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{title}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function buildToggleClass(baseClassName: string, isActive: boolean): string {
+  return [baseClassName, isActive ? styles.active : ''].filter(Boolean).join(' ');
 }

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
-import { Field, Input, Slider, Select } from '../../ui';
+import { Field, Input, Slider, Select, SaveButton, SettingsPageHeader } from '../../ui';
 import type { SelectOption } from '../../ui';
+import styles from './SettingsCommon.module.css';
 
 const MINIMAX_MODEL_OPTIONS: SelectOption[] = [
   { value: 'speech-2.8-hd', label: 'speech-2.8-hd' },
@@ -79,14 +80,12 @@ export function TTSConfigTab() {
 
   return (
     <>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>TTS 语音合成配置</h2>
-        <p style={{ fontSize: 13, color: '#EBEBF599', margin: '8px 0 0' }}>
-          MiniMax T2A v2 接口配置，用于 AI 一键剪辑的语音生成
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="TTS 语音合成配置"
+        description="MiniMax T2A v2 接口配置，用于 AI 一键剪辑的语音生成"
+      />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className={styles.formStack}>
         <Field label="MiniMax API Key">
           <Input
             variant="password"
@@ -136,23 +135,12 @@ export function TTSConfigTab() {
         </Field>
       </div>
 
-      <button
-        type="button"
+      <SaveButton
         onClick={handleSave}
-        style={{
-          alignSelf: 'flex-start',
-          padding: '10px 24px',
-          borderRadius: 8,
-          border: 'none',
-          background: saved ? '#32D74B' : '#0A84FF',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        {saved ? '已保存 ✓' : '保存 TTS 配置'}
-      </button>
+        saved={saved}
+        defaultLabel="保存 TTS 配置"
+        className={styles.saveButton}
+      />
     </>
   );
 }

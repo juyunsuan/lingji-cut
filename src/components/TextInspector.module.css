@@ -20,6 +20,8 @@
 
 .tab {
   flex: 1;
+  height: auto !important;
+  min-height: 0 !important;
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 500;
@@ -71,24 +73,16 @@
 
 .textarea {
   width: 100%;
-  min-height: 60px;
-  padding: 8px;
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  color: var(--color-text-primary);
-  font-size: 13px;
-  resize: vertical;
+  min-height: 72px;
 }
 
 .select {
   width: 100%;
-  padding: 6px 8px;
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border-subtle);
+}
+
+.selectControl {
+  min-height: 34px;
   border-radius: 6px;
-  color: var(--color-text-primary);
-  font-size: 13px;
 }
 
 .row {
@@ -97,24 +91,25 @@
   align-items: center;
 }
 
-.numberInput {
-  width: 70px;
-  padding: 6px 8px;
-  background: var(--color-surface-secondary);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 6px;
-  color: var(--color-text-primary);
-  font-size: 13px;
+.numberField {
+  flex: 1;
+  min-width: 0;
+  max-width: 136px;
 }
 
-.colorInput {
+.colorField {
+  display: flex;
+  justify-content: center;
+}
+
+.colorSwatch {
   width: 36px;
   height: 36px;
-  padding: 0;
-  border: 2px solid var(--color-border-subtle);
   border-radius: 6px;
-  cursor: pointer;
-  background: none;
+}
+
+.sliderControl {
+  flex: 1;
 }
 
 .toggleGroup {
@@ -125,6 +120,7 @@
 .toggleBtn {
   width: 32px;
   height: 32px;
+  min-height: 32px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -180,10 +176,6 @@
   text-align: right;
 }
 
-.sliderRow input[type='range'] {
-  flex: 1;
-}
-
 .animRow {
   display: flex;
   align-items: center;
@@ -207,6 +199,8 @@
 }
 
 .presetCard {
+  height: auto !important;
+  min-height: 0 !important;
   padding: 6px 4px;
   font-size: 12px;
   text-align: center;
@@ -239,6 +233,8 @@
 
 .templateCard {
   display: flex;
+  height: auto !important;
+  min-height: 0 !important;
   flex-direction: column;
   gap: 4px;
   padding: 10px;
@@ -271,6 +267,10 @@
 
 .advancedToggle {
   display: flex;
+  width: 100%;
+  height: auto !important;
+  min-height: 0 !important;
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
   padding: 4px 6px;

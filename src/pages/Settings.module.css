@@ -13,8 +13,8 @@
   flex-direction: column;
   gap: 4px;
   padding: 20px 12px;
-  border-right: 1px solid #38383A;
-  background: #1E1E20;
+  border-right: 1px solid var(--color-separator);
+  background: var(--color-panel-bg);
 }
 
 .sidebarHeader {
@@ -27,6 +27,11 @@
 .sidebarTitle {
   font-size: 15px;
   font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.backButton {
+  color: var(--color-text-secondary);
 }
 
 .tabButton {
@@ -37,7 +42,7 @@
   border-radius: 8px;
   border: none;
   background: transparent;
-  color: #EBEBF599;
+  color: var(--color-text-secondary);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -46,12 +51,12 @@
 }
 
 .tabButton:hover {
-  background: #2C2C2E;
+  background: var(--color-panel-elevated);
 }
 
 .tabButtonActive {
-  background: #0A84FF26;
-  color: #0A84FF;
+  background: var(--color-bg-info);
+  color: var(--color-system-blue);
   font-weight: 600;
 }
 

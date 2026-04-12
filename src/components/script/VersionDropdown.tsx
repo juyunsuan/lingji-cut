@@ -1,7 +1,7 @@
 import { ChevronDown, Clock } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useScriptStore } from '../../store/script';
-import { Badge } from '../../ui';
+import { Badge, Popover, PopoverContent, PopoverTrigger } from '../../ui';
 import styles from './VersionDropdown.module.css';
 
 type VersionMeta = {
@@ -45,7 +45,6 @@ export function VersionDropdown() {
   const [filter, setFilter] = useState<FilterTab>('全部');
   const [versions, setVersions] = useState<VersionMeta[]>([]);
   const [loading, setLoading] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
 
   const loadVersions = async () => {
     if (!projectDir || typeof window === 'undefined' || !window.scriptHistoryAPI) return;
@@ -58,21 +57,10 @@ export function VersionDropdown() {
     }
   };
 
-  const handleToggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next) void loadVersions();
-  };
-
   useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    if (open) {
+      void loadVersions();
+    }
   }, [open]);
 
   const handleSelectVersion = async (v: VersionMeta) => {
@@ -103,97 +91,88 @@ export function VersionDropdown() {
   if (!shouldRender) return null;
 
   return (
-    <div ref={rootRef} className={styles.root}>
-      {/* 触发按钮 */}
-      <button
-        type="button"
-        onClick={handleToggle}
-        className={styles.trigger}
-        data-open={open}
-        title="查看历史版本"
-      >
-        <Clock className={styles.icon} />
-        历史版本
-        <ChevronDown className={styles.chevron} />
-      </button>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={styles.trigger}
+          data-open={open}
+          aria-label="查看历史版本"
+        >
+          <Clock className={styles.icon} />
+          历史版本
+          <ChevronDown className={styles.chevron} />
+        </button>
+      </PopoverTrigger>
 
-      {/* 下拉面板 */}
-      {open && (
-        <div className={styles.panel}>
-          {/* 筛选 Tab */}
-          <div className={styles.filterBar}>
-            {filterTabs.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFilter(tab)}
-                className={styles.filterTab}
-                data-active={filter === tab}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
-
-          {/* 版本列表 */}
-          <div className={styles.list}>
-            {loading ? (
-              <div className={styles.empty}>加载中…</div>
-            ) : filteredVersions.length === 0 ? (
-              <div className={styles.empty}>暂无版本记录</div>
-            ) : (
-              filteredVersions.map((v, idx) => {
-                const isAI = v.source === 'ai';
-                const sourceLabel = isAI ? 'AI 生成' : '手动保存';
-                const sourceKey = isAI ? 'ai' : 'manual';
-
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => void handleSelectVersion(v)}
-                    className={styles.versionItem}
-                  >
-                    {/* 左侧彩色竖条 */}
-                    <span className={styles.bar} data-source={sourceKey} />
-
-                    {/* 内容 */}
-                    <div className={styles.versionContent}>
-                      {/* 第一行 */}
-                      <div className={styles.versionRow1}>
-                        <span className={styles.sourceTag} data-source={sourceKey}>
-                          {sourceLabel}
-                        </span>
-                        <span className={styles.timeLabel}>
-                          {formatTime(v.createdAt)}
-                        </span>
-                        {idx === 0 && (
-                          <span className={styles.currentBadge}>当前</span>
-                        )}
-                      </div>
-
-                      {/* 第二行 */}
-                      <div className={styles.versionRow2}>
-                        {v.providerName && (
-                          <Badge color="#a78bfa" size="xs">
-                            {v.providerName}
-                            {v.modelName ? ` / ${v.modelName}` : ''}
-                          </Badge>
-                        )}
-                        {v.label && (
-                          <span className={styles.versionLabel}>
-                            「{v.label}」
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })
-            )}
-          </div>
+      <PopoverContent side="bottom" align="end" sideOffset={6} className={`w-[340px] p-0 ${styles.panel}`}>
+        <div className={styles.filterBar}>
+          {filterTabs.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setFilter(tab)}
+              className={styles.filterTab}
+              data-active={filter === tab}
+            >
+              {tab}
+            </button>
+          ))}
         </div>
-      )}
-    </div>
+
+        <div className={styles.list}>
+          {loading ? (
+            <div className={styles.empty}>加载中…</div>
+          ) : filteredVersions.length === 0 ? (
+            <div className={styles.empty}>暂无版本记录</div>
+          ) : (
+            filteredVersions.map((v, idx) => {
+              const isAI = v.source === 'ai';
+              const sourceLabel = isAI ? 'AI 生成' : '手动保存';
+              const sourceKey = isAI ? 'ai' : 'manual';
+
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  onClick={() => void handleSelectVersion(v)}
+                  className={styles.versionItem}
+                >
+                  <span className={styles.bar} data-source={sourceKey} />
+
+                  <div className={styles.versionContent}>
+                    <div className={styles.versionRow1}>
+                      <span className={styles.sourceTag} data-source={sourceKey}>
+                        {sourceLabel}
+                      </span>
+                      <span className={styles.timeLabel}>
+                        {formatTime(v.createdAt)}
+                      </span>
+                      {idx === 0 && (
+                        <span className={styles.currentBadge}>当前</span>
+                      )}
+                    </div>
+
+                    <div className={styles.versionRow2}>
+                      {v.providerName && (
+                        <Badge color="#a78bfa" size="xs">
+                          {v.providerName}
+                          {v.modelName ? ` / ${v.modelName}` : ''}
+                        </Badge>
+                      )}
+                      {v.label && (
+                        <span className={styles.versionLabel}>
+                          「{v.label}」
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }

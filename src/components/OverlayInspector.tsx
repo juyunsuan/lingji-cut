@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { getFileNameFromPath } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
 import type { OverlayMotion } from '../types';
-import { Button } from '../ui';
+import { Button, NumberField, Select, type SelectOption } from '../ui';
 import { TextInspector } from './TextInspector';
 import styles from './OverlayInspector.module.css';
 
@@ -29,6 +29,19 @@ const EXIT_OPTIONS: Array<OverlayMotion['exit']> = [
 ];
 
 const LOOP_OPTIONS: Array<OverlayMotion['loop']> = ['none', 'pulse', 'float', 'flicker'];
+
+const ENTER_SELECT_OPTIONS: SelectOption[] = ENTER_OPTIONS.map((option) => ({
+  value: option,
+  label: option,
+}));
+const EXIT_SELECT_OPTIONS: SelectOption[] = EXIT_OPTIONS.map((option) => ({
+  value: option,
+  label: option,
+}));
+const LOOP_SELECT_OPTIONS: SelectOption[] = LOOP_OPTIONS.map((option) => ({
+  value: option,
+  label: option,
+}));
 
 interface OverlayInspectorProps {
   overlayId: string;
@@ -97,66 +110,52 @@ export function OverlayInspector({ overlayId, onDelete }: OverlayInspectorProps)
         <div className={styles.fieldGrid}>
           <label className={styles.field}>
             <span className={styles.label}>入场</span>
-            <select
+            <Select
               className={styles.select}
+              controlClassName={styles.selectControl}
               value={overlay.motion?.enter ?? 'none'}
+              options={ENTER_SELECT_OPTIONS}
               onChange={(event) => updateMotion({ enter: event.target.value as OverlayMotion['enter'] })}
-            >
-              {ENTER_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label className={styles.field}>
             <span className={styles.label}>出场</span>
-            <select
+            <Select
               className={styles.select}
+              controlClassName={styles.selectControl}
               value={overlay.motion?.exit ?? 'none'}
+              options={EXIT_SELECT_OPTIONS}
               onChange={(event) => updateMotion({ exit: event.target.value as OverlayMotion['exit'] })}
-            >
-              {EXIT_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label className={styles.field}>
             <span className={styles.label}>循环</span>
-            <select
+            <Select
               className={styles.select}
+              controlClassName={styles.selectControl}
               value={overlay.motion?.loop ?? 'none'}
+              options={LOOP_SELECT_OPTIONS}
               onChange={(event) => updateMotion({ loop: event.target.value as OverlayMotion['loop'] })}
-            >
-              {LOOP_OPTIONS.map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
+            />
           </label>
           <label className={styles.field}>
             <span className={styles.label}>入场时长</span>
-            <input
-              className={styles.numberInput}
-              type="number"
+            <NumberField
+              className={styles.numberField}
               min={100}
               step={100}
               value={overlay.motion?.enterDurationMs ?? 400}
-              onChange={(event) => updateMotion({ enterDurationMs: Number(event.target.value) })}
+              onChange={(value) => updateMotion({ enterDurationMs: value })}
             />
           </label>
           <label className={styles.field}>
             <span className={styles.label}>出场时长</span>
-            <input
-              className={styles.numberInput}
-              type="number"
+            <NumberField
+              className={styles.numberField}
               min={100}
               step={100}
               value={overlay.motion?.exitDurationMs ?? 400}
-              onChange={(event) => updateMotion({ exitDurationMs: Number(event.target.value) })}
+              onChange={(value) => updateMotion({ exitDurationMs: value })}
             />
           </label>
         </div>

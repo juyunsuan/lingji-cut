@@ -12,6 +12,10 @@ import { ConversationWorkspaceProvider } from '../../contexts/conversation-works
 import { AcpConnectionsProvider, useAcpConnections } from '../../contexts/acp-connections-context';
 import { ConversationRuntimeProvider } from '../../contexts/conversation-runtime-context';
 import { QUICK_ACTION_CONVERSATION_EVENT } from '../../lib/quick-action-conversation';
+import {
+  loadAgentSessionListCollapsed,
+  saveAgentSessionListCollapsed,
+} from '../../lib/agent-sidebar-storage';
 
 const MIN_WIDTH = 320;
 const MAX_WIDTH = 700;
@@ -40,6 +44,9 @@ function AgentSidebarWorkspace({ projectDir }: { projectDir: string | null }) {
 
 function SidebarWorkspaceShell({ projectDir }: { projectDir: string }) {
   const [explicitConversationId, setExplicitConversationId] = useState<number | null>(null);
+  const [sessionListCollapsed, setSessionListCollapsed] = useState(() =>
+    loadAgentSessionListCollapsed(),
+  );
   const connections = useAcpConnections();
   const {
     loading,
@@ -75,6 +82,10 @@ function SidebarWorkspaceShell({ projectDir }: { projectDir: string }) {
   }
 
   useEffect(() => {
+    saveAgentSessionListCollapsed(sessionListCollapsed);
+  }, [sessionListCollapsed]);
+
+  useEffect(() => {
     const onActivate = (event: Event) => {
       const detail = (event as CustomEvent<{
         projectId: string;
@@ -99,15 +110,23 @@ function SidebarWorkspaceShell({ projectDir }: { projectDir: string }) {
 
   return (
     <div className="flex-1 min-w-0 flex">
-      <div className="w-[240px] min-w-[220px] max-w-[280px] border-r border-mac-separator bg-white/[0.02] flex flex-col">
+      <div
+        className={`border-r border-mac-separator bg-white/[0.02] flex flex-col transition-[width] duration-200 ease-out ${
+          sessionListCollapsed ? 'w-[64px] min-w-[64px] max-w-[64px]' : 'w-[240px] min-w-[220px] max-w-[280px]'
+        }`}
+      >
         <ConversationToolbar
+          collapsed={sessionListCollapsed}
           loading={loading}
+          onToggleCollapse={() => setSessionListCollapsed((current) => !current)}
           onCreateConversation={() => void handleCreateConversation()}
           onRefresh={() => void refresh()}
         />
         <SessionListPane
+          collapsed={sessionListCollapsed}
           explicitConversationId={explicitConversationId}
           onSelectConversation={(conversationId) => {
+            setSessionListCollapsed(false);
             void handleSelectConversation(conversationId);
           }}
           onDeleteConversation={(conversationId) => {

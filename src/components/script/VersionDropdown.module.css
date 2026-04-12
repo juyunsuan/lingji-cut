@@ -1,10 +1,5 @@
 /* VersionDropdown — macOS 专业工具风格版本历史下拉面板 */
 
-.root {
-  position: relative;
-  display: inline-flex;
-}
-
 /* 触发按钮 */
 .trigger {
   display: inline-flex;
@@ -46,15 +41,8 @@
 
 /* 下拉面板 */
 .panel {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 999;
   width: 340px;
   background: var(--color-panel-elevated);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-dropdown);
-  box-shadow: var(--shadow-dropdown);
   overflow: hidden;
 }
 

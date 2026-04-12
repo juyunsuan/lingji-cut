@@ -14,6 +14,14 @@ type FloatingTrigger = "click" | "hover";
 type FloatingSide = "top" | "bottom" | "left" | "right";
 type FloatingAlign = "start" | "center" | "end";
 type FloatingSize = "sm" | "md" | "lg";
+type RectLike = {
+	top: number;
+	left: number;
+	right: number;
+	bottom: number;
+	width: number;
+	height: number;
+};
 
 interface FloatingContextValue {
 	open: boolean;
@@ -45,6 +53,7 @@ function useFloatingContext() {
 function useFloatingPosition(
 	open: boolean,
 	triggerRef: React.RefObject<HTMLElement | null>,
+	contentRef: React.RefObject<HTMLElement | null>,
 	side: FloatingSide,
 	align: FloatingAlign,
 	sideOffset: number,
@@ -52,43 +61,26 @@ function useFloatingPosition(
 	const [position, setPosition] = React.useState({ top: 0, left: 0 });
 
 	React.useEffect(() => {
-		if (open && triggerRef.current) {
-			const rect = triggerRef.current.getBoundingClientRect();
-			let top = 0;
-			let left = 0;
+		if (!open || !triggerRef.current || !contentRef.current) return;
 
-			switch (side) {
-				case "top":
-					top = rect.top - sideOffset;
-					left =
-						align === "start"
-							? rect.left
-							: align === "end"
-								? rect.right
-								: rect.left + rect.width / 2;
-					break;
-				case "bottom":
-					top = rect.bottom + sideOffset;
-					left =
-						align === "start"
-							? rect.left
-							: align === "end"
-								? rect.right
-								: rect.left + rect.width / 2;
-					break;
-				case "left":
-					top = rect.top + rect.height / 2;
-					left = rect.left - sideOffset;
-					break;
-				case "right":
-					top = rect.top + rect.height / 2;
-					left = rect.right + sideOffset;
-					break;
-			}
+		const triggerRect = triggerRef.current.getBoundingClientRect();
+		const contentRect = contentRef.current.getBoundingClientRect();
 
-			setPosition({ top, left });
-		}
-	}, [open, side, align, sideOffset, triggerRef]);
+		setPosition(
+			computeFloatingPosition({
+				triggerRect,
+				contentRect,
+				viewportRect: {
+					width: window.innerWidth,
+					height: window.innerHeight,
+				},
+				side,
+				align,
+				sideOffset,
+				viewportPadding: 8,
+			}),
+		);
+	}, [open, side, align, sideOffset, triggerRef, contentRef]);
 
 	return position;
 }
@@ -96,18 +88,6 @@ function useFloatingPosition(
 // ============================================================================
 // Transform Utilities
 // ============================================================================
-
-function getTransform(side: FloatingSide, align: FloatingAlign) {
-	const transforms: string[] = [];
-	if (side === "top") transforms.push("translateY(-100%)");
-	if (side === "left") transforms.push("translateX(-100%)", "translateY(-50%)");
-	if (side === "right") transforms.push("translateY(-50%)");
-	if ((side === "top" || side === "bottom") && align === "center")
-		transforms.push("translateX(-50%)");
-	if ((side === "top" || side === "bottom") && align === "end")
-		transforms.push("translateX(-100%)");
-	return transforms.join(" ");
-}
 
 function getTransformOrigin(side: FloatingSide, align: FloatingAlign) {
 	switch (side) {
@@ -127,9 +107,73 @@ function getTransformOrigin(side: FloatingSide, align: FloatingAlign) {
 			return "right center";
 		case "right":
 			return "left center";
-		default:
+	default:
 			return "top center";
 	}
+}
+
+function clamp(value: number, min: number, max: number) {
+	return Math.min(Math.max(value, min), max);
+}
+
+export function computeFloatingPosition({
+	triggerRect,
+	contentRect,
+	viewportRect,
+	side,
+	align,
+	sideOffset,
+	viewportPadding,
+}: {
+	triggerRect: RectLike;
+	contentRect: Pick<RectLike, "width" | "height">;
+	viewportRect: { width: number; height: number };
+	side: FloatingSide;
+	align: FloatingAlign;
+	sideOffset: number;
+	viewportPadding: number;
+}) {
+	let top = 0;
+	let left = 0;
+
+	switch (side) {
+		case "top":
+			top = triggerRect.top - contentRect.height - sideOffset;
+			break;
+		case "bottom":
+			top = triggerRect.bottom + sideOffset;
+			break;
+		case "left":
+			top = triggerRect.top + (triggerRect.height - contentRect.height) / 2;
+			left = triggerRect.left - contentRect.width - sideOffset;
+			break;
+		case "right":
+			top = triggerRect.top + (triggerRect.height - contentRect.height) / 2;
+			left = triggerRect.right + sideOffset;
+			break;
+	}
+
+	if (side === "top" || side === "bottom") {
+		switch (align) {
+			case "start":
+				left = triggerRect.left;
+				break;
+			case "center":
+				left = triggerRect.left + (triggerRect.width - contentRect.width) / 2;
+				break;
+			case "end":
+				left = triggerRect.right - contentRect.width;
+				break;
+		}
+	}
+
+	const maxLeft = Math.max(viewportPadding, viewportRect.width - contentRect.width - viewportPadding);
+	const maxTop = Math.max(viewportPadding, viewportRect.height - contentRect.height - viewportPadding);
+
+	return {
+		left: clamp(left, viewportPadding, maxLeft),
+		top: clamp(top, viewportPadding, maxTop),
+	};
 }
 
 function getAnimationProps(
@@ -395,9 +439,11 @@ function FloatingContent({
 }: FloatingContentProps) {
 	const { open, triggerRef, trigger, size } = useFloatingContext();
 	const [mounted, setMounted] = React.useState(false);
+	const contentRef = React.useRef<HTMLDivElement>(null);
 	const position = useFloatingPosition(
 		open,
 		triggerRef,
+		contentRef,
 		side,
 		align,
 		sideOffset,
@@ -413,6 +459,7 @@ function FloatingContent({
 		<AnimatePresence>
 			{open && (
 				<motion.div
+					ref={contentRef}
 					data-floating-content
 					role={trigger === "hover" ? "tooltip" : undefined}
 					{...animationProps}
@@ -429,7 +476,6 @@ function FloatingContent({
 						zIndex: 9999,
 						top: position.top,
 						left: position.left,
-						transform: getTransform(side, align),
 						transformOrigin: getTransformOrigin(side, align),
 					}}
 				>

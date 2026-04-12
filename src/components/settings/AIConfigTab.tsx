@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
-import { Field, Divider, Switch, Select, Input } from '../../ui';
+import { Field, Divider, Switch, Select, Input, SaveButton, SettingsPageHeader } from '../../ui';
 import type { SelectOption } from '../../ui';
 import type { LLMProvider } from '../../types/ai';
 import { ProviderListSection } from './ProviderListSection';
+import styles from './SettingsCommon.module.css';
 
 const JIMENG_MODEL_OPTIONS: SelectOption[] = [
   { value: 'jimeng-5.0', label: 'jimeng-5.0（国内站 / 亚洲国际站）' },
@@ -60,14 +61,12 @@ export function AIConfigTab() {
 
   return (
     <>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>AI 基础配置</h2>
-        <p style={{ fontSize: 13, color: '#EBEBF599', margin: '8px 0 0' }}>
-          配置 OpenAI 兼容接口与即梦图片生成服务
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="AI 基础配置"
+        description="配置 OpenAI 兼容接口与即梦图片生成服务"
+      />
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className={styles.formStack}>
         {/* Provider 列表 */}
         <Field label="LLM Providers">
           <ProviderListSection
@@ -115,24 +114,12 @@ export function AIConfigTab() {
         </Field>
       </div>
 
-      <button
-        type="button"
+      <SaveButton
         onClick={handleSave}
-        style={{
-          alignSelf: 'flex-start',
-          padding: '10px 24px',
-          borderRadius: 8,
-          border: 'none',
-          background: saved ? '#32D74B' : '#0A84FF',
-          color: '#fff',
-          fontSize: 13,
-          fontWeight: 600,
-          cursor: 'pointer',
-        }}
-      >
-        {saved ? '已保存 ✓' : '保存配置'}
-      </button>
+        saved={saved}
+        defaultLabel="保存配置"
+        className={styles.saveButton}
+      />
     </>
   );
 }
-

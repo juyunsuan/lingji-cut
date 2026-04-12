@@ -1,0 +1,95 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.agentIcon {
+  color: var(--color-brand-warm);
+}
+
+.loading {
+  color: var(--color-text-placeholder);
+  padding: 20px 0;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.statusList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-panel-elevated);
+}
+
+.statusLabel {
+  min-width: 120px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: 600;
+}
+
+.statusMessage {
+  flex: 1;
+  color: var(--color-text-secondary-strong);
+  font-size: var(--font-size-md);
+}
+
+.apiKeyRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.apiKeyInput {
+  flex: 1;
+}
+
+.editorMono {
+  font-family: var(--font-mono);
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.actionsSpacer {
+  flex: 1;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

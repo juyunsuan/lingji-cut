@@ -1,6 +1,6 @@
 import type { CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button, ContextMenu } from '../ui';
+import { Button, ConfirmDialog, ContextMenu } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
 import {
   getTimelineContextMenuItems,
@@ -32,6 +32,12 @@ interface TimelineProps {
   onOpenAICardInspector?: (cardId: string) => void;
   onOpenOverlayInspector?: (overlayId: string) => void;
   onOpenSubtitleInspector?: () => void;
+}
+
+interface PendingTrackDeletion {
+  trackId: string;
+  trackLabel: string;
+  overlayCount: number;
 }
 
 interface AssetLike {
@@ -68,6 +74,7 @@ export function Timeline({
   const [hoverTrackId, setHoverTrackId] = useState<string | null>(null);
   const [selectedOverlayId, setSelectedOverlayId] = useState<string | null>(null);
   const [contextTarget, setContextTarget] = useState<TimelineContextTarget | null>(null);
+  const [pendingTrackDeletion, setPendingTrackDeletion] = useState<PendingTrackDeletion | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
   const {
@@ -740,9 +747,12 @@ export function Timeline({
                         onClick={(event) => {
                           event.stopPropagation();
                           if (overlays.length > 0) {
-                            if (!window.confirm(`此轨道包含 ${overlays.length} 个素材，删除后将一并移除。确认删除？`)) {
-                              return;
-                            }
+                            setPendingTrackDeletion({
+                              trackId: track.id,
+                              trackLabel: track.label,
+                              overlayCount: overlays.length,
+                            });
+                            return;
                           }
                           removeTrack(track.id);
                         }}
@@ -873,6 +883,30 @@ export function Timeline({
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingTrackDeletion)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingTrackDeletion(null);
+          }
+        }}
+        title="删除轨道"
+        description={
+          pendingTrackDeletion
+            ? `此轨道包含 ${pendingTrackDeletion.overlayCount} 个素材，删除后将一并移除。`
+            : undefined
+        }
+        confirmText={`删除${pendingTrackDeletion?.trackLabel ?? '轨道'}`}
+        cancelText="取消"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (!pendingTrackDeletion) {
+            return;
+          }
+          removeTrack(pendingTrackDeletion.trackId);
+          setPendingTrackDeletion(null);
+        }}
+      />
     </div>
   );
 }

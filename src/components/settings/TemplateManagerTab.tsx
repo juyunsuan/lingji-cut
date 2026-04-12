@@ -8,7 +8,9 @@ import {
   deleteCustomTemplate,
   type CustomScriptTemplate,
 } from '../../lib/settings-storage';
-import { Field, Input, Textarea } from '../../ui';
+import { Badge, Button, EmptyState, Field, Input, SettingsPageHeader, Textarea } from '../../ui';
+import commonStyles from './SettingsCommon.module.css';
+import styles from './TemplateManagerTab.module.css';
 
 export function TemplateManagerTab() {
   const [customs, setCustoms] = useState(() => loadCustomTemplates());
@@ -27,25 +29,27 @@ export function TemplateManagerTab() {
     setSystemPrompt('');
   };
 
-  const startEdit = (t: CustomScriptTemplate) => {
+  const startEdit = (template: CustomScriptTemplate) => {
     setIsNew(false);
-    setEditing(t);
-    setName(t.name);
-    setDescription(t.description);
-    setSystemPrompt(t.systemPrompt);
+    setEditing(template);
+    setName(template.name);
+    setDescription(template.description);
+    setSystemPrompt(template.systemPrompt);
   };
 
   const handleSave = useCallback(() => {
     if (!name.trim() || !systemPrompt.trim()) return;
+
     if (isNew) {
       addCustomTemplate({ name, description, systemPrompt });
     } else if (editing) {
       updateCustomTemplate(editing.id, { name, description, systemPrompt });
     }
+
     setCustoms(loadCustomTemplates());
     setEditing(null);
     setIsNew(false);
-  }, [name, description, systemPrompt, isNew, editing]);
+  }, [description, editing, isNew, name, systemPrompt]);
 
   const handleDelete = useCallback((id: string) => {
     deleteCustomTemplate(id);
@@ -56,128 +60,137 @@ export function TemplateManagerTab() {
 
   return (
     <>
-      <div>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>口播模板管理</h2>
-        <p style={{ fontSize: 13, color: '#EBEBF599', margin: '8px 0 0' }}>
-          管理口播稿生成的风格模板，内置模板不可修改
-        </p>
-      </div>
+      <SettingsPageHeader
+        title="口播模板管理"
+        description="管理口播稿生成的风格模板，内置模板不可修改"
+      />
 
-      {/* 内置模板 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: '#EBEBF54D', letterSpacing: 1 }}>
-          内置模板
-        </span>
-        {SCRIPT_TEMPLATES.map((t) => (
-          <div
-            key={t.id}
-            style={{
-              padding: '14px 16px',
-              borderRadius: 10,
-              border: '1px solid #48484A',
-              background: '#2C2C2E',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: '#EBEBF54D' }}>{t.description}</span>
-              <div style={{ flex: 1 }} />
-              <button
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>内置模板</h3>
+          <Badge variant="secondary">{SCRIPT_TEMPLATES.length}</Badge>
+        </div>
+
+        {SCRIPT_TEMPLATES.map((template) => (
+          <div key={template.id} className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.cardName}>{template.name}</span>
+              <Badge variant="outline">内置</Badge>
+              <span className={styles.cardDescription}>{template.description}</span>
+              <div className={styles.spacer} />
+              <Button.Icon
                 type="button"
-                onClick={() => setViewingBuiltin(viewingBuiltin === t.id ? null : t.id)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EBEBF54D' }}
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewingBuiltin(viewingBuiltin === template.id ? null : template.id)}
+                aria-label={viewingBuiltin === template.id ? '隐藏内置模板内容' : '查看内置模板内容'}
               >
                 <Eye size={14} />
-              </button>
+              </Button.Icon>
             </div>
-            {viewingBuiltin === t.id && (
-              <pre style={{ fontSize: 11, color: '#EBEBF599', whiteSpace: 'pre-wrap', marginTop: 10, lineHeight: 1.5 }}>
-                {t.systemPrompt}
-              </pre>
-            )}
+
+            {viewingBuiltin === template.id ? (
+              <pre className={styles.promptPreview}>{template.systemPrompt}</pre>
+            ) : null}
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* 自定义模板 */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#EBEBF54D', letterSpacing: 1 }}>
-            自定义模板
-          </span>
-          <div style={{ flex: 1 }} />
-          <button
-            type="button"
-            onClick={startNew}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              padding: '4px 10px', borderRadius: 6, border: 'none',
-              background: '#0A84FF', color: '#fff',
-              fontSize: 12, fontWeight: 600, cursor: 'pointer',
-            }}
-          >
-            <Plus size={12} /> 新增
-          </button>
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h3 className={styles.sectionTitle}>自定义模板</h3>
+          <Badge variant="info">{customs.length}</Badge>
+          <div className={styles.spacer} />
+          <Button type="button" size="sm" variant="primary" leftIcon={<Plus size={12} />} onClick={startNew}>
+            新增
+          </Button>
         </div>
 
-        {customs.length === 0 && !isEditorOpen && (
-          <div style={{ padding: 20, textAlign: 'center', color: '#EBEBF54D', fontSize: 13 }}>
-            暂无自定义模板，点击"新增"创建
-          </div>
-        )}
+        {customs.length === 0 && !isEditorOpen ? (
+          <EmptyState title="暂无自定义模板" description='点击“新增”创建一个模板' />
+        ) : null}
 
-        {customs.map((t) => (
-          <div
-            key={t.id}
-            style={{
-              padding: '14px 16px',
-              borderRadius: 10,
-              border: '1px solid #48484A',
-              background: '#2C2C2E',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{t.name}</span>
-              <span style={{ fontSize: 11, color: '#EBEBF54D', marginLeft: 8 }}>{t.description}</span>
+        {customs.map((template) => (
+          <div key={template.id} className={styles.card}>
+            <div className={styles.cardHeader}>
+              <span className={styles.cardName}>{template.name}</span>
+              {template.description ? (
+                <span className={styles.cardDescription}>{template.description}</span>
+              ) : null}
+              <div className={styles.cardActions}>
+                <Button.Icon
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => startEdit(template)}
+                  aria-label="编辑模板"
+                >
+                  <Pencil size={14} />
+                </Button.Icon>
+                <Button.Icon
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => handleDelete(template.id)}
+                  aria-label="删除模板"
+                >
+                  <Trash2 size={14} />
+                </Button.Icon>
+              </div>
             </div>
-            <div style={{ flex: 1 }} />
-            <button type="button" onClick={() => startEdit(t)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EBEBF54D' }}>
-              <Pencil size={14} />
-            </button>
-            <button type="button" onClick={() => handleDelete(t.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#FF453A' }}>
-              <Trash2 size={14} />
-            </button>
           </div>
         ))}
-      </div>
+      </section>
 
-      {/* 编辑面板 */}
-      {isEditorOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, padding: 20, borderRadius: 12, border: '1px solid #0A84FF', background: '#0A84FF0D' }}>
-          <span style={{ fontSize: 14, fontWeight: 600 }}>{isNew ? '新增模板' : '编辑模板'}</span>
-          <Field label="模板名称"><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：财经解读" /></Field>
-          <Field label="描述"><Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="一句话描述风格特点" /></Field>
-          <Field label="System Prompt">
-            <Textarea
-              value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
-              placeholder="输入完整的 System Prompt..."
-              rows={10}
-              size="sm"
-              resize="vertical"
-            />
-          </Field>
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button type="button" onClick={() => { setEditing(null); setIsNew(false); }} style={{ padding: '8px 16px', borderRadius: 6, border: '1px solid #48484A', background: 'transparent', color: '#EBEBF599', fontSize: 12, cursor: 'pointer' }}>
+      {isEditorOpen ? (
+        <section className={styles.editorPanel}>
+          <span className={styles.editorTitle}>{isNew ? '新增模板' : '编辑模板'}</span>
+
+          <div className={commonStyles.formStack}>
+            <Field label="模板名称">
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="如：财经解读" />
+            </Field>
+            <Field label="描述">
+              <Input
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="一句话描述风格特点"
+              />
+            </Field>
+            <Field label="System Prompt">
+              <Textarea
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="输入完整的 System Prompt..."
+                rows={10}
+                size="sm"
+                resize="vertical"
+              />
+            </Field>
+          </div>
+
+          <div className={styles.editorActions}>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditing(null);
+                setIsNew(false);
+              }}
+            >
               取消
-            </button>
-            <button type="button" onClick={handleSave} disabled={!name.trim() || !systemPrompt.trim()} style={{ padding: '8px 16px', borderRadius: 6, border: 'none', background: '#0A84FF', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={handleSave}
+              disabled={!name.trim() || !systemPrompt.trim()}
+            >
               保存
-            </button>
+            </Button>
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
     </>
   );
 }

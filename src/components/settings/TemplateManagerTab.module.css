@@ -1,0 +1,84 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sectionTitle {
+  margin: 0;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.card {
+  padding: 14px 16px;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--color-border-control);
+  background: var(--color-panel-elevated);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.cardName {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.cardDescription {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.cardActions {
+  display: inline-flex;
+  gap: var(--space-2);
+  margin-left: auto;
+}
+
+.promptPreview {
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  white-space: pre-wrap;
+}
+
+.editorPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  padding: 20px;
+  border-radius: var(--radius-2xl);
+  border: 1px solid color-mix(in srgb, var(--color-system-blue) 35%, transparent);
+  background: var(--color-bg-info);
+}
+
+.editorTitle {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+
+.editorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-4);
+}

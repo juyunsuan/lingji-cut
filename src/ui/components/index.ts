@@ -39,6 +39,7 @@ export {
 export { Checkbox } from "./checkbox";
 export { CloseButton } from "./close-button";
 export { CompactContactForm } from "./contact-form";
+export { ConfirmDialog } from "./ConfirmDialog";
 export type { ContextMenuItem } from "./context-menu";
 export { ContextMenu } from "./context-menu";
 export { DateSelect } from "./date-select";

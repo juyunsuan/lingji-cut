@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo } from 'react';
 import { useAgentStore } from '../store/agent';
 import { useScriptStore } from '../store/script';
 import { getOriginalStats, getGeneratedScriptStats, getAnnotationSummary } from '../lib/script-utils';
+import { Popover, PopoverContent, PopoverTrigger, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
 import styles from './AppStatusBar.module.css';
 import { StatusBarTaskSummary } from './StatusBarTaskSummary';
 import { TaskProgressPanel } from './TaskProgressPanel';
@@ -63,28 +64,6 @@ function ContextPopover({
 // ─── 上下文窗口指示器 ───────────────────────────────────────
 function ContextWindowIndicator() {
   const contextUsage = useAgentStore((s) => s.contextUsage);
-  const [popoverOpen, setPopoverOpen] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleEnter = useCallback(() => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    setPopoverOpen(true);
-  }, []);
-
-  const handleLeave = useCallback(() => {
-    timerRef.current = setTimeout(() => setPopoverOpen(false), 200);
-  }, []);
-
-  // 组件卸载时清理 timer
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-      }
-    };
-  }, []);
 
   if (!contextUsage) return null;
 
@@ -95,44 +74,45 @@ function ContextWindowIndicator() {
   const dashOffset = ICON_CIRCUMFERENCE * (1 - percent / 100);
 
   return (
-    <div
-      className={styles.contextUsage}
-      onMouseEnter={handleEnter}
-      onMouseLeave={handleLeave}
-    >
-      <svg
-        aria-label="上下文窗口用量"
-        width={14}
-        height={14}
-        viewBox={`0 0 ${ICON_VIEWBOX} ${ICON_VIEWBOX}`}
-      >
-        <circle
-          cx={ICON_CENTER}
-          cy={ICON_CENTER}
-          r={ICON_RADIUS}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          opacity="0.25"
-        />
-        <circle
-          cx={ICON_CENTER}
-          cy={ICON_CENTER}
-          r={ICON_RADIUS}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeDasharray={`${ICON_CIRCUMFERENCE} ${ICON_CIRCUMFERENCE}`}
-          strokeDashoffset={dashOffset}
-          style={{ transformOrigin: 'center', transform: 'rotate(-90deg)' }}
-          opacity="0.75"
-        />
-      </svg>
-      <span>{formatPercent(percent)}</span>
-
-      {popoverOpen && <ContextPopover used={used} size={size} percent={percent} />}
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" className={styles.contextUsage} aria-label="上下文窗口用量详情">
+          <svg
+            aria-hidden="true"
+            width={14}
+            height={14}
+            viewBox={`0 0 ${ICON_VIEWBOX} ${ICON_VIEWBOX}`}
+          >
+            <circle
+              cx={ICON_CENTER}
+              cy={ICON_CENTER}
+              r={ICON_RADIUS}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              opacity="0.25"
+            />
+            <circle
+              cx={ICON_CENTER}
+              cy={ICON_CENTER}
+              r={ICON_RADIUS}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeDasharray={`${ICON_CIRCUMFERENCE} ${ICON_CIRCUMFERENCE}`}
+              strokeDashoffset={dashOffset}
+              style={{ transformOrigin: 'center', transform: 'rotate(-90deg)' }}
+              opacity="0.75"
+            />
+          </svg>
+          <span>{formatPercent(percent)}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent side="top" align="end" sideOffset={8} className={`w-[220px] p-0 ${styles.popoverContent}`}>
+        <ContextPopover used={used} size={size} percent={percent} />
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -145,10 +125,17 @@ function ConnectionIndicator() {
   const label = STATUS_LABELS[displayStatus] || displayStatus;
 
   return (
-    <div className={styles.connectionStatus} title={autoConnectError || label}>
-      <div className={styles.statusDot} data-status={displayStatus} />
-      <span>{label}</span>
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className={styles.connectionStatus}>
+          <div className={styles.statusDot} data-status={displayStatus} />
+          <span>{label}</span>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="top" align="end">
+        {autoConnectError || label}
+      </TooltipContent>
+    </Tooltip>
   );
 }
 

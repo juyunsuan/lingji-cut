@@ -1,8 +1,9 @@
 import { MessageSquare, RotateCcw, Trash2 } from 'lucide-react';
-import { EmptyState } from '../../ui';
+import { Button, EmptyState } from '../../ui';
 import { useConversationList } from '../../hooks/use-conversation-list';
 
 interface SessionListPaneProps {
+  collapsed?: boolean;
   explicitConversationId: number | null;
   onSelectConversation: (conversationId: number) => void;
   onCreateConversation: () => void;
@@ -23,6 +24,7 @@ function formatStatus(status: string): string {
 }
 
 export function SessionListPane({
+  collapsed = false,
   explicitConversationId,
   onSelectConversation,
   onCreateConversation,
@@ -52,8 +54,27 @@ export function SessionListPane({
   }
 
   if (conversations.length === 0) {
+    if (collapsed) {
+      return (
+        <div
+          className="flex-1 overflow-y-auto px-2 py-3 flex items-start justify-center"
+          data-collapsed="true"
+        >
+          <span
+            className="inline-flex h-8 w-8 items-center justify-center rounded-xl text-mac-text-muted/50"
+            aria-hidden="true"
+          >
+            <MessageSquare size={14} />
+          </span>
+        </div>
+      );
+    }
+
     return (
-      <div className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
+      <div
+        className="flex-1 overflow-y-auto p-4 flex items-center justify-center"
+        data-collapsed="false"
+      >
         <EmptyState
           eyebrow={<MessageSquare size={18} />}
           title="当前项目还没有会话"
@@ -71,8 +92,40 @@ export function SessionListPane({
     );
   }
 
+  if (collapsed) {
+    return (
+      <div
+        className="flex-1 overflow-y-auto px-2 py-2 flex flex-col items-center gap-2"
+        data-collapsed="true"
+      >
+        {conversations.map((conversation) => {
+          const isActive = activeConversationId === conversation.id;
+          const isExplicit = explicitConversationId === conversation.id;
+          return (
+            <Button
+              key={conversation.id}
+              type="button"
+              variant={isActive ? 'accent' : 'ghost'}
+              size="sm"
+              iconOnly
+              className="relative"
+              onClick={() => onSelectConversation(conversation.id)}
+              aria-label={`打开${conversation.title}`}
+              title={conversation.title}
+            >
+              <MessageSquare size={14} />
+              {isExplicit ? (
+                <span className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-mac-blue" />
+              ) : null}
+            </Button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5">
+    <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col gap-1.5" data-collapsed="false">
       {conversations.map((conversation) => {
         const isActive = activeConversationId === conversation.id;
         const isExplicit = explicitConversationId === conversation.id;

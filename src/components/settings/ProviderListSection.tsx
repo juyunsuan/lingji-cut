@@ -1,7 +1,21 @@
 import { useState } from 'react';
 import type { LLMProvider } from '../../types/ai';
-import { Input, Select, Checkbox } from '../../ui';
+import {
+  Badge,
+  Button,
+  Checkbox,
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  EmptyState,
+  Input,
+  ModalFooter,
+  Select,
+} from '../../ui';
 import type { SelectOption } from '../../ui';
+import styles from './ProviderListSection.module.css';
 
 /** 生成唯一 ID */
 function genId(): string {
@@ -38,6 +52,7 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
   const [form, setForm] = useState<LLMProvider>({ ...initial });
   const [setAsDefault, setSetAsDefault] = useState(isDefault);
   const [newModel, setNewModel] = useState('');
+  const title = initial.name ? '编辑 Provider' : '添加 Provider';
 
   const set = <K extends keyof LLMProvider>(key: K, value: LLMProvider[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -57,173 +72,112 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
     );
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'rgba(0,0,0,0.6)',
-      }}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onCancel();
-      }}
-    >
-      <div
-        style={{
-          background: '#1c1c1e',
-          borderRadius: 12,
-          padding: '24px 28px',
-          width: 480,
-          maxHeight: '80vh',
-          overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.5)',
-          color: '#fff',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 16,
-        }}
-      >
-        <h3 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>
-          {initial.name ? '编辑 Provider' : '添加 Provider'}
-        </h3>
-
-        {/* 名称 */}
-        <label style={labelStyle}>
-          <span>名称</span>
-          <Input
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
-            placeholder="例如：本地 Ollama"
-            size="sm"
-          />
-        </label>
-
-        {/* 类型 */}
-        <div style={labelStyle}>
-          <span>类型</span>
-          <Select
-            value={form.type}
-            options={PROVIDER_TYPE_OPTIONS}
-            onChange={(e) => set('type', e.target.value as LLMProvider['type'])}
-          />
-        </div>
-
-        {/* Base URL */}
-        <label style={labelStyle}>
-          <span>Base URL</span>
-          <Input
-            value={form.baseUrl}
-            onChange={(e) => set('baseUrl', e.target.value)}
-            placeholder="https://api.openai.com/v1"
-            size="sm"
-          />
-        </label>
-
-        {/* API Key */}
-        <label style={labelStyle}>
-          <span>API Key</span>
-          <Input
-            variant="password"
-            value={form.apiKey}
-            onChange={(e) => set('apiKey', e.target.value)}
-            placeholder="sk-..."
-            size="sm"
-          />
-        </label>
-
-        {/* 模型列表 */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <span style={{ fontSize: 13, color: '#ebebf5cc' }}>模型列表</span>
-          {form.models.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {form.models.map((m, idx) => (
-                <span
-                  key={idx}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    background: 'rgba(255,255,255,0.08)',
-                    borderRadius: 6,
-                    padding: '3px 8px',
-                    fontSize: 12,
-                  }}
-                >
-                  {m}
-                  <button
-                    type="button"
-                    onClick={() => removeModel(idx)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ff453a',
-                      cursor: 'pointer',
-                      padding: 0,
-                      fontSize: 14,
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+    <Dialog open onOpenChange={(open) => (!open ? onCancel() : undefined)}>
+      <DialogContent size="lg" className={styles.dialogContent}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <DialogBody className={styles.dialogBody}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>名称</span>
             <Input
-              value={newModel}
-              onChange={(e) => setNewModel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  addModel();
-                }
-              }}
-              placeholder="输入模型名后按 Enter 或点击添加"
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              placeholder="例如：本地 Ollama"
               size="sm"
-              wrapperClassName="flex-1"
             />
-            <button type="button" onClick={addModel} style={secondaryBtnStyle}>
-              添加
-            </button>
+          </label>
+
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>类型</span>
+            <Select
+              value={form.type}
+              options={PROVIDER_TYPE_OPTIONS}
+              onChange={(e) => set('type', e.target.value as LLMProvider['type'])}
+            />
           </div>
-        </div>
 
-        {/* 设为默认 */}
-        <Checkbox
-          label="设为默认 Provider"
-          checked={setAsDefault}
-          onChange={(checked) => setSetAsDefault(checked)}
-          size="sm"
-        />
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Base URL</span>
+            <Input
+              value={form.baseUrl}
+              onChange={(e) => set('baseUrl', e.target.value)}
+              placeholder="https://api.openai.com/v1"
+              size="sm"
+            />
+          </label>
 
-        {/* 操作按钮 */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
-          <button type="button" onClick={onCancel} style={secondaryBtnStyle}>
-            取消
-          </button>
-          <button
-            type="button"
-            onClick={() => onSave(form, setAsDefault)}
-            style={{
-              padding: '8px 20px',
-              borderRadius: 8,
-              border: 'none',
-              background: '#0a84ff',
-              color: '#fff',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            保存
-          </button>
-        </div>
-      </div>
-    </div>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>API Key</span>
+            <Input
+              variant="password"
+              value={form.apiKey}
+              onChange={(e) => set('apiKey', e.target.value)}
+              placeholder="sk-..."
+              size="sm"
+            />
+          </label>
+
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>模型列表</span>
+            {form.models.length > 0 ? (
+              <div className={styles.modelList}>
+                {form.models.map((m, idx) => (
+                  <div key={`${m}-${idx}`} className={styles.modelItem}>
+                    <Badge variant="secondary" size="xs">
+                      {m}
+                    </Badge>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={styles.removeModelButton}
+                      onClick={() => removeModel(idx)}
+                    >
+                      移除
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className={styles.hintText}>暂未添加模型</p>
+            )}
+            <div className={styles.modelInputRow}>
+              <Input
+                value={newModel}
+                onChange={(e) => setNewModel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addModel();
+                  }
+                }}
+                placeholder="输入模型名后按 Enter 或点击添加"
+                size="sm"
+                wrapperClassName={styles.modelInput}
+              />
+              <Button type="button" variant="secondary" size="sm" onClick={addModel}>
+                添加
+              </Button>
+            </div>
+          </div>
+
+          <Checkbox
+            label="设为默认 Provider"
+            checked={setAsDefault}
+            onChange={(checked) => setSetAsDefault(checked)}
+            size="sm"
+            className={styles.defaultCheckbox}
+          />
+
+          <ModalFooter
+            onCancel={onCancel}
+            onConfirm={() => onSave(form, setAsDefault)}
+            confirmLabel="保存"
+          />
+        </DialogBody>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -275,89 +229,75 @@ export function ProviderListSection({ providers, defaultProviderId, onChange }: 
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {providers.length === 0 && (
-        <p style={{ fontSize: 13, color: '#ebebf5cc', margin: 0 }}>
-          暂无 Provider，点击下方按钮添加
-        </p>
-      )}
+    <div className={styles.root}>
+      {providers.length === 0 ? (
+        <EmptyState
+          eyebrow="Provider"
+          title="暂无 Provider"
+          description="点击下方按钮添加你的第一个 Provider。"
+          actions={
+            <Button type="button" variant="secondary" onClick={openAdd}>
+              + 添加 Provider
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          <div className={styles.providerList}>
+            {providers.map((p) => (
+              <div key={p.id} className={styles.providerCard}>
+                <div className={styles.providerHeader}>
+                  <div className={styles.providerTitleGroup}>
+                    <span className={styles.providerName}>{p.name || '未命名 Provider'}</span>
+                    {p.id === defaultProviderId ? (
+                      <Badge variant="info" size="xs">
+                        默认
+                      </Badge>
+                    ) : null}
+                  </div>
+                  <div className={styles.providerActions}>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(p)}>
+                      编辑
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => handleDelete(p.id)}
+                    >
+                      删除
+                    </Button>
+                  </div>
+                </div>
 
-      {providers.map((p) => (
-        <div
-          key={p.id}
-          style={{
-            background: 'rgba(255,255,255,0.04)',
-            borderRadius: 10,
-            padding: '12px 16px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 6,
-          }}
-        >
-          {/* 头部：名称 + 默认徽章 + 操作按钮 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', flex: 1 }}>{p.name}</span>
-            {p.id === defaultProviderId && (
-              <span
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  background: '#0a84ff22',
-                  color: '#0a84ff',
-                  borderRadius: 6,
-                  padding: '2px 8px',
-                }}
-              >
-                默认
-              </span>
-            )}
-            <button type="button" onClick={() => openEdit(p)} style={cardActionBtnStyle}>
-              编辑
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDelete(p.id)}
-              style={{ ...cardActionBtnStyle, color: '#ff453a' }}
-            >
-              删除
-            </button>
+                {p.baseUrl ? <span className={styles.providerBaseUrl}>{p.baseUrl}</span> : null}
+
+                {p.models.length > 0 ? (
+                  <div className={styles.providerModels}>
+                    {p.models.map((m) => (
+                      <Badge key={m} variant="secondary" size="xs">
+                        {m}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <span className={styles.providerHint}>未配置模型</span>
+                )}
+              </div>
+            ))}
           </div>
 
-          {/* Base URL */}
-          {p.baseUrl && (
-            <span style={{ fontSize: 12, color: '#ebebf5cc' }}>
-              {p.baseUrl}
-            </span>
-          )}
+          <Button
+            type="button"
+            variant="secondary"
+            className={styles.addProviderButton}
+            onClick={openAdd}
+          >
+            + 添加 Provider
+          </Button>
+        </>
+      )}
 
-          {/* 模型列表 */}
-          {p.models.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-              {p.models.map((m) => (
-                <span
-                  key={m}
-                  style={{
-                    fontSize: 11,
-                    background: 'rgba(255,255,255,0.08)',
-                    borderRadius: 4,
-                    padding: '2px 7px',
-                    color: '#ebebf5cc',
-                  }}
-                >
-                  {m}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
-
-      {/* 添加按钮 */}
-      <button type="button" onClick={openAdd} style={addBtnStyle}>
-        + 添加 Provider
-      </button>
-
-      {/* 弹窗 */}
       {editTarget && (
         <ProviderDialog
           initial={editTarget}
@@ -369,45 +309,3 @@ export function ProviderListSection({ providers, defaultProviderId, onChange }: 
     </div>
   );
 }
-
-// ─── 样式常量 ─────────────────────────────────────────────────────────────
-
-const labelStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 6,
-  fontSize: 13,
-  color: '#ebebf5cc',
-};
-
-
-const secondaryBtnStyle: React.CSSProperties = {
-  padding: '7px 16px',
-  borderRadius: 8,
-  border: '1px solid rgba(255,255,255,0.15)',
-  background: 'transparent',
-  color: '#ebebf5cc',
-  fontSize: 13,
-  cursor: 'pointer',
-};
-
-const cardActionBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  color: '#ebebf5cc',
-  fontSize: 12,
-  cursor: 'pointer',
-  padding: '2px 8px',
-};
-
-const addBtnStyle: React.CSSProperties = {
-  alignSelf: 'flex-start',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px dashed rgba(255,255,255,0.2)',
-  borderRadius: 8,
-  color: '#ebebf5cc',
-  fontSize: 13,
-  padding: '8px 16px',
-  cursor: 'pointer',
-  marginTop: 4,
-};

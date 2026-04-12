@@ -1,8 +1,15 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 import { FileText, Sparkles, Search, ChevronDown, FileUp } from 'lucide-react';
 import { useScriptStore } from '../../store/script';
 import { useAgentStore } from '../../store/agent';
 import type { FileEntry } from '../../lib/electron-api';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '../../ui';
 import styles from './GuideCards.module.css';
 
 // ─── 工具函数 ────────────────────────────────────────────
@@ -53,57 +60,6 @@ const REVIEW_PROMPT = `请使用 MCP 工具完成审稿：
 
 注意：必须通过 lingji_review_script 工具提交批注，不要仅用文字回复审阅结果。`;
 
-// ─── 文件选择下拉 ─────────────────────────────────────
-
-function FilePickerDropdown({
-  files,
-  onSelect,
-  onClose,
-}: {
-  files: string[];
-  onSelect: (path: string) => void;
-  onClose: () => void;
-}) {
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [onClose]);
-
-  if (files.length === 0) {
-    return (
-      <div ref={dropdownRef} className={styles.dropdown}>
-        <div className={styles.dropdownEmpty}>工作目录下暂无文本文件</div>
-      </div>
-    );
-  }
-
-  return (
-    <div ref={dropdownRef} className={styles.dropdown}>
-      <div className={styles.dropdownTitle}>选择文件作为原稿</div>
-      {files.map((file) => (
-        <button
-          key={file}
-          className={styles.dropdownItem}
-          onClick={() => {
-            onSelect(file);
-            onClose();
-          }}
-        >
-          <FileText size={13} />
-          <span>{file}</span>
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ─── 单个卡片 ───────────────────────────────────────────
 
 interface CardProps {
@@ -115,6 +71,7 @@ interface CardProps {
   onClick?: () => void;
   compact?: boolean;
   children?: React.ReactNode;
+  renderButton?: (button: React.ReactElement) => React.ReactNode;
 }
 
 function ActionCard({
@@ -126,40 +83,49 @@ function ActionCard({
   onClick,
   compact,
   children,
+  renderButton,
 }: CardProps) {
   if (compact) {
+    const compactButton = (
+      <button
+        className={`${styles.compactCard} ${disabled ? styles.compactCardDisabled : ''}`}
+        disabled={disabled}
+        onClick={onClick}
+        title={disabled ? disabledHint : description}
+      >
+        {icon}
+        <span>{title}</span>
+      </button>
+    );
+
     return (
       <div className={styles.compactCardWrapper}>
-        <button
-          className={`${styles.compactCard} ${disabled ? styles.compactCardDisabled : ''}`}
-          disabled={disabled}
-          onClick={onClick}
-          title={disabled ? disabledHint : description}
-        >
-          {icon}
-          <span>{title}</span>
-        </button>
+        {renderButton ? renderButton(compactButton) : compactButton}
         {children}
       </div>
     );
   }
 
+  const fullButton = (
+    <button
+      className={`${styles.card} ${disabled ? styles.cardDisabled : ''}`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      <div className={styles.cardIcon}>{icon}</div>
+      <div className={styles.cardBody}>
+        <div className={styles.cardTitle}>{title}</div>
+        <div className={styles.cardDesc}>
+          {disabled && disabledHint ? disabledHint : description}
+        </div>
+      </div>
+      {!disabled && <ChevronDown size={14} className={styles.cardArrow} />}
+    </button>
+  );
+
   return (
     <div className={styles.cardWrapper}>
-      <button
-        className={`${styles.card} ${disabled ? styles.cardDisabled : ''}`}
-        disabled={disabled}
-        onClick={onClick}
-      >
-        <div className={styles.cardIcon}>{icon}</div>
-        <div className={styles.cardBody}>
-          <div className={styles.cardTitle}>{title}</div>
-          <div className={styles.cardDesc}>
-            {disabled && disabledHint ? disabledHint : description}
-          </div>
-        </div>
-        {!disabled && <ChevronDown size={14} className={styles.cardArrow} />}
-      </button>
+      {renderButton ? renderButton(fullButton) : fullButton}
       {children}
     </div>
   );
@@ -247,23 +213,55 @@ export function GuideCards({ compact = false }: { compact?: boolean }) {
 
       <div className={compact ? styles.compactCards : styles.cards}>
         {/* 导入原稿 */}
-        <ActionCard
-          icon={<FileUp size={compact ? 13 : 18} />}
-          title="导入原稿"
-          description="选择工作目录中的文件作为原稿"
-          disabled={importDisabled}
-          disabledHint={importHint}
-          onClick={() => !importDisabled && setShowFilePicker(!showFilePicker)}
-          compact={compact}
+        <DropdownMenu
+          open={showFilePicker}
+          onOpenChange={(open) => {
+            if (importDisabled) {
+              setShowFilePicker(false);
+              return;
+            }
+            setShowFilePicker(open);
+          }}
         >
-          {showFilePicker && !importDisabled && (
-            <FilePickerDropdown
-              files={textFiles}
-              onSelect={handleImportOriginal}
-              onClose={() => setShowFilePicker(false)}
-            />
-          )}
-        </ActionCard>
+          <ActionCard
+            icon={<FileUp size={compact ? 13 : 18} />}
+            title="导入原稿"
+            description="选择工作目录中的文件作为原稿"
+            disabled={importDisabled}
+            disabledHint={importHint}
+            compact={compact}
+            renderButton={(button) => (
+              <DropdownMenuTrigger asChild>{button}</DropdownMenuTrigger>
+            )}
+          >
+            <DropdownMenuContent
+              align="start"
+              side="bottom"
+              sideOffset={6}
+              className={`w-[320px] p-0 ${styles.dropdown}`}
+            >
+              {textFiles.length === 0 ? (
+                <div className={styles.dropdownEmpty}>工作目录下暂无文本文件</div>
+              ) : (
+                <>
+                  <DropdownMenuLabel className={styles.dropdownTitle}>选择文件作为原稿</DropdownMenuLabel>
+                  {textFiles.map((file) => (
+                    <DropdownMenuItem
+                      key={file}
+                      className={styles.dropdownItem}
+                      onSelect={() => {
+                        handleImportOriginal(file);
+                      }}
+                    >
+                      <FileText size={13} />
+                      <span>{file}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </>
+              )}
+            </DropdownMenuContent>
+          </ActionCard>
+        </DropdownMenu>
 
         {/* 生成口播稿 */}
         <ActionCard

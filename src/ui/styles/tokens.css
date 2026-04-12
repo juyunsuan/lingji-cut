@@ -78,7 +78,10 @@
   /* Text — macOS system text colors */
   --color-text-primary: #FFFFFF;
   --color-text-secondary: #EBEBF599;
+  --color-text-secondary-strong: #EBEBF580;
   --color-text-tertiary: #8E8E93;
+  --color-text-quaternary: #636366;
+  --color-text-placeholder: #EBEBF560;
   --color-text-muted: #EBEBF54D;
   --color-text-disabled: #EBEBF533;
 

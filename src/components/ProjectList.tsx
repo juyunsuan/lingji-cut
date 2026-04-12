@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { getFileNameFromPath, toFileSrc } from '../lib/utils';
 import type { RecentProjectEntry } from '../lib/electron-api';
+import { ConfirmDialog } from '../ui';
 import styles from './ProjectList.module.css';
 
 interface ProjectListProps {
@@ -182,19 +183,18 @@ function ProjectListItem({
 
 export function ProjectList({ projects, onOpenProject, onRemoveProject }: ProjectListProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [pendingRemoval, setPendingRemoval] = useState<RecentProjectEntry | null>(null);
 
   const sortedProjects = useMemo(() => {
     return [...projects].sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
   }, [projects]);
 
   const handleRemove = useCallback(
-    (e: React.MouseEvent, projectDir: string) => {
+    (e: React.MouseEvent, project: RecentProjectEntry) => {
       e.stopPropagation();
-      if (window.confirm('确定要从列表中移除这个项目吗？')) {
-        onRemoveProject?.(projectDir);
-      }
+      setPendingRemoval(project);
     },
-    [onRemoveProject],
+    [],
   );
 
   if (projects.length === 0) {
@@ -202,60 +202,86 @@ export function ProjectList({ projects, onOpenProject, onRemoveProject }: Projec
   }
 
   return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <div className={styles.title}>本地草稿</div>
-        <div className={styles.viewToggle}>
-          <button
-            type="button"
-            className={[styles.viewButton, viewMode === 'grid' ? styles.active : ''].join(' ')}
-            onClick={() => setViewMode('grid')}
-            aria-label="网格视图"
-          >
-            <LayoutGrid size={14} strokeWidth={1.8} />
-          </button>
-          <button
-            type="button"
-            className={[styles.viewButton, viewMode === 'list' ? styles.active : ''].join(' ')}
-            onClick={() => setViewMode('list')}
-            aria-label="列表视图"
-          >
-            <List size={14} strokeWidth={1.8} />
-          </button>
-        </div>
-      </div>
-
-      {viewMode === 'grid' ? (
-        <div className={styles.grid}>
-          {sortedProjects.map((project) => (
-            <ProjectCard
-              key={project.path}
-              project={project}
-              onClick={() => onOpenProject(project.path)}
-              onRemove={(e) => handleRemove(e, project.path)}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className={styles.table}>
-          <div className={styles.tableHeader}>
-            <span className={styles.colName}>名称</span>
-            <span className={styles.colDate}>修改日期</span>
-            <span className={styles.colPath}>位置</span>
-            <span className={styles.colAction} />
+    <>
+      <div className={styles.container}>
+        <div className={styles.header}>
+          <div className={styles.title}>本地草稿</div>
+          <div className={styles.viewToggle}>
+            <button
+              type="button"
+              className={[styles.viewButton, viewMode === 'grid' ? styles.active : ''].join(' ')}
+              onClick={() => setViewMode('grid')}
+              aria-label="网格视图"
+            >
+              <LayoutGrid size={14} strokeWidth={1.8} />
+            </button>
+            <button
+              type="button"
+              className={[styles.viewButton, viewMode === 'list' ? styles.active : ''].join(' ')}
+              onClick={() => setViewMode('list')}
+              aria-label="列表视图"
+            >
+              <List size={14} strokeWidth={1.8} />
+            </button>
           </div>
-          <div className={styles.tableBody}>
+        </div>
+
+        {viewMode === 'grid' ? (
+          <div className={styles.grid}>
             {sortedProjects.map((project) => (
-              <ProjectListItem
+              <ProjectCard
                 key={project.path}
                 project={project}
                 onClick={() => onOpenProject(project.path)}
-                onRemove={(e) => handleRemove(e, project.path)}
+                onRemove={(e) => handleRemove(e, project)}
               />
             ))}
           </div>
-        </div>
-      )}
-    </div>
+        ) : (
+          <div className={styles.table}>
+            <div className={styles.tableHeader}>
+              <span className={styles.colName}>名称</span>
+              <span className={styles.colDate}>修改日期</span>
+              <span className={styles.colPath}>位置</span>
+              <span className={styles.colAction} />
+            </div>
+            <div className={styles.tableBody}>
+              {sortedProjects.map((project) => (
+                <ProjectListItem
+                  key={project.path}
+                  project={project}
+                  onClick={() => onOpenProject(project.path)}
+                  onRemove={(e) => handleRemove(e, project)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+      <ConfirmDialog
+        open={Boolean(pendingRemoval)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingRemoval(null);
+          }
+        }}
+        title="从列表移除项目"
+        description={
+          pendingRemoval
+            ? `确认移除「${pendingRemoval.name}」？该操作不会删除本地文件。`
+            : undefined
+        }
+        confirmText="移除"
+        cancelText="取消"
+        confirmVariant="destructive"
+        onConfirm={() => {
+          if (!pendingRemoval) {
+            return;
+          }
+          onRemoveProject?.(pendingRemoval.path);
+          setPendingRemoval(null);
+        }}
+      />
+    </>
   );
 }
