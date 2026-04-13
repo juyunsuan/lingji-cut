@@ -728,18 +728,33 @@ export function Timeline({
   };
 
   // ── Gap hit test ──
-  // 遍历每个展开的 gap 容器 DOM,判断鼠标 Y 是否落在其 rect 内。
+  // 用 track row 的 DOM rect 判断鼠标 Y 是否靠近某条轨道交界处(±4px)。
   // 返回屏幕顺序的 gap 索引(0=最顶, N=最底),未命中返回 null。
+  const GAP_HIT_RADIUS_PX = 4;
   const resolveGapIndex = (clientY: number): number | null => {
-    const gapEls = gapRefs.current;
-    for (let i = 0; i < gapEls.length; i += 1) {
-      const el = gapEls[i];
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      if (rect.height <= 0) continue;
-      if (clientY >= rect.top && clientY <= rect.bottom) {
+    if (visualTracks.length === 0) return null;
+
+    const rects: DOMRect[] = [];
+    for (const track of visualTracks) {
+      const el = trackRowRefs.current[track.id];
+      if (!el) return null;
+      rects.push(el.getBoundingClientRect());
+    }
+
+    // gap 0:第一条轨道之前(屏幕最顶)
+    if (Math.abs(clientY - rects[0].top) <= GAP_HIT_RADIUS_PX) {
+      return 0;
+    }
+    // gap i (1..N-1):相邻轨道交界
+    for (let i = 1; i < rects.length; i += 1) {
+      const boundary = (rects[i - 1].bottom + rects[i].top) / 2;
+      if (Math.abs(clientY - boundary) <= GAP_HIT_RADIUS_PX) {
         return i;
       }
+    }
+    // gap N:最后一条轨道之后(屏幕最底)
+    if (Math.abs(clientY - rects[rects.length - 1].bottom) <= GAP_HIT_RADIUS_PX) {
+      return rects.length;
     }
     return null;
   };
@@ -1386,9 +1401,7 @@ export function Timeline({
                 overlayTrackHeight * Math.max(visualTracks.length, 1)
                   + audioTrackHeight
                   + subtitleTrackHeight
-                  + rulerHeight
-                  // gap 展开后的额外高度,避免拖拽期间 guide 被挤出视图底部
-                  + (dragState ? 28 * (visualTracks.length + 1) : 0),
+                  + rulerHeight,
                 240,
               )}
               top={0}

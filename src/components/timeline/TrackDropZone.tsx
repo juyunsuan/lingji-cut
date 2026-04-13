@@ -11,8 +11,8 @@ export interface TrackDropZoneProps {
 }
 
 /**
- * 拖拽 overlay 时显示在每条 visual 轨道之间间隙里的 "释放新建轨道" 指示条。
- * 平时高度为 0,拖拽开始后 CSS transition 展开到 28px,hover 命中时高亮。
+ * 拖拽 overlay 时在每两条 visual 轨道的交界处显示的"释放新建轨道"提示。
+ * 始终 0 高度不撑开布局;hover 命中时显示一条灰色虚线。
  */
 export const TrackDropZone = forwardRef<HTMLDivElement, TrackDropZoneProps>(
   function TrackDropZone({ gapIndex, active, highlighted }, ref) {
@@ -23,9 +23,9 @@ export const TrackDropZone = forwardRef<HTMLDivElement, TrackDropZoneProps>(
         data-active={active ? 'true' : 'false'}
         data-highlighted={highlighted ? 'true' : 'false'}
         data-gap-index={gapIndex}
+        aria-hidden
       >
         <div className={styles.trackDropZoneLine} />
-        <span className={styles.trackDropZoneHint}>释放新建轨道</span>
       </div>
     );
   },
