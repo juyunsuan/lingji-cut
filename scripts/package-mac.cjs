@@ -1,6 +1,12 @@
 const fs = require('node:fs');
+const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { packager } = require('@electron/packager');
+const {
+  RUNTIME_ROOT_PACKAGES,
+  buildReleaseManifest,
+  shouldStageProjectPath,
+} = require('./package-mac-helpers.cjs');
 
 const rootDir = path.resolve(__dirname, '..');
 const packageJsonPath = path.join(rootDir, 'package.json');
@@ -9,6 +15,7 @@ const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
 const appName = packageJson.productName || packageJson.name;
 const releaseDir = path.join(rootDir, 'release');
 const iconPath = path.join(rootDir, 'build', 'icon.icns');
+const stageRootDir = path.join(rootDir, '.tmp', 'package-stage');
 const buildOutputs = [
   path.join(rootDir, 'dist', 'index.html'),
   path.join(rootDir, 'dist-electron', 'main.js'),
@@ -17,6 +24,104 @@ const buildOutputs = [
 
 const supportedArch = new Set(['arm64', 'x64']);
 const arch = process.env.ARCH || process.arch;
+
+function getPackageDirectory(packageName, workingRoot = rootDir) {
+  const parts = packageName.split('/');
+  return path.join(workingRoot, 'node_modules', ...parts);
+}
+
+async function copyDirectory(sourcePath, targetPath) {
+  await fsp.mkdir(path.dirname(targetPath), { recursive: true });
+  await fsp.cp(sourcePath, targetPath, { recursive: true });
+}
+
+async function resetDirectory(directoryPath) {
+  await fsp.rm(directoryPath, { recursive: true, force: true });
+  await fsp.mkdir(directoryPath, { recursive: true });
+}
+
+async function collectRuntimePackageClosure() {
+  const packageNames = new Set();
+  const pendingPackages = [...RUNTIME_ROOT_PACKAGES];
+
+  while (pendingPackages.length > 0) {
+    const packageName = pendingPackages.pop();
+    if (!packageName || packageNames.has(packageName)) {
+      continue;
+    }
+
+    const packageDir = getPackageDirectory(packageName);
+    const packageJsonFile = path.join(packageDir, 'package.json');
+    if (!fs.existsSync(packageJsonFile)) {
+      continue;
+    }
+
+    packageNames.add(packageName);
+
+    const currentPackageJson = JSON.parse(await fsp.readFile(packageJsonFile, 'utf8'));
+    const dependencyNames = new Set([
+      ...Object.keys(currentPackageJson.dependencies || {}),
+      ...Object.keys(currentPackageJson.optionalDependencies || {}),
+    ]);
+
+    for (const peerDependency of Object.keys(currentPackageJson.peerDependencies || {})) {
+      if (fs.existsSync(getPackageDirectory(peerDependency))) {
+        dependencyNames.add(peerDependency);
+      }
+    }
+
+    dependencyNames.forEach((dependencyName) => {
+      if (!packageNames.has(dependencyName)) {
+        pendingPackages.push(dependencyName);
+      }
+    });
+  }
+
+  return [...packageNames].sort((left, right) => left.localeCompare(right));
+}
+
+async function stageProjectFiles(stageDir) {
+  const entries = await fsp.readdir(rootDir, { withFileTypes: true });
+
+  await Promise.all(
+    entries
+      .filter((entry) => shouldStageProjectPath(entry.name))
+      .map((entry) =>
+        copyDirectory(path.join(rootDir, entry.name), path.join(stageDir, entry.name)),
+      ),
+  );
+}
+
+async function stageNodeModules(stageDir) {
+  const stageNodeModulesDir = path.join(stageDir, 'node_modules');
+  await fsp.mkdir(stageNodeModulesDir, { recursive: true });
+
+  const packageNames = await collectRuntimePackageClosure();
+  for (const packageName of packageNames) {
+    const sourceDir = getPackageDirectory(packageName);
+    if (!fs.existsSync(sourceDir)) {
+      continue;
+    }
+
+    await copyDirectory(sourceDir, getPackageDirectory(packageName, stageDir));
+  }
+}
+
+async function writeStageManifest(stageDir) {
+  const releaseManifest = buildReleaseManifest(packageJson);
+  await fsp.writeFile(
+    path.join(stageDir, 'package.json'),
+    `${JSON.stringify(releaseManifest, null, 2)}\n`,
+    'utf8',
+  );
+}
+
+async function createStageDirectory(stageDir) {
+  await resetDirectory(stageDir);
+  await writeStageManifest(stageDir);
+  await stageProjectFiles(stageDir);
+  await stageNodeModules(stageDir);
+}
 
 if (!supportedArch.has(arch)) {
   console.error(`不支持的 macOS 打包架构：${arch}`);
@@ -35,37 +140,36 @@ if (missingOutputs.length > 0) {
   process.exit(1);
 }
 
-// 注意：当前导出链路依赖 src/remotion/index.ts 在包内可访问，
-// 所以这里不能忽略 src/、dist/、dist-electron/。
-const ignore = [
-  /^\/(?:release|tests|work|docs|coverage)(?:\/|$)/,
-  /^\/(?:\.git|\.github|\.claude|\.superpowers)(?:\/|$)/,
-  /^\/\.DS_Store$/,
-  /\/\.DS_Store$/,
-  /^\/design\.pen$/,
-];
-
 async function main() {
+  const stageDir = path.join(stageRootDir, arch);
+
   console.log(`开始打包 macOS 应用：${appName} (${arch})`);
+  console.log(`准备最小发布目录：${path.relative(rootDir, stageDir)}`);
 
-  const appPaths = await packager({
-    appBundleId: process.env.APP_BUNDLE_ID || 'com.local.lingjijianying',
-    arch,
-    dir: rootDir,
-    icon: fs.existsSync(iconPath) ? iconPath : undefined,
-    ignore,
-    junk: true,
-    name: appName,
-    out: releaseDir,
-    overwrite: true,
-    platform: 'darwin',
-    prune: true,
-  });
+  await createStageDirectory(stageDir);
 
-  console.log('打包完成，产物如下：');
-  appPaths.forEach((appPath) => {
-    console.log(`- ${path.relative(rootDir, appPath)}`);
-  });
+  try {
+    const appPaths = await packager({
+      appBundleId: process.env.APP_BUNDLE_ID || 'com.local.lingjijianying',
+      arch,
+      dir: stageDir,
+      icon: fs.existsSync(iconPath) ? iconPath : undefined,
+      ignore: [/^\/\.DS_Store$/, /\/\.DS_Store$/],
+      junk: true,
+      name: appName,
+      out: releaseDir,
+      overwrite: true,
+      platform: 'darwin',
+      prune: false,
+    });
+
+    console.log('打包完成，产物如下：');
+    appPaths.forEach((appPath) => {
+      console.log(`- ${path.relative(rootDir, appPath)}`);
+    });
+  } finally {
+    await fsp.rm(stageDir, { recursive: true, force: true });
+  }
 }
 
 main().catch((error) => {
