@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import os from 'node:os';
 import path from 'node:path';
 import { mkdtempSync, rmSync } from 'node:fs';
@@ -18,6 +18,7 @@ describe('ConversationService', () => {
   const fixtures: Array<{ tempDir: string; db: { close: () => void } }> = [];
 
   afterEach(() => {
+    vi.useRealTimers();
     while (fixtures.length > 0) {
       const fixture = fixtures.pop();
       if (fixture) {
@@ -147,6 +148,8 @@ describe('ConversationService', () => {
   it('updates conversation title and status', () => {
     const fixture = createFixture();
     fixtures.push(fixture);
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-13T09:27:10.106Z'));
 
     const created = fixture.service.createConversation({
       projectId: 'p-update',
@@ -161,7 +164,9 @@ describe('ConversationService', () => {
 
     expect(updated.title).toBe('new title');
     expect(updated.status).toBe('archived');
-    expect(updated.updatedAt).not.toBe(created.updatedAt);
+    expect(new Date(updated.updatedAt).getTime()).toBeGreaterThan(
+      new Date(created.updatedAt).getTime(),
+    );
   });
 
   it('only returns resumeExternalId during explicit openConversation', () => {

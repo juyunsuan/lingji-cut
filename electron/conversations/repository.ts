@@ -82,6 +82,15 @@ function mapConversationTurnRow(row: ConversationTurnRow): ConversationTurnEntit
   };
 }
 
+function createMonotonicUpdatedAt(previousUpdatedAt: string, now = new Date()): string {
+  const nowMs = now.getTime();
+  const previousMs = Date.parse(previousUpdatedAt);
+  if (Number.isNaN(previousMs) || nowMs > previousMs) {
+    return now.toISOString();
+  }
+  return new Date(previousMs + 1).toISOString();
+}
+
 export class ConversationRepository {
   constructor(private readonly db: ConversationDatabase) {}
 
@@ -237,7 +246,7 @@ export class ConversationRepository {
       throw new Error(`Conversation ${conversationId} not found`);
     }
 
-    const now = new Date().toISOString();
+    const updatedAt = createMonotonicUpdatedAt(current.updatedAt);
     this.db
       .prepare(
         `
@@ -258,7 +267,7 @@ export class ConversationRepository {
         patch.externalId !== undefined ? patch.externalId : current.externalId,
         patch.messageCount ?? current.messageCount,
         patch.sessionStatsJson !== undefined ? patch.sessionStatsJson : current.sessionStatsJson,
-        now,
+        updatedAt,
         conversationId,
       );
 
@@ -280,6 +289,7 @@ export class ConversationRepository {
       }
 
       const now = new Date().toISOString();
+      const updatedAt = createMonotonicUpdatedAt(current.updatedAt);
       this.db
         .prepare(
           `
@@ -306,7 +316,7 @@ export class ConversationRepository {
           'active',
           current.messageCount + 1,
           input.sessionStatsJson !== undefined ? input.sessionStatsJson : current.sessionStatsJson,
-          now,
+          updatedAt,
           conversationId,
         );
 
