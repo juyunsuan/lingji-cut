@@ -350,6 +350,51 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
 }
 
+/* ── Visual tracks group (容纳 drop zones 的 relative 定位父元素) ── */
+.visualTracksGroup {
+  position: relative;
+}
+
+/* ── Track drop zone (拖拽时新建轨道提示) ── */
+.trackDropZone {
+  position: absolute;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-sm, 11px);
+  color: var(--color-system-blue, #0a84ff);
+  background: color-mix(in srgb, var(--color-system-blue, #0a84ff) 8%, transparent);
+  border: 1px dashed var(--color-system-blue, #0a84ff);
+  border-radius: var(--radius-sm, 4px);
+  pointer-events: none;
+  transition: opacity var(--motion-fast, 120ms);
+  z-index: 6;
+}
+
+.trackDropZoneTop {
+  /* top 由 style prop 动态注入 */
+}
+
+.trackDropZoneBottom {
+  /* bottom 由 style prop 动态注入 */
+}
+
+.trackDropZoneHighlighted {
+  background: color-mix(in srgb, var(--color-system-blue, #0a84ff) 18%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-system-blue, #0a84ff) 36%, transparent);
+}
+
+/* ── Snap guide (拖拽/trim 时的蓝色虚线吸附参考) ── */
+.snapGuide {
+  position: absolute;
+  top: 0;
+  width: 0;
+  border-left: 1px dashed var(--color-system-blue, #0a84ff);
+  pointer-events: none;
+  z-index: 5;
+}
+
 .playheadHandle {
   position: absolute;
   top: -2px;

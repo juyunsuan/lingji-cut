@@ -1,4 +1,4 @@
-import type { CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react';
+import type { CSSProperties, DragEvent, MouseEvent, ReactNode, MouseEvent as ReactMouseEvent } from 'react';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ConfirmDialog, ContextMenu } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
@@ -19,7 +19,13 @@ import {
   getTimelineWheelZoomMode,
   getWheelTimelineZoom,
 } from '../lib/timeline-view';
-import type { TimelineTrack } from '../types';
+import { canPlaceAt } from '../lib/timeline-placement';
+import { computeSnap, type SnapTarget } from '../lib/timeline-snap';
+import {
+  startAutoScroll,
+  type AutoScrollScheduler,
+} from '../lib/timeline-autoscroll';
+import type { OverlayItem, TimelineTrack } from '../types';
 import { getTextTemplateById } from '../lib/text-templates';
 import { useTimelineStore } from '../store/timeline';
 import { AppIcon } from './AppIcon';
@@ -27,6 +33,8 @@ import { OverlayBlock } from './OverlayBlock';
 import { TimelineAudioWaveform } from './TimelineAudioWaveform';
 import { TimelineSubtitleBlocks } from './TimelineSubtitleBlocks';
 import { TimelineToolbar } from './timeline/TimelineToolbar';
+import { TrackDropZone } from './timeline/TrackDropZone';
+import { SnapGuides } from './timeline/SnapGuides';
 import styles from './Timeline.module.css';
 
 interface TimelineProps {
@@ -42,6 +50,15 @@ interface PendingTrackDeletion {
   trackId: string;
   trackLabel: string;
   overlayCount: number;
+}
+
+interface OverlayDragState {
+  overlayId: string;
+  collision: boolean;
+  snapTargets: SnapTarget[];
+  dropZoneHover: 'top' | 'bottom' | null;
+  candidateStartMs: number;
+  candidateTrackId: string;
 }
 
 interface AssetLike {
@@ -82,6 +99,12 @@ export function Timeline({
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
   const [snapEnabled, setSnapEnabled] = useState(true);
+  const [dragState, setDragState] = useState<OverlayDragState | null>(null);
+  const dragStateRef = useRef<OverlayDragState | null>(null);
+  const autoScrollRef = useRef<AutoScrollScheduler | null>(null);
+  useEffect(() => {
+    dragStateRef.current = dragState;
+  }, [dragState]);
   const {
     addOverlay,
     addTrack,
@@ -639,6 +662,232 @@ export function Timeline({
     });
   };
 
+  // ── Drop zone hit test ──
+  // 在屏幕坐标空间判断鼠标当前是否位于顶部或底部的新轨道 drop zone 内。
+  const DROP_ZONE_HEIGHT = 32;
+  const resolveDropZoneHover = (clientY: number): 'top' | 'bottom' | null => {
+    if (visualTracks.length === 0) return null;
+    const firstLane = trackLaneRefs.current[visualTracks[0].id];
+    const lastLane = trackLaneRefs.current[visualTracks[visualTracks.length - 1].id];
+    if (!firstLane || !lastLane) return null;
+    const topRect = firstLane.getBoundingClientRect();
+    const bottomRect = lastLane.getBoundingClientRect();
+
+    if (clientY >= topRect.top - DROP_ZONE_HEIGHT - 4 && clientY < topRect.top) {
+      return 'top';
+    }
+    if (clientY > bottomRect.bottom && clientY <= bottomRect.bottom + DROP_ZONE_HEIGHT + 4) {
+      return 'bottom';
+    }
+    return null;
+  };
+
+  // ── Drag 相关 refs(必须在使用处之前声明) ──
+  const currentTimeRef = useRef(currentTimeMs);
+  useEffect(() => {
+    currentTimeRef.current = currentTimeMs;
+  }, [currentTimeMs]);
+  const projectDurationForDrag = useRef(
+    timeline.podcast.durationMs || durationMs,
+  );
+  useEffect(() => {
+    projectDurationForDrag.current = timeline.podcast.durationMs || durationMs;
+  }, [timeline.podcast.durationMs, durationMs]);
+  const onOverlaySelectRef = useRef<((overlay: OverlayItem) => void) | null>(null);
+  useEffect(() => {
+    onOverlaySelectRef.current = (overlay: OverlayItem) => {
+      setSelectedOverlayId(overlay.id);
+      const sourceCardId = overlay.aiCardData?.sourceCardId;
+      if (overlay.overlayType === 'ai-card' && sourceCardId) {
+        onOpenAICardInspector?.(sourceCardId);
+        return;
+      }
+      onOpenOverlayInspector?.(overlay.id);
+    };
+  }, [onOpenAICardInspector, onOpenOverlayInspector]);
+
+  // 拖拽结束若组件卸载,兜底清理 autoscroll
+  useEffect(() => {
+    return () => {
+      autoScrollRef.current?.stop();
+      autoScrollRef.current = null;
+    };
+  }, []);
+
+  // ── Trim snap 注入(Task 13 要求) ──
+  const computeSnapForTrim = useCallback(
+    (candidateMs: number, overlayId: string): number => {
+      if (!snapEnabled) return candidateMs;
+      const snap = computeSnap({
+        candidateMs,
+        playheadMs: currentTimeMs,
+        overlays: timeline.overlays,
+        excludeOverlayId: overlayId,
+        pxPerMs,
+        thresholdPx: 8,
+        enabled: true,
+      });
+      return snap.snappedMs;
+    },
+    [snapEnabled, currentTimeMs, timeline.overlays, pxPerMs],
+  );
+
+  // ── Overlay 拖拽生命周期(Task 13 核心) ──
+  // OverlayBlock 在 move-drag 入口调用本 handler；返回 true 表示 Timeline 接管整个生命周期。
+  const handleBeginOverlayDrag = useCallback(
+    (overlay: OverlayItem, startEvent: ReactMouseEvent<HTMLDivElement>): boolean => {
+      if (overlay.overlayRole === 'default-background') return false;
+
+      const blockEl = startEvent.currentTarget as HTMLElement | null;
+      if (!blockEl) return false;
+      const blockRect = blockEl.getBoundingClientRect();
+      // grabOffsetMs: 鼠标相对 clip 左边缘在时间轴上的距离(ms)
+      const grabOffsetMs = Math.max(0, (startEvent.clientX - blockRect.left) / pxPerMs);
+
+      startEvent.preventDefault();
+
+      // 启动 autoscroll
+      const scrollContainer = containerRef.current;
+      if (scrollContainer) {
+        autoScrollRef.current = startAutoScroll({ container: scrollContainer });
+        autoScrollRef.current.update({ x: startEvent.clientX, y: startEvent.clientY });
+      }
+
+      const initialState: OverlayDragState = {
+        overlayId: overlay.id,
+        collision: false,
+        snapTargets: [],
+        dropZoneHover: null,
+        candidateStartMs: overlay.startMs,
+        candidateTrackId: overlay.trackId,
+      };
+      dragStateRef.current = initialState;
+      setDragState(initialState);
+
+      let didMove = false;
+      const startClientX = startEvent.clientX;
+      const startClientY = startEvent.clientY;
+
+      const handleMove = (moveEvent: globalThis.MouseEvent) => {
+        if (
+          !didMove
+          && (Math.abs(moveEvent.clientX - startClientX) > 3
+            || Math.abs(moveEvent.clientY - startClientY) > 3)
+        ) {
+          didMove = true;
+        }
+
+        autoScrollRef.current?.update({ x: moveEvent.clientX, y: moveEvent.clientY });
+
+        // 1. 计算候选起始时间(基于鼠标位置,考虑 grab offset 和滚动)
+        const container = containerRef.current;
+        const containerRect = container?.getBoundingClientRect();
+        const scrollLeft = container?.scrollLeft ?? 0;
+        const localX = containerRect
+          ? moveEvent.clientX - containerRect.left + scrollLeft - outerPadding - sidebarWidth
+          : 0;
+        let candidateStartMs = Math.max(0, Math.round(localX / pxPerMs - grabOffsetMs));
+        // clamp 不超越 project 末端
+        const maxStart = Math.max(0, projectDurationForDrag.current - overlay.durationMs);
+        if (candidateStartMs > maxStart) candidateStartMs = maxStart;
+
+        // 2. 解析轨道 / drop zone
+        const dropZoneHover = resolveDropZoneHover(moveEvent.clientY);
+        const trackZones = getTrackDragZones();
+        let candidateTrackId = overlay.trackId;
+        if (!dropZoneHover) {
+          const matched = trackZones.find(
+            (tz) => moveEvent.clientY >= tz.top && moveEvent.clientY <= tz.bottom,
+          );
+          candidateTrackId = matched?.trackId ?? overlay.trackId;
+        }
+
+        // 3. Snap(drop zone 时跳过；按住 Alt 临时关闭)
+        let snapTargets: SnapTarget[] = [];
+        if (!dropZoneHover) {
+          const snapEnabledNow = snapEnabled && !moveEvent.altKey;
+          const snap = computeSnap({
+            candidateMs: candidateStartMs,
+            playheadMs: currentTimeRef.current,
+            overlays: useTimelineStore.getState().timeline.overlays,
+            excludeOverlayId: overlay.id,
+            pxPerMs,
+            thresholdPx: 8,
+            enabled: snapEnabledNow,
+          });
+          candidateStartMs = snap.snappedMs;
+          snapTargets = snap.targets;
+        }
+
+        // 4. Collision(drop zone 时跳过；落新轨道天然无撞)
+        let collision = false;
+        if (!dropZoneHover) {
+          const placement = canPlaceAt({
+            trackId: candidateTrackId,
+            startMs: candidateStartMs,
+            durationMs: overlay.durationMs,
+            excludeOverlayId: overlay.id,
+            overlays: useTimelineStore.getState().timeline.overlays,
+          });
+          collision = !placement.ok;
+        }
+
+        const nextState: OverlayDragState = {
+          overlayId: overlay.id,
+          collision,
+          snapTargets,
+          dropZoneHover,
+          candidateStartMs,
+          candidateTrackId,
+        };
+        dragStateRef.current = nextState;
+        setDragState(nextState);
+      };
+
+      const handleUp = () => {
+        window.removeEventListener('mousemove', handleMove);
+        window.removeEventListener('mouseup', handleUp);
+        autoScrollRef.current?.stop();
+        autoScrollRef.current = null;
+
+        const finalState = dragStateRef.current;
+        if (finalState && didMove) {
+          if (finalState.dropZoneHover) {
+            const newTrackId = useTimelineStore
+              .getState()
+              .createTrackAt(finalState.dropZoneHover);
+            useTimelineStore.getState().updateOverlay(overlay.id, {
+              trackId: newTrackId,
+              startMs: finalState.candidateStartMs,
+            });
+          } else if (!finalState.collision) {
+            useTimelineStore.getState().updateOverlay(overlay.id, {
+              trackId: finalState.candidateTrackId,
+              startMs: finalState.candidateStartMs,
+            });
+          }
+          // collision 分支：什么都不做,store 也会拒绝
+        } else if (!didMove) {
+          // 没有移动 → 视为点击选中
+          onOverlaySelectRef.current?.(overlay);
+        }
+
+        dragStateRef.current = null;
+        setDragState(null);
+      };
+
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('mouseup', handleUp);
+
+      return true;
+    },
+    // 故意省略:
+    // - currentTimeMs(通过 currentTimeRef.current 读取最新值)
+    // - timeline.overlays(通过 useTimelineStore.getState() 读取最新值)
+    // 这避免在拖拽期间因相关 state 变化导致 handler 重建。
+    [outerPadding, pxPerMs, sidebarWidth, snapEnabled, visualTracks],
+  );
+
   const renderTrackControls = (options: {
     track: TimelineTrack;
     tone: string;
@@ -816,6 +1065,15 @@ export function Timeline({
               />
             </div>
 
+            <div className={styles.visualTracksGroup}>
+            <TrackDropZone
+              position="top"
+              active={Boolean(dragState)}
+              highlighted={dragState?.dropZoneHover === 'top'}
+              width={contentWidth}
+              left={sidebarWidth}
+              top={-36}
+            />
             {visualTracks.map((track, index) => {
               const overlays = overlaysByTrack.get(track.id) ?? [];
               const isHover = hoverTrackId === track.id;
@@ -906,6 +1164,15 @@ export function Timeline({
                               trackHeight={overlayTrackHeight}
                               selected={selectedOverlayId === overlay.id}
                               trackLocked={Boolean(track.locked)}
+                              collisionState={
+                                dragState !== null
+                                  && dragState.overlayId === overlay.id
+                                  && dragState.collision
+                                  ? 'invalid'
+                                  : 'none'
+                              }
+                              computeSnapForTrim={computeSnapForTrim}
+                              onBeginOverlayDrag={handleBeginOverlayDrag}
                               getTrackDragZones={getTrackDragZones}
                               onTrackHoverChange={setHoverTrackId}
                               onContextMenu={(event) => {
@@ -978,6 +1245,26 @@ export function Timeline({
                 </div>
               );
             })}
+            <TrackDropZone
+              position="bottom"
+              active={Boolean(dragState)}
+              highlighted={dragState?.dropZoneHover === 'bottom'}
+              width={contentWidth}
+              left={sidebarWidth}
+              bottom={-36}
+            />
+            </div>
+
+            <SnapGuides
+              targets={dragState?.snapTargets ?? []}
+              pxPerMs={pxPerMs}
+              sidebarWidth={sidebarWidth}
+              height={Math.max(
+                overlayTrackHeight * Math.max(visualTracks.length, 1) + audioTrackHeight + subtitleTrackHeight + rulerHeight,
+                240,
+              )}
+              top={0}
+            />
 
             <div
               className={styles.playhead}

@@ -23,6 +23,14 @@ interface OverlayBlockProps {
   collisionState?: 'none' | 'invalid';
   /** 可选的 trim snap 计算函数(Task 13 会注入) */
   computeSnapForTrim?: (candidateMs: number, overlayId: string) => number;
+  /**
+   * Timeline 层的 drag 拦截入口。返回 true 表示外层已接管整个拖拽生命周期，
+   * OverlayBlock 将跳过内部的 move-drag 逻辑（trim / select 仍保留）。
+   */
+  onBeginOverlayDrag?: (
+    overlay: OverlayItem,
+    event: ReactMouseEvent<HTMLDivElement>,
+  ) => boolean;
   getTrackDragZones?: () => TrackDragZone[];
   onTrackHoverChange?: (trackId: string | null) => void;
   onSelect?: () => void;
@@ -37,6 +45,7 @@ export function OverlayBlock({
   trackLocked = false,
   collisionState = 'none',
   computeSnapForTrim,
+  onBeginOverlayDrag,
   getTrackDragZones,
   onTrackHoverChange,
   onSelect,
@@ -158,6 +167,12 @@ export function OverlayBlock({
         beginTrim(fromStartEdge ? 'start' : 'end', event);
         return;
       }
+    }
+
+    // Timeline 层拦截：若外层提供了 onBeginOverlayDrag 并返回 true，
+    // 则外层已接管整个拖拽生命周期（drop zone / snap / collision / autoscroll）。
+    if (onBeginOverlayDrag && onBeginOverlayDrag(overlay, event)) {
+      return;
     }
 
     event.preventDefault();
