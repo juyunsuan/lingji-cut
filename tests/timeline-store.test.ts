@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   DEFAULT_VISUAL_TRACK_ID,
+  DEFAULT_AI_CARDS_TRACK_ID,
   createDefaultTimeline,
 } from '../src/types';
 import { useTimelineStore } from '../src/store/timeline';
@@ -294,7 +295,7 @@ describe('useTimelineStore', () => {
     });
   });
 
-  it('reuses the existing placement rules when pasting into an occupied slot', () => {
+  it('falls back to a new visual track when pasting into an occupied slot', () => {
     const store = useTimelineStore.getState();
     const firstOverlayId = store.addOverlay({
       type: 'image',
@@ -316,11 +317,10 @@ describe('useTimelineStore', () => {
       .getState()
       .timeline.overlays.find((overlay) => overlay.id === pastedOverlayId);
 
-    expect(pastedOverlay).toMatchObject({
-      trackId: DEFAULT_VISUAL_TRACK_ID,
-      startMs: 5000,
-      durationMs: 5000,
-    });
+    // 粘贴链路保留"自动新建 visual 轨道"退路（不覆盖占位）
+    expect(pastedOverlay?.trackId).not.toBe(DEFAULT_VISUAL_TRACK_ID);
+    expect(pastedOverlay?.startMs).toBe(0);
+    expect(pastedOverlay?.durationMs).toBe(5000);
   });
 
   it('removes dependent overlays when deleting an imported asset', () => {
@@ -893,7 +893,7 @@ describe('useTimelineStore', () => {
     });
   });
 
-  it('repositions a new overlay when the requested track slot overlaps', () => {
+  it('falls back to a new visual track when addOverlay hits an occupied slot', () => {
     const store = useTimelineStore.getState();
     store.addOverlay({
       type: 'image',
@@ -917,13 +917,15 @@ describe('useTimelineStore', () => {
     const overlays = useTimelineStore.getState().timeline.overlays;
     expect(overlays).toHaveLength(2);
 
-    // 第二个 overlay 应该被推移到不重叠位置
+    // 第二个 overlay 不再被同轨 snap，而是落到新建 visual 轨道
     const first = overlays.find((o) => o.assetPath === '/tmp/a.png')!;
     const second = overlays.find((o) => o.assetPath === '/tmp/b.png')!;
-    expect(second.startMs).toBeGreaterThanOrEqual(first.startMs + first.durationMs);
+    expect(first.trackId).toBe(DEFAULT_VISUAL_TRACK_ID);
+    expect(second.trackId).not.toBe(DEFAULT_VISUAL_TRACK_ID);
+    expect(second.startMs).toBe(2000);
   });
 
-  it('snaps an overlapping overlay to the nearest gap on the same track', () => {
+  it('creates a new visual track when addOverlay has no room on the target track', () => {
     const store = useTimelineStore.getState();
 
     // 先放一个 0-10000ms 的 overlay
@@ -946,8 +948,8 @@ describe('useTimelineStore', () => {
       position: { x: 0, y: 0, width: 1920, height: 1080 },
     });
 
-    // 在中间 5000ms 处放入一个 12000ms 的 overlay → 10000-20000 间隙只有 10000ms，放不下
-    // 应该被推到 25000ms 后面（最近的能放下 12000ms 的位置）
+    // 在 5000ms 处放入一个 12000ms 的 overlay → 与第一个 overlay 碰撞
+    // 新语义：不再同轨自动 snap，而是退到新建 visual 轨道，保留请求位置
     store.addOverlay({
       type: 'video',
       assetPath: '/tmp/c.mp4',
@@ -960,9 +962,8 @@ describe('useTimelineStore', () => {
     const overlay = useTimelineStore.getState().timeline.overlays.find(
       (o) => o.assetPath === '/tmp/c.mp4',
     );
-    // 最近的合法位置应该在 10000ms（间隙 10000-20000 放不下 12000）或 25000ms
-    expect(overlay?.startMs).toBe(25000);
-    expect(overlay?.trackId).toBe(DEFAULT_VISUAL_TRACK_ID);
+    expect(overlay?.startMs).toBe(5000);
+    expect(overlay?.trackId).not.toBe(DEFAULT_VISUAL_TRACK_ID);
   });
 
   it('adjusts overlay position when moved to a conflicting slot via updateOverlay', () => {
@@ -1019,7 +1020,7 @@ describe('useTimelineStore', () => {
     expect(overlay?.durationMs).toBe(8000);
   });
 
-  it('keeps ai-card and default background out of managed collision rules', () => {
+  it('keeps default background out of managed collision rules, but ai-cards now participate', () => {
     const store = useTimelineStore.getState();
     store.setPodcast('/tmp/audio.mp3', '/tmp/subtitles.srt', 60_000);
     store.setGlobalBackground('/tmp/bg.png');
@@ -1040,7 +1041,7 @@ describe('useTimelineStore', () => {
     expect(overlay?.startMs).toBe(0);
     expect(overlay?.trackId).toBe(DEFAULT_VISUAL_TRACK_ID);
 
-    // AI 卡片也不参与碰撞
+    // AI 卡片现在参与碰撞检测（Task 1：isOverlayTrackManaged 只排除 default-background）
     store.addAICardsToTimeline([{
       sourceCardId: 'ai-card-test',
       startMs: 0,
@@ -1056,11 +1057,12 @@ describe('useTimelineStore', () => {
       },
     }]);
 
-    // 在 AI 卡片同时间段添加普通 overlay → 不应被阻止
+    // 在 AI 卡片同时间段同一轨道添加普通 overlay → 由于 AI 卡片参与碰撞，
+    // 新语义：落到新建 visual 轨道（paste/addOverlay 链路的退路）
     const id2 = store.addOverlay({
       type: 'text',
       assetPath: '',
-      trackId: DEFAULT_VISUAL_TRACK_ID,
+      trackId: DEFAULT_AI_CARDS_TRACK_ID,
       startMs: 0,
       durationMs: 3000,
       position: { x: 100, y: 200, width: 800, height: 200 },
@@ -1094,8 +1096,9 @@ describe('useTimelineStore', () => {
       },
     });
 
-    // 文字 overlay 应与第一个普通图片 overlay 冲突，被推移
+    // 文字 overlay 与 AI 卡片冲突 → 落到新建 visual 轨道
     const textOverlay = useTimelineStore.getState().timeline.overlays.find((o) => o.id === id2);
-    expect(textOverlay?.startMs).toBeGreaterThanOrEqual(5000);
+    expect(textOverlay?.startMs).toBe(0);
+    expect(textOverlay?.trackId).not.toBe(DEFAULT_AI_CARDS_TRACK_ID);
   });
 });

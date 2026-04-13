@@ -16,8 +16,7 @@ import { getNextVisualTrack, normalizeTimelineData } from '../lib/timeline-track
 import { getAICardOverlayPosition, isFullscreenAICardPosition } from '../lib/ai-card-layout';
 import {
   clampOverlayDurationByNeighbors,
-  findAvailableTrack,
-  findNearestAvailablePlacement,
+  canPlaceAt,
   isOverlayTrackManaged,
 } from '../lib/timeline-placement';
 
@@ -242,34 +241,18 @@ function resolveOverlayInsert(
     return { overlay: draft };
   }
 
-  const sameTrackResult = findNearestAvailablePlacement({
-    targetStartMs: draft.startMs,
-    durationMs: draft.durationMs,
+  const placement = canPlaceAt({
     trackId: draft.trackId,
-    overlays: state.timeline.overlays,
-  });
-
-  if (sameTrackResult.fits) {
-    return { overlay: { ...draft, startMs: sameTrackResult.startMs } };
-  }
-
-  const otherTrackResult = findAvailableTrack({
-    targetStartMs: draft.startMs,
+    startMs: draft.startMs,
     durationMs: draft.durationMs,
     overlays: state.timeline.overlays,
-    tracks: state.timeline.tracks,
   });
 
-  if (otherTrackResult.trackId) {
-    return {
-      overlay: {
-        ...draft,
-        trackId: otherTrackResult.trackId,
-        startMs: otherTrackResult.startMs,
-      },
-    };
+  if (placement.ok) {
+    return { overlay: draft };
   }
 
+  // paste/addOverlay 链路保留"自动新建 visual 轨道"的退路（没有 UI 拖拽反馈）
   const newTrack = getNextVisualTrack(state.timeline.tracks);
   return {
     overlay: { ...draft, trackId: newTrack.id },
@@ -670,16 +653,24 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         return {};
       }
 
+      // 锁检查：来源或目标轨道锁定时，整个 update 跳过
+      const sourceTrack = state.timeline.tracks.find((t) => t.id === current.trackId);
+      if (sourceTrack?.locked) {
+        return {};
+      }
+      const targetTrackId = (updates.trackId ?? current.trackId) as string;
+      const targetTrack = state.timeline.tracks.find((t) => t.id === targetTrackId);
+      if (targetTrack?.locked) {
+        return {};
+      }
+
       let merged = { ...current, ...updates, id };
       const affectsPlacement =
         'startMs' in updates || 'durationMs' in updates || 'trackId' in updates;
 
       if (affectsPlacement && isOverlayTrackManaged(merged)) {
-        const isDurationOnly =
-          'durationMs' in updates && !('startMs' in updates) && !('trackId' in updates);
-
-        if (isDurationOnly) {
-          // 拉伸只做邻居 clamp，不移动位置
+        // 时长变化仍允许邻居 clamp（避免拉伸覆盖右邻）
+        if ('durationMs' in updates) {
           merged = {
             ...merged,
             durationMs: clampOverlayDurationByNeighbors({
@@ -690,60 +681,24 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
               overlays: state.timeline.overlays,
             }),
           };
-        } else {
-          // 拖动或跨轨移动：先 clamp 时长，再寻找合法位置
-          if ('durationMs' in updates) {
-            merged = {
-              ...merged,
-              durationMs: clampOverlayDurationByNeighbors({
-                overlayId: id,
-                startMs: merged.startMs,
-                requestedDurationMs: merged.durationMs,
-                trackId: merged.trackId,
-                overlays: state.timeline.overlays,
-              }),
-            };
-          }
+        }
 
-          const placement = findNearestAvailablePlacement({
-            targetStartMs: merged.startMs,
-            durationMs: merged.durationMs,
-            trackId: merged.trackId,
-            excludeOverlayId: id,
-            overlays: state.timeline.overlays,
-          });
+        // 位置 / 跨轨变化：使用 canPlaceAt，碰撞则拒绝
+        const placement = canPlaceAt({
+          trackId: merged.trackId,
+          startMs: merged.startMs,
+          durationMs: merged.durationMs,
+          excludeOverlayId: id,
+          overlays: state.timeline.overlays,
+        });
 
-          if (placement.fits) {
-            merged = { ...merged, startMs: placement.startMs };
-          } else {
-            const available = findAvailableTrack({
-              targetStartMs: merged.startMs,
-              durationMs: merged.durationMs,
-              excludeOverlayId: id,
-              overlays: state.timeline.overlays,
-              tracks: state.timeline.tracks,
-            });
-
-            if (available.trackId) {
-              merged = {
-                ...merged,
-                trackId: available.trackId,
-                startMs: available.startMs,
-              };
-            } else {
-              // 无法放置，创建新轨道
-              const newTrack = getNextVisualTrack(state.timeline.tracks);
-              merged = { ...merged, trackId: newTrack.id };
-              const nextTimeline = normalizeTimeline({
-                ...state.timeline,
-                tracks: [...state.timeline.tracks, newTrack],
-                overlays: state.timeline.overlays.map((o) =>
-                  o.id === id ? merged : o,
-                ),
-              });
-              return buildCommittedTimelineState(state, nextTimeline);
-            }
-          }
+        if (!placement.ok) {
+          // 放弃本次位置更新，保留原始位置和轨道
+          merged = {
+            ...merged,
+            startMs: current.startMs,
+            trackId: current.trackId,
+          };
         }
       }
 
