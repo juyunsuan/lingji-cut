@@ -1099,7 +1099,7 @@ useEffect(() => {
     setLlmApiKey(settings?.llmApiKey ?? '');
     setLlmModel(settings?.llmModel ?? 'gpt-4o');
     setEnableThinking(settings?.enableThinking ?? true);
-    setJimengApiUrl(settings?.jimengApiUrl ?? 'http://47.109.159.194:8330');
+    setJimengApiUrl(settings?.jimengApiUrl ?? '');
     setJimengSessionId(settings?.jimengSessionId ?? '');
     setJimengModel(settings?.jimengModel ?? 'jimeng-4.5');
   });

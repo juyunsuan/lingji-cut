@@ -42,7 +42,7 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
     void loadAISettings().then((settings) => {
       const nextProviders = settings?.llmProviders ?? [];
       const nextEnableThinking = settings?.enableThinking ?? true;
-      const nextJimengApiUrl = settings?.jimengApiUrl ?? 'http://47.109.159.194:8330';
+      const nextJimengApiUrl = settings?.jimengApiUrl ?? '';
       const nextJimengSessionId = settings?.jimengSessionId ?? '';
       const nextJimengModel = settings?.jimengModel ?? DEFAULT_JIMENG_MODEL;
       const selection = normalizeProviderSelection(
@@ -218,7 +218,7 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
           <Input
             value={jimengApiUrl}
             onChange={(e) => setJimengApiUrl(e.target.value)}
-            placeholder="http://47.109.159.194:8330"
+            placeholder="https://jimeng.example.com"
             size="sm"
           />
         </Field>

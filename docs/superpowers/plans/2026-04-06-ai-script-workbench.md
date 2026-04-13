@@ -2448,7 +2448,7 @@ export function AIConfigTab() {
     setLlmBaseUrl(settings?.llmBaseUrl ?? 'https://api.openai.com/v1');
     setLlmApiKey(settings?.llmApiKey ?? '');
     setLlmModel(settings?.llmModel ?? 'gpt-4o');
-    setJimengApiUrl(settings?.jimengApiUrl ?? 'http://47.109.159.194:8330');
+    setJimengApiUrl(settings?.jimengApiUrl ?? '');
     setJimengSessionId(settings?.jimengSessionId ?? '');
   }, []);
 
@@ -2481,7 +2481,7 @@ export function AIConfigTab() {
         <Divider label="封面生成（即梦）" />
 
         <Field label="即梦 API URL">
-          <Input value={jimengApiUrl} onChange={(e) => setJimengApiUrl(e.target.value)} placeholder="http://47.109.159.194:8330" />
+          <Input value={jimengApiUrl} onChange={(e) => setJimengApiUrl(e.target.value)} placeholder="https://jimeng.example.com" />
         </Field>
         <Field label="即梦 Session ID">
           <Input type="password" value={jimengSessionId} onChange={(e) => setJimengSessionId(e.target.value)} placeholder="session id" />

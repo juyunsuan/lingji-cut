@@ -97,7 +97,7 @@ vi.mock('../src/store/ai', () => ({
     llmBaseUrl: 'https://api.openai.com/v1',
     llmApiKey: 'sk-test',
     llmModel: 'gpt-4o',
-    jimengApiUrl: 'http://47.109.159.194:8330',
+    jimengApiUrl: 'https://jimeng.example.com',
     jimengSessionId: 'session-test',
   }),
   saveAISettings: () => undefined,

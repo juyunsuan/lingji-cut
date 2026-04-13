@@ -64,7 +64,7 @@ describe('ai-config-utils', () => {
       defaultProviderId: 'provider-1',
       defaultModel: 'gpt-4.1',
       enableThinking: true,
-      jimengApiUrl: 'http://47.109.159.194:8330',
+      jimengApiUrl: 'https://jimeng.example.com',
       jimengSessionId: 'session-a',
       jimengModel: 'jimeng-5.0',
     });
@@ -77,7 +77,7 @@ describe('ai-config-utils', () => {
           defaultProviderId: 'provider-1',
           defaultModel: 'gpt-4.1',
           enableThinking: true,
-          jimengApiUrl: 'http://47.109.159.194:8330',
+          jimengApiUrl: 'https://jimeng.example.com',
           jimengSessionId: 'session-a',
           jimengModel: 'jimeng-5.0',
         }),
@@ -92,7 +92,7 @@ describe('ai-config-utils', () => {
           defaultProviderId: 'provider-1',
           defaultModel: 'gpt-4.1',
           enableThinking: true,
-          jimengApiUrl: 'http://47.109.159.194:8330',
+          jimengApiUrl: 'https://jimeng.example.com',
           jimengSessionId: 'session-b',
           jimengModel: 'jimeng-5.0',
         }),
@@ -112,6 +112,9 @@ describe('ai-config-utils', () => {
 
     expect(aiConfigSource).toContain('useSettingsTabGuard');
     expect(aiConfigSource).toContain('onRegisterLeaveGuard');
+    expect(aiConfigSource).toContain("settings?.jimengApiUrl ?? ''");
+    expect(aiConfigSource).toContain('https://jimeng.example.com');
+    expect(aiConfigSource).not.toMatch(/\b(?:\d{1,3}\.){3}\d{1,3}:8330\b/);
     expect(settingsSource).toContain('tabLeaveGuardRef');
     expect(settingsSource).toContain('onRegisterLeaveGuard');
   });
