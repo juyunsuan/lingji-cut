@@ -958,6 +958,9 @@ export function Timeline({
         autoScrollRef.current = null;
 
         const finalState = dragStateRef.current;
+        const sourceTrackId = overlay.trackId;
+        let committedToTrackId: string | null = null;
+
         if (finalState && didMove) {
           if (finalState.dropGapIndex !== null) {
             const visualCount = useTimelineStore
@@ -974,16 +977,37 @@ export function Timeline({
               trackId: newTrackId,
               startMs: finalState.candidateStartMs,
             });
+            committedToTrackId = newTrackId;
           } else if (!finalState.collision) {
             useTimelineStore.getState().updateOverlay(overlay.id, {
               trackId: finalState.candidateTrackId,
               startMs: finalState.candidateStartMs,
             });
+            committedToTrackId = finalState.candidateTrackId;
           }
           // collision 分支：什么都不做,store 也会拒绝
         } else if (!didMove) {
           // 没有移动 → 视为点击选中
           onOverlaySelectRef.current?.(overlay);
+        }
+
+        // 跨轨道移动后,若源轨道变空且非 locked、非仅剩的 visual → 自动清理
+        if (committedToTrackId && committedToTrackId !== sourceTrackId) {
+          const state = useTimelineStore.getState();
+          const sourceTrack = state.timeline.tracks.find((t) => t.id === sourceTrackId);
+          const remainingOnSource = state.timeline.overlays.some(
+            (o) => o.trackId === sourceTrackId,
+          );
+          const visualTracksLeft = state.timeline.tracks.filter((t) => t.kind === 'visual');
+          if (
+            sourceTrack
+            && sourceTrack.kind === 'visual'
+            && !sourceTrack.locked
+            && !remainingOnSource
+            && visualTracksLeft.length > 1
+          ) {
+            state.removeTrack(sourceTrackId);
+          }
         }
 
         dragStateRef.current = null;
@@ -1012,11 +1036,7 @@ export function Timeline({
     const isLocked = Boolean(options.track.locked);
     return (
       <div className={styles.trackControls}>
-        <div className={styles.trackControlsBody}>
-          <div className={styles.trackNameLine} style={{ color: options.tone }}>
-            {options.name}
-          </div>
-        </div>
+        <div className={styles.trackControlsBody} />
         {options.actions ?? null}
         <button
           type="button"
