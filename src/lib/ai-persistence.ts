@@ -4,15 +4,19 @@ import {
   isDataContent,
   type AIAnalysisResult,
   type AICard,
+  type AIStoryboardPlan,
+  type AIVisualSuggestion,
   type AISegment,
+  type AISegmentAnalysis,
   type CoverCandidate,
 } from '../types/ai';
 
 export interface PersistedAIState {
-  version: 2;
+  version: 3;
   analysisResult: AIAnalysisResult | null;
   coverCandidates: CoverCandidate[];
   motionCards?: AICard[];
+  storyboardPlan?: AIStoryboardPlan | null;
 }
 
 function normalizeCoverPrompts(prompts: string[]): string[] {
@@ -62,6 +66,31 @@ function isAISegment(value: unknown): value is AISegment {
   );
 }
 
+function isAISegmentAnalysis(value: unknown): value is AISegmentAnalysis {
+  if (!isAISegment(value) || !isRecord(value)) {
+    return false;
+  }
+
+  return (
+    (value.semanticType === 'data' ||
+      value.semanticType === 'explanation' ||
+      value.semanticType === 'chapter-transition' ||
+      value.semanticType === 'quote' ||
+      value.semanticType === 'narration') &&
+    (value.complexityLevel === 'low' ||
+      value.complexityLevel === 'medium' ||
+      value.complexityLevel === 'high') &&
+    Number.isFinite(value.visualizationScore) &&
+    (value.pacingNeed === 'steady' ||
+      value.pacingNeed === 'accent' ||
+      value.pacingNeed === 'transition') &&
+    Array.isArray(value.keywords) &&
+    value.keywords.every((item) => typeof item === 'string') &&
+    Array.isArray(value.entities) &&
+    value.entities.every((item) => typeof item === 'string')
+  );
+}
+
 function isWebCardPayload(value: unknown): value is NonNullable<AICard['webCard']> {
   if (!isRecord(value)) {
     return false;
@@ -105,6 +134,31 @@ function isAICard(value: unknown): value is AICard {
   );
 }
 
+function isAIVisualSuggestion(value: unknown): value is AIVisualSuggestion {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === 'string' &&
+    typeof value.segmentId === 'string' &&
+    (value.suggestionType === 'content-card' ||
+      value.suggestionType === 'data-motion' ||
+      value.suggestionType === 'explainer-motion' ||
+      value.suggestionType === 'chapter-transition') &&
+    Number.isFinite(value.priority) &&
+    typeof value.reason === 'string' &&
+    typeof value.enabled === 'boolean' &&
+    Number.isFinite(value.startMs) &&
+    Number.isFinite(value.endMs) &&
+    Number.isFinite(value.displayDurationMs) &&
+    (value.displayMode === 'fullscreen' || value.displayMode === 'pip') &&
+    typeof value.templateKey === 'string' &&
+    typeof value.visualBrief === 'string' &&
+    typeof value.autoApplyEligible === 'boolean'
+  );
+}
+
 function isAIAnalysisResult(value: unknown): value is AIAnalysisResult {
   if (!isRecord(value)) {
     return false;
@@ -138,13 +192,30 @@ function isCoverCandidate(value: unknown): value is CoverCandidate {
   );
 }
 
+function isAIStoryboardPlan(value: unknown): value is AIStoryboardPlan {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(value.segments) &&
+    value.segments.every(isAISegmentAnalysis) &&
+    Array.isArray(value.suggestions) &&
+    value.suggestions.every(isAIVisualSuggestion) &&
+    typeof value.summary === 'string' &&
+    (value.globalPrompt === undefined || typeof value.globalPrompt === 'string') &&
+    Number.isFinite(value.generatedAt)
+  );
+}
+
 export function createPersistedAIState(
   analysisResult: AIAnalysisResult | null,
   coverCandidates: CoverCandidate[],
   motionCards: AICard[] = [],
+  storyboardPlan: AIStoryboardPlan | null = null,
 ): PersistedAIState {
   const persisted: PersistedAIState = {
-    version: 2,
+    version: 3,
     analysisResult: normalizeAnalysisResult(analysisResult),
     coverCandidates,
   };
@@ -153,11 +224,20 @@ export function createPersistedAIState(
     persisted.motionCards = motionCards;
   }
 
+  if (storyboardPlan) {
+    persisted.storyboardPlan = storyboardPlan;
+  }
+
   return persisted;
 }
 
 export function parsePersistedAIState(value: unknown): PersistedAIState | null {
-  if (!isRecord(value) || value.version !== 2 || !('analysisResult' in value) || !('coverCandidates' in value)) {
+  if (
+    !isRecord(value) ||
+    (value.version !== 2 && value.version !== 3) ||
+    !('analysisResult' in value) ||
+    !('coverCandidates' in value)
+  ) {
     return null;
   }
 
@@ -171,11 +251,18 @@ export function parsePersistedAIState(value: unknown): PersistedAIState | null {
 
   const motionCards =
     Array.isArray(value.motionCards) && value.motionCards.every(isAICard) ? value.motionCards : [];
+  const storyboardPlan =
+    value.storyboardPlan === null || value.storyboardPlan === undefined
+      ? null
+      : isAIStoryboardPlan(value.storyboardPlan)
+        ? value.storyboardPlan
+        : null;
 
   return createPersistedAIState(
     normalizeAnalysisResult(value.analysisResult),
     value.coverCandidates,
     motionCards,
+    storyboardPlan,
   );
 }
 

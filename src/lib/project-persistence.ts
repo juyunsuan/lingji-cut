@@ -1,6 +1,6 @@
 import type { WorkbenchStage } from './script-workbench-stage';
 import type { TimelineData } from '../types';
-import type { AIAnalysisResult, AICard, CoverCandidate } from '../types/ai';
+import type { AIAnalysisResult, AICard, AIStoryboardPlan, CoverCandidate } from '../types/ai';
 
 export interface ProjectScriptState {
   templateId: string;
@@ -16,6 +16,7 @@ export interface ProjectAIAnalysis {
   analysisResult: AIAnalysisResult | null;
   coverCandidates: CoverCandidate[];
   motionCards: AICard[];
+  storyboardPlan?: AIStoryboardPlan | null;
 }
 
 export interface ProjectData {
@@ -49,7 +50,12 @@ export function createDefaultProjectData(): ProjectData {
     createdAt: now,
     updatedAt: now,
     timeline: null,
-    aiAnalysis: { analysisResult: null, coverCandidates: [], motionCards: [] },
+    aiAnalysis: {
+      analysisResult: null,
+      coverCandidates: [],
+      motionCards: [],
+      storyboardPlan: null,
+    },
     script: {
       templateId: 'news-broadcast',
       annotations: [],

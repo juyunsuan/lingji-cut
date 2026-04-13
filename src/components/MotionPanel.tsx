@@ -9,6 +9,7 @@ import {
 } from '../ui';
 import { getAISettingsIssue } from '../lib/ai-settings';
 import { createMotionCardService } from '../lib/motion-card-service';
+import { AIVisualSuggestionList } from './AIVisualSuggestionList';
 import {
   buildAICardTimelineDraft,
   type AICard,
@@ -118,6 +119,11 @@ export function MotionPanel({ onOpenCardInspector, onOpenSettings }: MotionPanel
   const storeSetGenerating = aiState.setGeneratingMotion as ((value: boolean) => void) | undefined;
   const storeMotionError = aiState.motionError as string | null | undefined;
   const storeSetMotionError = aiState.setMotionError as ((value: string | null) => void) | undefined;
+  const storyboardPlan = aiState.storyboardPlan ?? null;
+  const autoApplyVisualSuggestions = Boolean(aiState.autoApplyVisualSuggestions);
+  const setAutoApplyVisualSuggestions = aiState.setAutoApplyVisualSuggestions as
+    | ((enabled: boolean) => void)
+    | undefined;
 
   const [localCards, setLocalCards] = useState<MotionCard[]>([]);
   const [localGenerating, setLocalGenerating] = useState(false);
@@ -440,6 +446,14 @@ export function MotionPanel({ onOpenCardInspector, onOpenSettings }: MotionPanel
 
   return (
     <div className={styles.root}>
+      <section className={styles.section}>
+        <AIVisualSuggestionList
+          storyboardPlan={storyboardPlan}
+          autoApplyEnabled={autoApplyVisualSuggestions}
+          onToggleAutoApply={setAutoApplyVisualSuggestions}
+        />
+      </section>
+
       {/* ─── 快速示例（横向滑动）─── */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>

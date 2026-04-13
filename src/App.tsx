@@ -90,6 +90,7 @@ export default function App() {
   const setMotionCards = useAIStore((state) => state.setMotionCards);
   const setGeneratingMotion = useAIStore((state) => state.setGeneratingMotion);
   const setMotionError = useAIStore((state) => state.setMotionError);
+  const setStoryboardPlan = useAIStore((state) => state.setStoryboardPlan);
 
   useEffect(() => {
     void hydrateSettingsStorage();
@@ -278,10 +279,11 @@ export default function App() {
     }
 
     const motionCards = useAIStore.getState().motionCards;
+    const storyboardPlan = useAIStore.getState().storyboardPlan;
 
     await window.electronAPI.saveAIAnalysis(
       projectDir,
-      JSON.stringify(createPersistedAIState(null, [], motionCards), null, 2),
+      JSON.stringify(createPersistedAIState(null, [], motionCards, storyboardPlan), null, 2),
     );
   }, [clearAIAnalysis]);
 
@@ -292,10 +294,15 @@ export default function App() {
       }
 
       const motionCards = useAIStore.getState().motionCards;
+      const storyboardPlan = useAIStore.getState().storyboardPlan;
 
       await window.electronAPI.saveAIAnalysis(
         currentProjectDir,
-        JSON.stringify(createPersistedAIState(analysisResult, [], motionCards), null, 2),
+        JSON.stringify(
+          createPersistedAIState(analysisResult, [], motionCards, storyboardPlan),
+          null,
+          2,
+        ),
       );
     },
     [currentProjectDir],
@@ -435,6 +442,7 @@ export default function App() {
         }
 
         setMotionCards(projectData.aiAnalysis.motionCards ?? []);
+        setStoryboardPlan(projectData.aiAnalysis.storyboardPlan ?? null);
         setGeneratingMotion(false);
         setMotionError(null);
 
@@ -461,6 +469,7 @@ export default function App() {
       setAIAnalysisResult,
       setCoverCandidates,
       setSrtEntries,
+      setStoryboardPlan,
       setTimeline,
       showToast,
       syncWorkspaceState,

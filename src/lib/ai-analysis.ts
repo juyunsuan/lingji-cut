@@ -7,7 +7,11 @@ import {
   isDataContent,
   type AIAnalysisResult,
   type AICard,
+  type AISegmentAnalysis,
   type AISegment,
+  type AISegmentComplexityLevel,
+  type AISegmentPacingNeed,
+  type AISegmentSemanticType,
   type AISettings,
   type CardStyle,
   type WebCardPayload,
@@ -36,7 +40,7 @@ interface RegenerateCoverPromptOptions {
 }
 
 interface SegmentPlanningResult {
-  segments: AISegment[];
+  segments: AISegmentAnalysis[];
   coverPrompts: string[];
   summary: string;
   keywords: string[];
@@ -118,7 +122,32 @@ function normalizeMotionCardPayload(value: unknown, promptFallback: string): Mot
   };
 }
 
-function normalizeSegment(rawSegment: unknown, index: number): AISegment | null {
+function normalizeSemanticType(value: unknown): AISegmentSemanticType {
+  return value === 'data' ||
+    value === 'explanation' ||
+    value === 'chapter-transition' ||
+    value === 'quote'
+    ? value
+    : 'narration';
+}
+
+function normalizeComplexityLevel(value: unknown): AISegmentComplexityLevel {
+  return value === 'low' || value === 'high' ? value : 'medium';
+}
+
+function normalizePacingNeed(value: unknown): AISegmentPacingNeed {
+  return value === 'steady' || value === 'transition' ? value : 'accent';
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeSegment(rawSegment: unknown, index: number): AISegmentAnalysis | null {
   if (!rawSegment || typeof rawSegment !== 'object') {
     return null;
   }
@@ -146,6 +175,14 @@ function normalizeSegment(rawSegment: unknown, index: number): AISegment | null 
       typeof candidate.transcriptExcerpt === 'string' && candidate.transcriptExcerpt.trim()
         ? candidate.transcriptExcerpt.trim()
         : undefined,
+    semanticType: normalizeSemanticType(candidate.semanticType),
+    complexityLevel: normalizeComplexityLevel(candidate.complexityLevel),
+    visualizationScore: Number.isFinite(candidate.visualizationScore)
+      ? Math.max(0, Math.min(100, Number(candidate.visualizationScore)))
+      : 50,
+    pacingNeed: normalizePacingNeed(candidate.pacingNeed),
+    keywords: normalizeStringArray(candidate.keywords),
+    entities: normalizeStringArray(candidate.entities),
   };
 }
 
@@ -276,7 +313,7 @@ function parseCoverPromptResult(value: unknown): string[] {
   return normalizeCoverPrompts(candidate.coverPrompts);
 }
 
-function parseSegmentPlanningResult(value: unknown): SegmentPlanningResult | null {
+export function parseSegmentPlanningResult(value: unknown): SegmentPlanningResult | null {
   if (!value || typeof value !== 'object') {
     return null;
   }
@@ -285,7 +322,7 @@ function parseSegmentPlanningResult(value: unknown): SegmentPlanningResult | nul
   const segments = Array.isArray(candidate.segments)
     ? candidate.segments
         .map(normalizeSegment)
-        .filter((segment): segment is AISegment => segment !== null)
+        .filter((segment): segment is AISegmentAnalysis => segment !== null)
     : [];
 
   if (segments.length === 0) {
@@ -296,9 +333,7 @@ function parseSegmentPlanningResult(value: unknown): SegmentPlanningResult | nul
     segments,
     coverPrompts: normalizeCoverPrompts(candidate.coverPrompts),
     summary: typeof candidate.summary === 'string' ? candidate.summary : '',
-    keywords: Array.isArray(candidate.keywords)
-      ? candidate.keywords.filter((item): item is string => typeof item === 'string')
-      : [],
+    keywords: normalizeStringArray(candidate.keywords),
     globalPrompt: typeof candidate.globalPrompt === 'string' ? candidate.globalPrompt : undefined,
   };
 }
@@ -330,6 +365,12 @@ segments 中每一项必须包含：
 - startMs
 - endMs
 - transcriptExcerpt
+- semanticType: data / explanation / chapter-transition / quote / narration
+- complexityLevel: low / medium / high
+- visualizationScore: 0-100
+- pacingNeed: steady / accent / transition
+- keywords: 该段关键词数组
+- entities: 该段关键实体数组
 
 段落拆分要求：
 - 必须按真实话题边界拆分，而不是按 token 长度硬切

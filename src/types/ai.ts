@@ -36,6 +36,64 @@ export interface AISegment {
   transcriptExcerpt?: string;
 }
 
+export type AISegmentSemanticType =
+  | 'data'
+  | 'explanation'
+  | 'chapter-transition'
+  | 'quote'
+  | 'narration';
+
+export type AISegmentComplexityLevel = 'low' | 'medium' | 'high';
+export type AISegmentPacingNeed = 'steady' | 'accent' | 'transition';
+
+export interface AISegmentAnalysis extends AISegment {
+  semanticType: AISegmentSemanticType;
+  complexityLevel: AISegmentComplexityLevel;
+  visualizationScore: number;
+  pacingNeed: AISegmentPacingNeed;
+  keywords: string[];
+  entities: string[];
+}
+
+export type AIVisualSuggestionType =
+  | 'content-card'
+  | 'data-motion'
+  | 'explainer-motion'
+  | 'chapter-transition';
+
+export interface AIVisualSuggestion {
+  id: string;
+  segmentId: string;
+  suggestionType: AIVisualSuggestionType;
+  priority: number;
+  reason: string;
+  enabled: boolean;
+  startMs: number;
+  endMs: number;
+  displayDurationMs: number;
+  displayMode: AICardDisplayMode;
+  templateKey: string;
+  visualBrief: string;
+  autoApplyEligible: boolean;
+}
+
+export interface AIStoryboardPlan {
+  segments: AISegmentAnalysis[];
+  suggestions: AIVisualSuggestion[];
+  summary: string;
+  globalPrompt?: string;
+  generatedAt: number;
+}
+
+export function buildDefaultStoryboardPlan(): AIStoryboardPlan {
+  return {
+    segments: [],
+    suggestions: [],
+    summary: '',
+    generatedAt: 0,
+  };
+}
+
 export interface AICard {
   id: string;
   segmentId: string;

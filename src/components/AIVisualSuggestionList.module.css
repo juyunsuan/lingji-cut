@@ -1,0 +1,80 @@
+.root {
+  display: grid;
+  gap: 10px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.title {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(245, 247, 255, 0.96);
+}
+
+.toggleRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(210, 218, 236, 0.84);
+  font-size: 11px;
+}
+
+.hint {
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(198, 205, 219, 0.72);
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 18, 28, 0.58);
+}
+
+.itemHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.itemTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(245, 247, 255, 0.96);
+}
+
+.meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.reason {
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(222, 228, 240, 0.82);
+}
+
+.empty {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: rgba(198, 205, 219, 0.74);
+  font-size: 11px;
+  line-height: 1.6;
+}

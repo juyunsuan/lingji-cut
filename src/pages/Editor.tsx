@@ -219,6 +219,7 @@ export function Editor({
           aiState.analysisResult,
           mergedCandidates,
           aiState.motionCards,
+          aiState.storyboardPlan,
         );
 
         void window.electronAPI.saveProjectSection(
@@ -394,7 +395,8 @@ export function Editor({
       }
 
       const motionCards = useAIStore.getState().motionCards;
-      const persistedState = createPersistedAIState(result, [], motionCards);
+      const storyboardPlan = useAIStore.getState().storyboardPlan;
+      const persistedState = createPersistedAIState(result, [], motionCards, storyboardPlan);
       await window.electronAPI.saveProjectSection(
         projectDir,
         'aiAnalysis',

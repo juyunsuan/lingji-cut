@@ -11,6 +11,7 @@ import {
   DEFAULT_JIMENG_MODEL,
   type AIAnalysisResult,
   type AICard,
+  type AIStoryboardPlan,
   type AISettings,
   type CoverCandidate,
 } from '../types/ai';
@@ -56,6 +57,8 @@ export interface AIStore {
   motionCards: AICard[];
   isGeneratingMotion: boolean;
   motionError: string | null;
+  storyboardPlan: AIStoryboardPlan | null;
+  autoApplyVisualSuggestions: boolean;
   activeTab: AITab;
   setAnalysisResult: (result: AIAnalysisResult) => void;
   setAnalyzing: (analyzing: boolean) => void;
@@ -72,6 +75,8 @@ export interface AIStore {
   removeMotionCard: (cardId: string) => void;
   setGeneratingMotion: (generating: boolean) => void;
   setMotionError: (error: string | null) => void;
+  setStoryboardPlan: (plan: AIStoryboardPlan | null) => void;
+  setAutoApplyVisualSuggestions: (enabled: boolean) => void;
   clearAnalysis: () => void;
   workflow: WorkflowState;
   setWorkflow: (updates: Partial<WorkflowState>) => void;
@@ -87,6 +92,8 @@ export const useAIStore = create<AIStore>((set) => ({
   motionCards: [],
   isGeneratingMotion: false,
   motionError: null,
+  storyboardPlan: null,
+  autoApplyVisualSuggestions: false,
   activeTab: 'cards',
   setAnalysisResult: (result) => set({ analysisResult: result, analysisError: null }),
   setAnalyzing: (analyzing) => set({ isAnalyzing: analyzing }),
@@ -127,6 +134,8 @@ export const useAIStore = create<AIStore>((set) => ({
     })),
   setGeneratingMotion: (generating) => set({ isGeneratingMotion: generating }),
   setMotionError: (error) => set({ motionError: error }),
+  setStoryboardPlan: (plan) => set({ storyboardPlan: plan }),
+  setAutoApplyVisualSuggestions: (enabled) => set({ autoApplyVisualSuggestions: enabled }),
   clearAnalysis: () =>
     set({
       analysisResult: null,
@@ -135,6 +144,7 @@ export const useAIStore = create<AIStore>((set) => ({
       motionCards: [],
       motionError: null,
       isGeneratingMotion: false,
+      storyboardPlan: null,
     }),
   workflow: { ...DEFAULT_WORKFLOW },
   setWorkflow: (updates) =>
@@ -260,7 +270,8 @@ if (typeof window !== 'undefined') {
     if (
       state.analysisResult === prevState.analysisResult &&
       state.coverCandidates === prevState.coverCandidates &&
-      state.motionCards === prevState.motionCards
+      state.motionCards === prevState.motionCards &&
+      state.storyboardPlan === prevState.storyboardPlan
     ) {
       return;
     }
@@ -280,6 +291,7 @@ if (typeof window !== 'undefined') {
         state.analysisResult,
         state.coverCandidates,
         state.motionCards,
+        state.storyboardPlan,
       );
       void window.electronAPI
         .saveProjectSection(projectDir, 'aiAnalysis', JSON.stringify(persistedState))

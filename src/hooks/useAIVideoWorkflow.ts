@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { createPersistedAIState, selectCoverCandidate } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
+import { buildStoryboardSuggestions } from '../lib/storyboard-planner';
 import {
   DEFAULT_WORKFLOW,
   loadAISettings,
@@ -131,10 +132,12 @@ async function persistAIState(
   }
 
   const motionCards = useAIStore.getState().motionCards;
+  const storyboardPlan = useAIStore.getState().storyboardPlan;
   const persistedState = createPersistedAIState(
     analysisResult,
     coverCandidates,
     motionCards,
+    storyboardPlan,
   );
   await window.electronAPI.saveProjectSection(
     projectDir,
@@ -149,6 +152,7 @@ export function useAIVideoWorkflow() {
   const resetWorkflow = useAIStore((state) => state.resetWorkflow);
   const setAnalysisResult = useAIStore((state) => state.setAnalysisResult);
   const setCoverCandidates = useAIStore((state) => state.setCoverCandidates);
+  const setStoryboardPlan = useAIStore((state) => state.setStoryboardPlan);
   const selectCover = useAIStore((state) => state.selectCover);
   const timelineStore = useTimelineStore();
 
@@ -383,8 +387,13 @@ export function useAIVideoWorkflow() {
             entries: useTimelineStore.getState().srtEntries,
             settings,
           })) as AIAnalysisResult;
+          const nextStoryboardPlan = buildStoryboardSuggestions(analysisResult.segments as any, {
+            summary: analysisResult.summary,
+            globalPrompt: analysisResult.globalPrompt,
+          });
 
           setAnalysisResult(analysisResult);
+          setStoryboardPlan(nextStoryboardPlan);
           setCoverCandidates([]);
           await persistAIState(projectDir, analysisResult, []);
           setWorkflow({
@@ -550,7 +559,14 @@ export function useAIVideoWorkflow() {
         }
       }
     },
-    [selectCover, setAnalysisResult, setCoverCandidates, setWorkflow, timelineStore],
+    [
+      selectCover,
+      setAnalysisResult,
+      setCoverCandidates,
+      setStoryboardPlan,
+      setWorkflow,
+      timelineStore,
+    ],
   );
 
   const start = useCallback(

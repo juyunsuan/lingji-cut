@@ -7,6 +7,14 @@ export interface MotionCardPayload {
   retryCount: number;
 }
 
+export type MotionTemplateKey =
+  | 'kpi-countup'
+  | 'bar-chart-reveal'
+  | 'ranking-stack'
+  | 'before-after-compare'
+  | 'step-flow-explainer'
+  | 'chapter-stinger';
+
 export interface MotionComponentProps {
   frame: number;
   fps: number;

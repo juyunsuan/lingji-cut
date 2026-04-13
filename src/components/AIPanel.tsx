@@ -8,6 +8,7 @@ import {
   toggleCardEnabledInResult,
 } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
+import { buildStoryboardSuggestions } from '../lib/storyboard-planner';
 import { useAIStore, loadAISettings } from '../store/ai';
 import { useTaskProgressStore } from '../store/task-progress';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
@@ -48,7 +49,7 @@ type AITabKey = 'cards' | 'cover' | 'motion';
 const TAB_META: Record<AITabKey, { label: string; shortLabel: string }> = {
   cards: { label: '内容卡片', shortLabel: '卡片' },
   cover: { label: '封面', shortLabel: '封面' },
-  motion: { label: '动画', shortLabel: '动画' },
+  motion: { label: '视觉编排', shortLabel: '视觉' },
 };
 const SUB_TABS: AITabKey[] = ['cards', 'cover', 'motion'];
 
@@ -78,6 +79,7 @@ export function AIPanel({
   setAnalyzing,
   setAnalysisError,
   setCoverCandidates,
+  setStoryboardPlan,
   selectCover,
   setGeneratingCovers,
   setActiveTab,
@@ -160,9 +162,18 @@ export function AIPanel({
   }, [analysisResult?.globalPrompt]);
 
   const persistAIState = useCallback(
-    async (result: AIAnalysisResult | null, candidates: CoverCandidate[]) => {
+    async (
+      result: AIAnalysisResult | null,
+      candidates: CoverCandidate[],
+      nextStoryboardPlan = useAIStore.getState().storyboardPlan,
+    ) => {
       const motionCards = useAIStore.getState().motionCards;
-      const fallbackState = createPersistedAIState(result, candidates, motionCards);
+      const fallbackState = createPersistedAIState(
+        result,
+        candidates,
+        motionCards,
+        nextStoryboardPlan,
+      );
       const projectDir = getProjectDir();
       if (!projectDir) {
         return fallbackState;
@@ -281,9 +292,15 @@ export function AIPanel({
         settings,
         globalPrompt: globalPromptDraft.trim() || undefined,
       })) as AIAnalysisResult;
-      const persistedState = await persistAIState(result, []);
+      const nextStoryboardPlan = buildStoryboardSuggestions(result.segments as any, {
+        summary: result.summary,
+        globalPrompt: result.globalPrompt,
+      });
+      setStoryboardPlan(nextStoryboardPlan);
+      const persistedState = await persistAIState(result, [], nextStoryboardPlan);
       setAnalysisResult(persistedState.analysisResult ?? result);
       setCoverCandidates(persistedState.coverCandidates);
+      setStoryboardPlan(persistedState.storyboardPlan ?? nextStoryboardPlan);
       useTaskProgressStore.getState().completeTask(analyzeTaskId);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : '分析失败';
@@ -300,6 +317,7 @@ export function AIPanel({
     setAnalysisResult,
     setAnalyzing,
     setCoverCandidates,
+    setStoryboardPlan,
     srtEntries,
     timeline.podcast.srtPath,
   ]);

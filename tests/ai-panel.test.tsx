@@ -70,6 +70,29 @@ const mockModules = vi.hoisted(() => {
       analysisError: null as string | null,
       coverCandidates: [],
       isGeneratingCovers: false,
+      storyboardPlan: {
+        segments: [],
+        suggestions: [
+          {
+            id: 'visual-1',
+            segmentId: 'segment-1',
+            suggestionType: 'data-motion' as const,
+            priority: 90,
+            reason: '这段数据值得做动画强调',
+            enabled: true,
+            startMs: 0,
+            endMs: 4_000,
+            displayDurationMs: 4_000,
+            displayMode: 'fullscreen' as const,
+            templateKey: 'kpi-countup',
+            visualBrief: '营收上涨 12%',
+            autoApplyEligible: true,
+          },
+        ],
+        summary: '视觉摘要',
+        generatedAt: 1,
+      },
+      autoApplyVisualSuggestions: false,
       activeTab: 'cards' as const,
       setAnalysisResult: () => undefined,
       setAnalyzing: () => undefined,
@@ -79,6 +102,8 @@ const mockModules = vi.hoisted(() => {
       setCoverCandidates: () => undefined,
       selectCover: () => undefined,
       setGeneratingCovers: () => undefined,
+      setStoryboardPlan: () => undefined,
+      setAutoApplyVisualSuggestions: () => undefined,
       setActiveTab: () => undefined,
       clearAnalysis: () => undefined,
     },
@@ -115,6 +140,29 @@ describe('AIPanel', () => {
     mockModules.aiStoreState.analysisError = null;
     mockModules.aiStoreState.coverCandidates = [];
     mockModules.aiStoreState.isGeneratingCovers = false;
+    mockModules.aiStoreState.storyboardPlan = {
+      segments: [],
+      suggestions: [
+        {
+          id: 'visual-1',
+          segmentId: 'segment-1',
+          suggestionType: 'data-motion',
+          priority: 90,
+          reason: '这段数据值得做动画强调',
+          enabled: true,
+          startMs: 0,
+          endMs: 4_000,
+          displayDurationMs: 4_000,
+          displayMode: 'fullscreen',
+          templateKey: 'kpi-countup',
+          visualBrief: '营收上涨 12%',
+          autoApplyEligible: true,
+        },
+      ],
+      summary: '视觉摘要',
+      generatedAt: 1,
+    };
+    mockModules.aiStoreState.autoApplyVisualSuggestions = false;
     mockModules.aiStoreState.activeTab = 'cards';
     mockModules.timelineState.srtEntries = [{ index: 1, startMs: 0, endMs: 2_000, text: 'hello' }];
     mockModules.timelineState.timeline = mockModules.buildTimeline();
@@ -128,6 +176,7 @@ describe('AIPanel', () => {
     expect(html).toContain('data-ai-panel-header="true"');
     expect(html).toContain('内容卡片');
     expect(html).toContain('封面');
+    expect(html).toContain('视觉编排');
     expect(html).toContain('AI 分析');
     expect(html).toContain('已选 1/1');
     expect(html).toContain('data-ai-selection-summary="true"');
@@ -185,5 +234,16 @@ describe('AIPanel', () => {
     expect(html).toContain('data-ai-footer-button="true"');
     expect(html).toContain('上轨 1');
     expect(html).toContain('卡片');
+  });
+
+  it('renders storyboard suggestions and auto apply toggle in visual planning tab', () => {
+    mockModules.aiStoreState.activeTab = 'motion';
+
+    const html = renderToStaticMarkup(<AIPanel compact={false} />);
+
+    expect(html).toContain('视觉编排');
+    expect(html).toContain('自动应用到时间轴');
+    expect(html).toContain('这段数据值得做动画强调');
+    expect(html).toContain('kpi-countup');
   });
 });

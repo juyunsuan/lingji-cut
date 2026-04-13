@@ -47,7 +47,13 @@ export function useAICardInspector(cardId: string | null) {
   const persistAIState = useCallback(
     async (result: typeof analysisResult, candidates: CoverCandidate[]) => {
       const motionCards = useAIStore.getState().motionCards;
-      const fallbackState = createPersistedAIState(result, candidates, motionCards);
+      const storyboardPlan = useAIStore.getState().storyboardPlan;
+      const fallbackState = createPersistedAIState(
+        result,
+        candidates,
+        motionCards,
+        storyboardPlan,
+      );
       const projectDir = getProjectDir();
       if (!projectDir) {
         return fallbackState;
