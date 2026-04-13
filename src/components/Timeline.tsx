@@ -90,6 +90,7 @@ export function Timeline({
   onOpenSubtitleInspector,
 }: TimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rulerRef = useRef<HTMLDivElement>(null);
   const pendingScrollLeftRef = useRef<number | null>(null);
   const trackLaneRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [hoverTrackId, setHoverTrackId] = useState<string | null>(null);
@@ -457,6 +458,54 @@ export function Timeline({
     }
 
     onSeek(Math.max(0, Math.min(visualEndMs, Math.round(offsetX / pxPerMs))));
+  };
+
+  const handleRulerMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const rulerEl = rulerRef.current;
+    if (!rulerEl) return;
+
+    // 阻止冒泡到 scrollArea 的 onClick，避免 handleSeekClick 重复 seek
+    event.stopPropagation();
+    event.preventDefault();
+
+    const rect = rulerEl.getBoundingClientRect();
+
+    const seekTo = (clientX: number, allowSnap: boolean) => {
+      // rulerMain 位于可滚动内容内部，rect.left 已随滚动变化，
+      // 因此 clientX - rect.left 已是内容局部坐标，无需再加 scrollLeft
+      const localX = clientX - rect.left;
+      const rawMs = Math.max(0, localX / pxPerMs);
+      const snapped = allowSnap && snapEnabled
+        ? computeSnap({
+            candidateMs: rawMs,
+            playheadMs: rawMs,
+            overlays: timeline.overlays,
+            pxPerMs,
+            thresholdPx: 8,
+            enabled: true,
+          }).snappedMs
+        : rawMs;
+      const clamped = Math.max(0, Math.min(visualEndMs, Math.round(snapped)));
+      onSeek(clamped);
+    };
+
+    seekTo(event.clientX, !event.altKey);
+
+    const onMove = (ev: MouseEvent) => {
+      seekTo(ev.clientX, !ev.altKey);
+    };
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  const handleRulerClick = (event: MouseEvent<HTMLDivElement>) => {
+    // mousedown 已处理 seek，click 事件只负责阻止冒泡到 scrollArea
+    event.stopPropagation();
   };
 
   const handleWheelZoom = useCallback((event: WheelEvent) => {
@@ -992,7 +1041,13 @@ export function Timeline({
             >
               <div className={styles.rulerSide}>轨道</div>
 
-              <div className={styles.rulerMain} style={{ height: rulerHeight }}>
+              <div
+                ref={rulerRef}
+                className={styles.rulerMain}
+                style={{ height: rulerHeight, cursor: 'ew-resize' }}
+                onMouseDown={handleRulerMouseDown}
+                onClick={handleRulerClick}
+              >
                 {ticks.map((tick) => (
                   <div
                     key={tick}
