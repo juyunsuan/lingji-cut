@@ -1,3 +1,5 @@
+import type { TimelineData } from '../types';
+
 const BASE_TIMELINE_PX_PER_SECOND = 96;
 const MIN_TIMELINE_TRACK_WIDTH = 960;
 const MIN_TIMELINE_ZOOM = 0.02;
@@ -120,4 +122,40 @@ export function getAnchoredTimelineScrollLeft({
   const safeNextTrackWidth = Math.max(1, nextTrackWidth);
   const anchorRatio = (scrollLeft + pointerX) / safePreviousTrackWidth;
   return Math.max(0, anchorRatio * safeNextTrackWidth - pointerX);
+}
+
+export function getTimelineVisualEndMs(timeline: TimelineData): number {
+  const podcastEnd = timeline.podcast?.durationMs ?? 0;
+  const overlayEnd = timeline.overlays.reduce((max, o) => {
+    const end = o.startMs + o.durationMs;
+    return end > max ? end : max;
+  }, 0);
+  return Math.max(podcastEnd, overlayEnd);
+}
+
+export function getTimelineContentWidthPx(
+  timeline: TimelineData,
+  zoomLevel: number,
+  viewportWidth: number,
+): number {
+  const end = getTimelineVisualEndMs(timeline);
+  const base = Math.round(getBaseTimelineWidth(end) * clampTimelineZoom(zoomLevel));
+  const safeViewport = Math.max(320, viewportWidth);
+  return Math.max(safeViewport, base + safeViewport);
+}
+
+export function zoomIn(zoomLevel: number): number {
+  return getNextTimelineZoom(zoomLevel, 'in');
+}
+
+export function zoomOut(zoomLevel: number): number {
+  return getNextTimelineZoom(zoomLevel, 'out');
+}
+
+export function zoomToFit(durationMs: number, viewportWidth: number): number {
+  return getFitTimelineZoom(durationMs, viewportWidth);
+}
+
+export function zoomToPercent(percent: number): number {
+  return clampTimelineZoom(percent / 100);
 }
