@@ -184,6 +184,51 @@
   transform: scale(0.88);
 }
 
+.trackLockButton {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    color var(--motion-fast, 120ms),
+    background var(--motion-fast, 120ms),
+    opacity var(--motion-fast, 120ms),
+    transform 80ms ease;
+}
+
+.overlayRow:hover .trackLockButton,
+.laneRow:hover .trackLockButton,
+.trackLockButton:focus-visible,
+.trackLockButtonLocked {
+  opacity: 1;
+}
+
+.trackLockButton:hover {
+  color: var(--color-text-primary);
+  background: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+}
+
+.trackLockButtonLocked {
+  color: var(--color-system-blue);
+}
+
+.trackLockButtonLocked:hover {
+  color: var(--color-system-blue);
+  background: color-mix(in srgb, var(--color-system-blue) 14%, transparent);
+}
+
+.trackLockButton:active {
+  transform: scale(0.88);
+}
+
 .trackControlsBody {
   flex: 1;
   min-width: 0;
@@ -204,6 +249,37 @@
 .trackDropLane {
   position: relative;
   border-bottom: 1px solid var(--color-separator);
+}
+
+.overlayRow[data-locked='true'] .trackDropLane::after {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  pointer-events: none;
+  border: 1px dashed var(--color-separator);
+  border-radius: var(--radius-sm, 4px);
+  z-index: 1;
+}
+
+.overlayRow[data-locked='true'] .trackDropLane > * {
+  opacity: 0.72;
+}
+
+.laneRow[data-locked='true']::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 80px;
+  right: 0;
+  pointer-events: none;
+  border: 1px dashed var(--color-separator);
+  border-radius: var(--radius-sm, 4px);
+  z-index: 2;
+}
+
+.laneRow[data-locked='true'] .laneMain {
+  opacity: 0.82;
 }
 
 .lockedLane {

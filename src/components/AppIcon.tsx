@@ -26,6 +26,8 @@ import {
   LayoutTemplate,
   Layers,
   Lightbulb,
+  Lock,
+  LockOpen,
   Maximize2,
   Minimize2,
   Monitor,
@@ -78,6 +80,8 @@ export type AppIconName =
   | 'layout-template'
   | 'layers'
   | 'lightbulb'
+  | 'lock'
+  | 'lock-open'
   | 'maximize-2'
   | 'minimize-2'
   | 'monitor'
@@ -138,6 +142,8 @@ const lucideIconMap: Partial<Record<AppIconName, LucideIcon>> = {
   'layout-template': LayoutTemplate,
   layers: Layers,
   lightbulb: Lightbulb,
+  lock: Lock,
+  'lock-open': LockOpen,
   'maximize-2': Maximize2,
   'minimize-2': Minimize2,
   monitor: Monitor,

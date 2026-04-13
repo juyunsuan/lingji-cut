@@ -640,19 +640,39 @@ export function Timeline({
   };
 
   const renderTrackControls = (options: {
+    track: TimelineTrack;
     tone: string;
     name: string;
     actions?: ReactNode;
-  }) => (
-    <div className={styles.trackControls}>
-      <div className={styles.trackControlsBody}>
-        <div className={styles.trackNameLine} style={{ color: options.tone }}>
-          {options.name}
+  }) => {
+    const isLocked = Boolean(options.track.locked);
+    return (
+      <div className={styles.trackControls}>
+        <div className={styles.trackControlsBody}>
+          <div className={styles.trackNameLine} style={{ color: options.tone }}>
+            {options.name}
+          </div>
         </div>
+        {options.actions ?? null}
+        <button
+          type="button"
+          className={joinClassNames(
+            styles.trackLockButton,
+            isLocked ? styles.trackLockButtonLocked : '',
+          )}
+          onClick={(event) => {
+            event.stopPropagation();
+            useTimelineStore.getState().toggleTrackLocked(options.track.id);
+          }}
+          aria-label={isLocked ? `解锁${options.track.label}` : `锁定${options.track.label}`}
+          aria-pressed={isLocked}
+          title={isLocked ? '解锁轨道' : '锁定轨道'}
+        >
+          <AppIcon name={isLocked ? 'lock' : 'lock-open'} size={12} />
+        </button>
       </div>
-      {options.actions ?? null}
-    </div>
-  );
+    );
+  };
 
   const renderLaneBase = (
     track: TimelineTrack,
@@ -664,6 +684,7 @@ export function Timeline({
     <div
       key={track.id}
       className={styles.laneRow}
+      data-locked={track.locked ? 'true' : 'false'}
       style={{ gridTemplateColumns: trackColumns, minHeight: trackHeight }}
     >
       {children}
@@ -740,6 +761,7 @@ export function Timeline({
               timeline.tracks[0],
               audioTrackHeight,
               renderTrackControls({
+                track: timeline.tracks[0],
                 tone: 'var(--color-track-audio)',
                 name: '轨道 1',
               }),
@@ -769,6 +791,7 @@ export function Timeline({
               timeline.tracks[1],
               subtitleTrackHeight,
               renderTrackControls({
+                track: timeline.tracks[1],
                 tone: 'var(--color-track-subtitle)',
                 name: '轨道 1',
               }),
@@ -810,12 +833,14 @@ export function Timeline({
                 <div
                   key={track.id}
                   className={styles.overlayRow}
+                  data-locked={track.locked ? 'true' : 'false'}
                   style={{
                     gridTemplateColumns: trackColumns,
                     minHeight: overlayTrackHeight,
                   }}
                 >
                   {renderTrackControls({
+                    track,
                     tone: isTopLayer
                       ? 'var(--color-track-primary)'
                       : 'var(--color-track-secondary)',
