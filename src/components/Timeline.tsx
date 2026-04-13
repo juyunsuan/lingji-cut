@@ -1,6 +1,6 @@
 import type { CSSProperties, DragEvent, MouseEvent, ReactNode } from 'react';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Button, ConfirmDialog, ContextMenu } from '../ui';
+import { ConfirmDialog, ContextMenu } from '../ui';
 import type { TrackDragZone } from '../lib/overlay-drag';
 import {
   getTimelineContextMenuItems,
@@ -26,6 +26,7 @@ import { AppIcon } from './AppIcon';
 import { OverlayBlock } from './OverlayBlock';
 import { TimelineAudioWaveform } from './TimelineAudioWaveform';
 import { TimelineSubtitleBlocks } from './TimelineSubtitleBlocks';
+import { TimelineToolbar } from './timeline/TimelineToolbar';
 import styles from './Timeline.module.css';
 
 interface TimelineProps {
@@ -80,6 +81,7 @@ export function Timeline({
   const [pendingTrackDeletion, setPendingTrackDeletion] = useState<PendingTrackDeletion | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [viewportWidth, setViewportWidth] = useState(0);
+  const [snapEnabled, setSnapEnabled] = useState(true);
   const {
     addOverlay,
     addTrack,
@@ -499,6 +501,63 @@ export function Timeline({
     return () => container.removeEventListener('wheel', handler);
   }, []);
 
+  // 键盘快捷键：S 分割、⌘Z 撤销、⌘⇧Z / ⌘Y 重做
+  const splitCtxRef = useRef({ currentTimeMs, selectedOverlayId });
+  useEffect(() => {
+    splitCtxRef.current = { currentTimeMs, selectedOverlayId };
+  }, [currentTimeMs, selectedOverlayId]);
+
+  useEffect(() => {
+    const isEditableTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false;
+      }
+      const tag = target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+        return true;
+      }
+      if (target.isContentEditable) {
+        return true;
+      }
+      return false;
+    };
+
+    const handler = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) {
+        return;
+      }
+
+      const mod = event.metaKey || event.ctrlKey;
+
+      if (mod && (event.key === 'z' || event.key === 'Z')) {
+        event.preventDefault();
+        if (event.shiftKey) {
+          useTimelineStore.getState().redo();
+        } else {
+          useTimelineStore.getState().undo();
+        }
+        return;
+      }
+
+      if (mod && (event.key === 'y' || event.key === 'Y')) {
+        event.preventDefault();
+        useTimelineStore.getState().redo();
+        return;
+      }
+
+      if (!mod && !event.altKey && (event.key === 's' || event.key === 'S')) {
+        event.preventDefault();
+        const { currentTimeMs: nowMs, selectedOverlayId: selId } = splitCtxRef.current;
+        useTimelineStore
+          .getState()
+          .splitOverlayClipsAt(nowMs, selId ? [selId] : undefined);
+      }
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+
   const placeAssetOnTrack = (trackId: string, asset: AssetLike, clientX: number) => {
     if (asset.overlayRole === 'default-background') {
       setGlobalBackground(asset.path);
@@ -626,26 +685,23 @@ export function Timeline({
         gridTemplateRows: `${toolbarHeight}px minmax(0, 1fr)`,
       }}
     >
-      <div className={styles.toolbar}>
-        <div className={styles.toolbarLeft}>
-          <span className={styles.toolbarTitle}>时间线</span>
-          <div className={styles.zoomPill}>{Math.round(zoomLevel * 100)}%</div>
-        </div>
-
-        <div className={styles.toolbarSpacer} />
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className={styles.addTrackButton}
-          onClick={() => addTrack()}
-          aria-label="添加轨道"
-          title="添加轨道"
-        >
-          <AppIcon name="plus" size={12} className={styles.addTrackIcon} />
-          <span className={styles.addTrackLabel}>添加轨道</span>
-        </Button>
-      </div>
+      <TimelineToolbar
+        zoomLevel={zoomLevel}
+        onZoomChange={setZoomLevel}
+        timelineDurationMs={getTimelineVisualEndMs(timeline)}
+        viewportWidth={viewportWidth}
+        snapEnabled={snapEnabled}
+        onToggleSnap={() => setSnapEnabled((v) => !v)}
+        onAddTrack={() => addTrack()}
+        onSplit={() =>
+          useTimelineStore
+            .getState()
+            .splitOverlayClipsAt(
+              currentTimeMs,
+              selectedOverlayId ? [selectedOverlayId] : undefined,
+            )
+        }
+      />
 
       <div
         ref={containerRef}
