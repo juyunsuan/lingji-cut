@@ -1,8 +1,11 @@
 /**
- * Darwin UI Animation Configuration
+ * Darwin UI Animation Configuration (Legacy API — 兼容层)
  *
- * Centralized animation settings for consistent, configurable animations.
- * Supports prefers-reduced-motion and allows disabling specific animation types.
+ * ⚠️ 新代码请直接使用 `src/ui/lib/motion/tokens.ts` 的 `durations` / `springs` 常量,
+ * 以及 <MotionProvider> 提供的全局 reduced-motion 响应。
+ *
+ * 本文件保留是为了让已经引用 `getDuration` / `getSpring` / `getTransition` 的旧组件
+ * 无感迁移。2026-04 升级:参数已按 macOS 原生感标准校准(见下方注释)。
  */
 
 export type DurationKey = "instant" | "fast" | "normal" | "slow" | "reveal";
@@ -44,18 +47,25 @@ export interface AnimationConfig {
 export const ANIMATION_CONFIG: AnimationConfig = {
 	enabled: true,
 
+	// 参数已按 macOS 原生感标准校准(2026-04 升级)
+	// 对应 motion/tokens.ts 的 durations token
 	durations: {
-		instant: 0,
-		fast: 0.1,
-		normal: 0.15,
-		slow: 0.2,
-		reveal: 0.4,
+		instant: 0.1, // 原 0 → 0.1,保留感知阈值
+		fast: 0.18, // 原 0.1 → 0.18(hover/focus 反馈)
+		normal: 0.26, // 原 0.15 → 0.26(panel/tab)
+		slow: 0.36, // 原 0.2 → 0.36(modal/sheet)
+		reveal: 0.48, // 原 0.4 → 0.48(页面级 layout)
 	},
 
+	// 参数已按 Apple CAAnimation 复刻(2026-04 升级)
+	// 关键改动:全部 critically-damped,避免 1 帧抖动
 	springs: {
-		snappy: { type: "spring", stiffness: 400, damping: 25 },
-		smooth: { type: "spring", stiffness: 200, damping: 25 },
-		gentle: { type: "spring", stiffness: 120, damping: 20 },
+		// snappy: whileTap / 点击反馈(原 400/25 欠阻尼 → 500/44)
+		snappy: { type: "spring", stiffness: 500, damping: 44 },
+		// smooth: 抽屉 / 折叠(原 200/25 → 260/32)
+		smooth: { type: "spring", stiffness: 260, damping: 32 },
+		// gentle: sheet / modal(原 120/20 → 170/26)
+		gentle: { type: "spring", stiffness: 170, damping: 26 },
 	},
 
 	disable: {
