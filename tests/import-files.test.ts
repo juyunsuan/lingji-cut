@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   getDroppedFilePath,
+  getHtmlImportFileError,
   getImportFileError,
+  isAcceptedHtmlImportPath,
   isAcceptedImportPath,
   type ImportKind,
 } from '../src/lib/import-files';
@@ -27,6 +29,18 @@ describe('isAcceptedImportPath', () => {
   it('rejects mismatched file extensions', () => {
     expect(isAcceptedImportPath('/tmp/voice.wav', 'audio')).toBe(false);
     expect(isAcceptedImportPath('/tmp/subtitles.txt', 'srt')).toBe(false);
+  });
+});
+
+describe('isAcceptedHtmlImportPath', () => {
+  it('accepts html files for ai card import', () => {
+    expect(isAcceptedHtmlImportPath('/tmp/card.html')).toBe(true);
+    expect(isAcceptedHtmlImportPath('/tmp/CARD.HTM')).toBe(true);
+  });
+
+  it('rejects non-html files for ai card import', () => {
+    expect(isAcceptedHtmlImportPath('/tmp/card.md')).toBe(false);
+    expect(isAcceptedHtmlImportPath('/tmp/card.txt')).toBe(false);
   });
 });
 
@@ -82,5 +96,16 @@ describe('getImportFileError', () => {
     },
   ])('returns the expected validation result for $filePath', ({ kind, filePath, expected }) => {
     expect(getImportFileError(filePath, kind)).toBe(expected);
+  });
+});
+
+describe('getHtmlImportFileError', () => {
+  it('returns null for supported html files', () => {
+    expect(getHtmlImportFileError('/tmp/card.html')).toBeNull();
+    expect(getHtmlImportFileError('/tmp/card.HTM')).toBeNull();
+  });
+
+  it('returns an explicit message for unsupported file types', () => {
+    expect(getHtmlImportFileError('/tmp/card.txt')).toBe('请拖入 HTML 文件（.html 或 .htm）。');
   });
 });

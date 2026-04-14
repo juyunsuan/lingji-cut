@@ -22,6 +22,7 @@ import {
   type CoverCandidate,
 } from '../types/ai';
 import { getFileNameFromPath } from '../lib/utils';
+import { getDroppedFilePath, getHtmlImportFileError } from '../lib/import-files';
 import { createImportedHtmlWebCardPayload, extractHtmlTitle } from '../lib/web-card';
 import { AICardList, type AICardPlacement } from './AICardList';
 import { AppIcon } from './AppIcon';
@@ -60,6 +61,7 @@ const TAB_META: Record<AITabKey, { label: string; shortLabel: string }> = {
 };
 const SUB_TABS: AITabKey[] = ['cards', 'cover', 'motion'];
 const IMPORTED_CARD_TITLE_FALLBACK = '导入卡片';
+type DroppedHtmlFile = File & { path?: string };
 
 function getImportedCardTitle(filePath: string, html: string): string {
   const htmlTitle = extractHtmlTitle(html);
@@ -70,6 +72,23 @@ function getImportedCardTitle(filePath: string, html: string): string {
   const fileName = getFileNameFromPath(filePath);
   const fallbackTitle = fileName.replace(/\.[^.]+$/, '').trim();
   return fallbackTitle || IMPORTED_CARD_TITLE_FALLBACK;
+}
+
+function findDroppedHtmlFile(
+  files: FileList | readonly DroppedHtmlFile[],
+  getPathForFile: (file: File) => string,
+): { file: DroppedHtmlFile; path: string } | null {
+  for (const file of Array.from(files as ArrayLike<DroppedHtmlFile>)) {
+    const resolvedPath = getDroppedFilePath(file, getPathForFile) || file.name || '';
+    if (!getHtmlImportFileError(resolvedPath)) {
+      return {
+        file,
+        path: resolvedPath,
+      };
+    }
+  }
+
+  return null;
 }
 
 export function AIPanel({
@@ -124,6 +143,7 @@ export function AIPanel({
 
   const [isRegeneratingCoverPrompt, setIsRegeneratingCoverPrompt] = useState(false);
   const [globalPromptDraft, setGlobalPromptDraft] = useState('');
+  const [isImportDragActive, setIsImportDragActive] = useState(false);
   const [aiSettingsIssue, setAISettingsIssue] = useState<string | null>(() =>
     getAISettingsIssue(null),
   );
@@ -380,23 +400,13 @@ export function AIPanel({
     [handlePersistedCovers, setGeneratingCovers, setAnalysisError],
   );
 
-  const handleImportHtmlCard = useCallback(async () => {
-    if (!window.electronAPI?.selectHtmlFile) {
-      setAnalysisError('当前环境不支持导入 HTML 卡片');
+  const importHtmlCardFromFile = useCallback(async (selectedFile: { path: string; content: string }) => {
+    if (!selectedFile.content.trim()) {
+      setAnalysisError('导入的 HTML 文件内容为空，请重新选择');
       return;
     }
 
     try {
-      const selectedFile = await window.electronAPI.selectHtmlFile();
-      if (!selectedFile) {
-        return;
-      }
-
-      if (!selectedFile.content.trim()) {
-        setAnalysisError('导入的 HTML 文件内容为空，请重新选择');
-        return;
-      }
-
       const nextCardStartMs = (analysisResult?.cards ?? []).reduce(
         (maxEnd, card) =>
           Math.max(maxEnd, Number.isFinite(card.endMs) ? Math.max(0, Math.round(card.endMs)) : 0),
@@ -467,6 +477,71 @@ export function AIPanel({
     setAnalysisResult,
     setCoverCandidates,
   ]);
+
+  const handleImportHtmlCard = useCallback(async () => {
+    if (!window.electronAPI?.selectHtmlFile) {
+      setAnalysisError('当前环境不支持导入 HTML 卡片');
+      return;
+    }
+
+    const selectedFile = await window.electronAPI.selectHtmlFile();
+    if (!selectedFile) {
+      return;
+    }
+
+    await importHtmlCardFromFile(selectedFile);
+  }, [importHtmlCardFromFile, setAnalysisError]);
+
+  const handleImportHtmlDragOver = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
+    if (isAnalyzing || !Array.from(event.dataTransfer.types).includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    const getPathForFile = window.electronAPI?.getPathForFile ?? (() => '');
+    const droppedFile = findDroppedHtmlFile(event.dataTransfer.files, getPathForFile);
+    const hasPendingExternalFiles = event.dataTransfer.files.length === 0;
+    event.dataTransfer.dropEffect = droppedFile || hasPendingExternalFiles ? 'copy' : 'none';
+    setIsImportDragActive(Boolean(droppedFile) || hasPendingExternalFiles);
+  }, [isAnalyzing]);
+
+  const handleImportHtmlDragLeave = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      return;
+    }
+
+    setIsImportDragActive(false);
+  }, []);
+
+  const handleImportHtmlDrop = useCallback(async (event: React.DragEvent<HTMLButtonElement>) => {
+    if (!Array.from(event.dataTransfer.types).includes('Files')) {
+      return;
+    }
+
+    event.preventDefault();
+    setIsImportDragActive(false);
+
+    if (isAnalyzing) {
+      return;
+    }
+
+    const getPathForFile = window.electronAPI?.getPathForFile ?? (() => '');
+    const droppedFile = findDroppedHtmlFile(event.dataTransfer.files, getPathForFile);
+    if (!droppedFile) {
+      setAnalysisError('请拖入 HTML 文件（.html 或 .htm）。');
+      return;
+    }
+
+    try {
+      const content = await droppedFile.file.text();
+      await importHtmlCardFromFile({
+        path: droppedFile.path,
+        content,
+      });
+    } catch (error) {
+      setAnalysisError(error instanceof Error ? error.message : '导入 HTML 卡片失败');
+    }
+  }, [importHtmlCardFromFile, isAnalyzing, setAnalysisError]);
 
   const handleRegenerateCoverPrompt = useCallback(async () => {
     if (!analysisResult) {
@@ -776,28 +851,48 @@ export function AIPanel({
 
             {hasGeneratedCards ? (
               <section className={styles.cardsSection}>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className={[
+                    styles.importRowButton,
+                    isImportDragActive ? styles.importRowButtonActive : '',
+                  ].filter(Boolean).join(' ')}
+                  data-ai-import-row="true"
+                  data-drag-active={isImportDragActive ? 'true' : 'false'}
+                  onClick={() => void handleImportHtmlCard()}
+                  onDragOver={handleImportHtmlDragOver}
+                  onDragEnter={handleImportHtmlDragOver}
+                  onDragLeave={handleImportHtmlDragLeave}
+                  onDrop={(event) => void handleImportHtmlDrop(event)}
+                  disabled={isAnalyzing}
+                >
+                  <span className={styles.importRowContent}>
+                    <AppIcon name="upload" size={14} />
+                    <span className={styles.importRowTextGroup}>
+                      <span className={styles.importRowTitle}>
+                        {isImportDragActive ? '松开导入 HTML 卡片' : '导入 HTML 卡片'}
+                      </span>
+                      <span className={styles.importRowHint}>
+                        {isImportDragActive
+                          ? '将自动创建为数据卡片，默认使用画中画模式'
+                          : '支持点击选择，也支持把 .html / .htm 文件直接拖到这里'}
+                      </span>
+                    </span>
+                  </span>
+                </Button>
+
                 <ActionBar
                   className={styles.actionBar}
                   data-ai-action-bar="true"
                   start={
-                    <div className={styles.actionGroup}>
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        onClick={() => void handleImportHtmlCard()}
-                        disabled={isAnalyzing}
-                      >
-                        导入 HTML 卡片
-                      </Button>
-
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        onClick={handleSelectAllCards}
-                      >
-                        {allCardsSelected ? '取消全选' : '全选'}
-                      </Button>
-                    </div>
+                    <Button
+                      variant="secondary"
+                      size="xs"
+                      onClick={handleSelectAllCards}
+                    >
+                      {allCardsSelected ? '取消全选' : '全选'}
+                    </Button>
                   }
                   center={
                     <div className={styles.selectionSummary} data-ai-selection-summary="true">

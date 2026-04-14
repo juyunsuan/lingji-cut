@@ -251,17 +251,86 @@
   min-width: 0;
 }
 
+.importRowButton {
+  width: 100%;
+  height: auto;
+  min-height: 48px;
+  justify-content: flex-start;
+  padding: 8px 12px;
+  border: 1px dashed color-mix(in srgb, var(--color-selection-blue) 42%, transparent);
+  border-radius: 10px;
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-selection-blue) 8%, var(--color-panel-elevated)),
+      color-mix(in srgb, var(--color-selection-blue) 3%, var(--color-panel-elevated))
+    );
+  color: color-mix(in srgb, var(--color-selection-blue) 72%, white);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.importRowButtonActive {
+  border-color: color-mix(in srgb, var(--color-selection-blue) 72%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-selection-blue) 18%, var(--color-panel-elevated)),
+      color-mix(in srgb, var(--color-selection-blue) 10%, var(--color-panel-elevated))
+    );
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-selection-blue) 18%, transparent);
+}
+
+.importRowButton:hover {
+  border-color: color-mix(in srgb, var(--color-selection-blue) 58%, transparent);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-selection-blue) 12%, var(--color-panel-elevated)),
+      color-mix(in srgb, var(--color-selection-blue) 6%, var(--color-panel-elevated))
+    );
+}
+
+.importRowButton:disabled {
+  opacity: 0.5;
+}
+
+.importRowContent {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.importRowTextGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-width: 0;
+}
+
+.importRowTitle {
+  color: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.importRowHint {
+  color: color-mix(in srgb, var(--color-text-muted) 88%, white);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.35;
+  text-align: left;
+}
+
 .actionBar {
   gap: 6px;
   min-height: 28px;
   margin-bottom: 6px;
-}
-
-.actionGroup {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
 }
 
 .selectionSummary {
