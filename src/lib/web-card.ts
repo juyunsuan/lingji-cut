@@ -7,6 +7,24 @@ export interface ImportedHtmlFile {
   content: string;
 }
 
+function decodeHtmlEntities(source: string): string {
+  return source
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&#(\d+);/g, (_, value: string) => String.fromCodePoint(Number.parseInt(value, 10)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, value: string) =>
+      String.fromCodePoint(Number.parseInt(value, 16)),
+    );
+}
+
+function normalizeTextContent(source: string): string {
+  return decodeHtmlEntities(source.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+}
+
 export function appendCacheBuster(url: string, cacheKey?: number): string {
   if (!url || !Number.isFinite(cacheKey)) {
     return url;
@@ -140,6 +158,16 @@ html, body {
   }
 
   return result;
+}
+
+export function extractHtmlTitle(source: string): string | null {
+  const match = /<title[^>]*>([\s\S]*?)<\/title>/i.exec(source);
+  if (!match) {
+    return null;
+  }
+
+  const normalizedTitle = normalizeTextContent(match[1] ?? '');
+  return normalizedTitle || null;
 }
 
 export function createImportedHtmlWebCardPayload(
