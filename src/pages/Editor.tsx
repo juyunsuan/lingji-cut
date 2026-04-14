@@ -1,9 +1,9 @@
-import type { MouseEvent as ReactMouseEvent } from 'react';
 import { type PlayerRef } from '@remotion/player';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AIPanel } from '../components/AIPanel';
 import { AssetPanel } from '../components/AssetPanel';
 import { EditorInspector, type InspectorSelection } from '../components/EditorInspector';
+import { ResizeHandle } from '../components/ResizeHandle';
 import { useTaskProgressStore } from '../store/task-progress';
 import { ExportSettingsModal } from '../components/ExportSettingsModal';
 import { PreviewPanel } from '../components/PreviewPanel';
@@ -64,20 +64,33 @@ interface EditorProps {
 }
 
 const TIMELINE_PANEL_HEIGHT_KEY = 'podcast-editor-timeline-panel-height';
-const TIMELINE_RESIZE_HANDLE_HEIGHT = 6;
+const SIDEBAR_WIDTH_KEY = 'podcast-editor-sidebar-width';
+const INSPECTOR_WIDTH_KEY = 'podcast-editor-inspector-width';
+const RESIZE_HANDLE_THICKNESS = 6;
+const SIDEBAR_DEFAULT_WIDTH = 224;
+const INSPECTOR_DEFAULT_WIDTH = 260;
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_MAX_WIDTH = 420;
+const INSPECTOR_MIN_WIDTH = 220;
+const INSPECTOR_MAX_WIDTH = 480;
+const PREVIEW_MIN_WIDTH = 360;
 
-function readStoredTimelinePanelHeight(): number | null {
+function readStoredNumber(key: string): number | null {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
     return null;
   }
 
-  const raw = window.localStorage.getItem(TIMELINE_PANEL_HEIGHT_KEY);
+  const raw = window.localStorage.getItem(key);
   if (!raw) {
     return null;
   }
 
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
 }
 
 export function Editor({
@@ -96,9 +109,9 @@ export function Editor({
   const playerRef = useRef<PlayerRef>(null);
   const timelineWrapRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
-  const dragStateRef = useRef<{ startY: number; startHeight: number } | null>(null);
   const [timelinePanelHeight, setTimelinePanelHeight] = useState(layout.timelineHeight);
-  const [isResizingTimeline, setIsResizingTimeline] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
+  const [inspectorWidth, setInspectorWidth] = useState(INSPECTOR_DEFAULT_WIDTH);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [isExportSettingsOpen, setIsExportSettingsOpen] = useState(false);
@@ -239,14 +252,46 @@ export function Editor({
     return () => { cancelled = true; };
   }, [projectDir, setCoverCandidates]);
 
+  const sidebarMaxWidth = useMemo(
+    () => Math.min(
+      SIDEBAR_MAX_WIDTH,
+      Math.max(SIDEBAR_MIN_WIDTH, viewport.width - inspectorWidth - PREVIEW_MIN_WIDTH - RESIZE_HANDLE_THICKNESS * 2),
+    ),
+    [inspectorWidth, viewport.width],
+  );
+
+  const inspectorMaxWidth = useMemo(
+    () => Math.min(
+      INSPECTOR_MAX_WIDTH,
+      Math.max(INSPECTOR_MIN_WIDTH, viewport.width - sidebarWidth - PREVIEW_MIN_WIDTH - RESIZE_HANDLE_THICKNESS * 2),
+    ),
+    [sidebarWidth, viewport.width],
+  );
+
   useEffect(() => {
     setTimelinePanelHeight((currentHeight) => {
-      const storedHeight = readStoredTimelinePanelHeight();
+      const storedHeight = readStoredNumber(TIMELINE_PANEL_HEIGHT_KEY);
       const nextHeight = storedHeight ?? currentHeight ?? layout.timelineHeight;
 
-      return Math.max(panelBounds.minHeight, Math.min(panelBounds.maxHeight, nextHeight));
+      return clamp(nextHeight, panelBounds.minHeight, panelBounds.maxHeight);
     });
   }, [layout.timelineHeight, panelBounds.maxHeight, panelBounds.minHeight]);
+
+  useEffect(() => {
+    setSidebarWidth((current) => {
+      const stored = readStoredNumber(SIDEBAR_WIDTH_KEY);
+      const next = stored ?? current ?? SIDEBAR_DEFAULT_WIDTH;
+      return clamp(next, SIDEBAR_MIN_WIDTH, sidebarMaxWidth);
+    });
+  }, [sidebarMaxWidth]);
+
+  useEffect(() => {
+    setInspectorWidth((current) => {
+      const stored = readStoredNumber(INSPECTOR_WIDTH_KEY);
+      const next = stored ?? current ?? INSPECTOR_DEFAULT_WIDTH;
+      return clamp(next, INSPECTOR_MIN_WIDTH, inspectorMaxWidth);
+    });
+  }, [inspectorMaxWidth]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
@@ -257,34 +302,18 @@ export function Editor({
   }, [timelinePanelHeight]);
 
   useEffect(() => {
-    if (!isResizingTimeline) {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
       return;
     }
+    window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
 
-    const handleMouseMove = (event: globalThis.MouseEvent) => {
-      const dragState = dragStateRef.current;
-      if (!dragState) {
-        return;
-      }
-
-      const nextHeight = dragState.startHeight - (event.clientY - dragState.startY);
-      setTimelinePanelHeight(
-        Math.max(panelBounds.minHeight, Math.min(panelBounds.maxHeight, Math.round(nextHeight))),
-      );
-    };
-    const handleMouseUp = () => {
-      dragStateRef.current = null;
-      setIsResizingTimeline(false);
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizingTimeline, panelBounds.maxHeight, panelBounds.minHeight]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(INSPECTOR_WIDTH_KEY, String(inspectorWidth));
+  }, [inspectorWidth]);
 
   useEffect(() => {
     const cleanup = window.electronAPI.onRenderProgress((progress) => {
@@ -640,18 +669,6 @@ export function Editor({
     [],
   );
 
-  const handleTimelineResizeStart = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
-      event.preventDefault();
-      dragStateRef.current = {
-        startY: event.clientY,
-        startHeight: timelinePanelHeight,
-      };
-      setIsResizingTimeline(true);
-    },
-    [timelinePanelHeight],
-  );
-
   const handleConfirmExport = useCallback(async ({ outputPath: savePath, exportConfig }: {
     outputPath: string;
     exportConfig: ExportConfig;
@@ -698,7 +715,7 @@ export function Editor({
       className={styles.root}
       data-editor-region="root"
       style={{
-        gridTemplateRows: `minmax(0, 1fr) ${TIMELINE_RESIZE_HANDLE_HEIGHT}px ${timelinePanelHeight}px`,
+        gridTemplateRows: `minmax(0, 1fr) ${RESIZE_HANDLE_THICKNESS}px ${timelinePanelHeight}px`,
       }}
     >
       <div
@@ -707,10 +724,11 @@ export function Editor({
         style={{
           gridTemplateColumns: layout.stackSidebar
             ? 'minmax(0, 1fr)'
-            : '224px minmax(0, 1fr) 260px',
+            : `${sidebarWidth}px ${RESIZE_HANDLE_THICKNESS}px minmax(0, 1fr) ${RESIZE_HANDLE_THICKNESS}px ${inspectorWidth}px`,
           gridTemplateRows: layout.stackSidebar
             ? `minmax(0, 1fr) ${layout.sidebarRailHeight}px`
             : 'minmax(0, 1fr)',
+          gap: layout.stackSidebar ? '1px' : '0',
         }}
       >
         {layout.stackSidebar && inspectorSelection.type !== 'empty' ? (
@@ -832,6 +850,18 @@ export function Editor({
                 )}
               </div>
             </div>
+            {!layout.stackSidebar ? (
+              <ResizeHandle
+                axis="x"
+                direction="grow"
+                value={sidebarWidth}
+                min={SIDEBAR_MIN_WIDTH}
+                max={sidebarMaxWidth}
+                onChange={setSidebarWidth}
+                ariaLabel="调整侧边栏宽度"
+                thickness={RESIZE_HANDLE_THICKNESS}
+              />
+            ) : null}
             <div className={styles.previewWrap}>
               <PreviewPanel
                 playerRef={playerRef}
@@ -849,35 +879,47 @@ export function Editor({
               />
             </div>
             {!layout.stackSidebar ? (
-              <div className={styles.inspectorWrap}>
-                <EditorInspector
-                  assetCount={assets.length}
-                  isProjectMetaLoading={isProjectMetaLoading}
-                  overlayCount={overlayCount}
-                  projectDir={projectDir}
-                  projectMeta={projectMeta}
-                  selection={inspectorSelection}
-                  timelineFps={fps}
-                  timelineWidth={timeline.width}
-                  timelineHeight={timeline.height}
-                  onClose={handleCloseInspector}
+              <>
+                <ResizeHandle
+                  axis="x"
+                  direction="shrink"
+                  value={inspectorWidth}
+                  min={INSPECTOR_MIN_WIDTH}
+                  max={inspectorMaxWidth}
+                  onChange={setInspectorWidth}
+                  ariaLabel="调整详情面板宽度"
+                  thickness={RESIZE_HANDLE_THICKNESS}
                 />
-              </div>
+                <div className={styles.inspectorWrap}>
+                  <EditorInspector
+                    assetCount={assets.length}
+                    isProjectMetaLoading={isProjectMetaLoading}
+                    overlayCount={overlayCount}
+                    projectDir={projectDir}
+                    projectMeta={projectMeta}
+                    selection={inspectorSelection}
+                    timelineFps={fps}
+                    timelineWidth={timeline.width}
+                    timelineHeight={timeline.height}
+                    onClose={handleCloseInspector}
+                  />
+                </div>
+              </>
             ) : null}
           </>
         )}
       </div>
 
-      <div
-        onMouseDown={handleTimelineResizeStart}
-        className={[
-          styles.resizeHandle,
-          isResizingTimeline ? styles.resizeActive : '',
-        ].filter(Boolean).join(' ')}
-        data-editor-region="resize-handle"
-      >
-        <div className={styles.resizeThumb} />
-      </div>
+      <ResizeHandle
+        axis="y"
+        direction="shrink"
+        value={timelinePanelHeight}
+        min={panelBounds.minHeight}
+        max={panelBounds.maxHeight}
+        onChange={setTimelinePanelHeight}
+        ariaLabel="调整时间线面板高度"
+        thickness={RESIZE_HANDLE_THICKNESS}
+      />
 
       <div
         ref={timelineWrapRef}

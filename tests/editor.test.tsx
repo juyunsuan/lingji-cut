@@ -114,7 +114,10 @@ describe('Editor', () => {
     expect(html).toContain('素材');
     expect(html).toContain('AI 助手');
     expect(html).toContain('data-editor-region="inspector-shell"');
-    expect(html).toContain('224px minmax(0, 1fr) 260px');
+    expect(html).toContain('224px 6px minmax(0, 1fr) 6px 260px');
+    expect(html).toContain('aria-label="调整侧边栏宽度"');
+    expect(html).toContain('aria-label="调整详情面板宽度"');
+    expect(html).toContain('aria-label="调整时间线面板高度"');
   });
 
   it('clips the timeline row so the lower panel shadow cannot overlap the sidebar footer', async () => {

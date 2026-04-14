@@ -1,6 +1,7 @@
 /* 左侧素材面板 — design.pen */
 .root {
-  width: 224px;
+  width: 100%;
+  min-width: 0;
   flex-shrink: 0;
   background: var(--color-panel-bg);
   display: flex;
@@ -17,7 +18,7 @@
 }
 
 .regular {
-  width: 224px;
+  width: 100%;
 }
 
 /* ── AI 一键剪辑按钮 ── */
@@ -254,9 +255,10 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 64px);
+  grid-template-columns: repeat(auto-fill, 64px);
   gap: 4px;
   align-content: start;
+  justify-content: start;
 }
 
 .assetSlot {
