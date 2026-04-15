@@ -461,9 +461,11 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
         ...prev.timeline,
         subtitleHighlights: remapped,
       });
+      // 注意：buildCommittedTimelineState 仅快照 timeline，不包含 srtEntries。
+      // 因此 undo 可还原 subtitleHighlights，但 srtEntries 不会随之还原（已知限制）。
       return {
+        ...buildCommittedTimelineState(prev, nextTimeline),
         srtEntries: nextEntries,
-        timeline: nextTimeline,
       };
     });
     return { droppedHighlights: dropped.length };
@@ -483,9 +485,10 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
         ...prev.timeline,
         subtitleHighlights: remapped,
       });
+      // 注意：与 resegmentSubtitles 相同，srtEntries 不在 undo/redo 快照范围内（已知限制）。
       return {
+        ...buildCommittedTimelineState(prev, nextTimeline),
         srtEntries: baseline,
-        timeline: nextTimeline,
       };
     });
   },
