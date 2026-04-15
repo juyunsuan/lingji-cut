@@ -39,13 +39,13 @@
   place-items: center;
   background: var(--color-control-bg);
   color: var(--color-text-primary);
-  font-size: 22px;
+  font-size: var(--font-size-3xl);
 }
 
 .compact .icon {
   width: 36px;
   height: 36px;
-  font-size: 18px;
+  font-size: var(--font-size-2xl);
 }
 
 .eyebrow {
@@ -59,13 +59,13 @@
 .title {
   margin: 4px 0 0;
   color: var(--color-text-primary);
-  font-size: 18px;
+  font-size: var(--font-size-2xl);
   font-weight: 600;
   line-height: 1.2;
 }
 
 .compact .title {
-  font-size: 16px;
+  font-size: var(--font-size-xl);
 }
 
 .value {

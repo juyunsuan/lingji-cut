@@ -13,20 +13,20 @@
 }
 
 .overlayBox.hovered {
-  border: 1px dashed rgba(255, 255, 255, 0.3);
+  border: 1px dashed color-mix(in srgb, var(--color-text-primary) 30%, transparent);
 }
 
 .overlayBox.selected {
-  border: 2px solid var(--color-selection-blue, #3b82f6);
+  border: 2px solid var(--color-selection-blue);
 }
 
 .handle {
   position: absolute;
   width: 10px;
   height: 10px;
-  background: #fff;
-  border: 2px solid var(--color-selection-blue, #3b82f6);
-  border-radius: 2px;
+  background: var(--color-text-primary);
+  border: 2px solid var(--color-selection-blue);
+  border-radius: var(--radius-sm);
   box-sizing: border-box;
 }
 

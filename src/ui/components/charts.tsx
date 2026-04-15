@@ -18,20 +18,24 @@ import {
 	YAxis,
 } from "recharts";
 
-// Default chart colors
-const FALLBACK_COLORS = {
-	blue: "#60a5fa",
-	green: "#34d399",
-	yellow: "#fbbf24",
-	red: "#f87171",
-	purple: "#a78bfa",
-	pink: "#f472b6",
-	orange: "#fb923c",
-	teal: "#2dd4bf",
-};
+// Default chart palette — 派生自设计系统变量。
+// 图表的多维配色以系统蓝为主，辅以语义色与 AI 主题色，保证与整体主题一致。
+const DEFAULT_COLORS = [
+	"var(--color-system-blue)",
+	"var(--color-success)",
+	"var(--color-warning)",
+	"var(--color-danger)",
+	"var(--color-brand-warm)",
+	"var(--color-brand-accent)",
+	"var(--color-text-secondary)",
+	"var(--color-text-tertiary)",
+];
 
-// For SSR, provide static fallbacks
-const DEFAULT_COLORS = Object.values(FALLBACK_COLORS);
+// Axis / grid tokens
+const CHART_GRID_STROKE = "var(--color-separator)";
+const CHART_AXIS_STROKE = "var(--color-border-strong)";
+const CHART_AXIS_TICK_FILL = "var(--color-text-tertiary)";
+const CHART_LEGEND_COLOR = "var(--color-text-tertiary)";
 
 // Custom Tooltip Component
 interface TooltipPayload {
@@ -49,25 +53,49 @@ interface CustomTooltipProps {
 const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
 	if (active && payload && payload.length) {
 		return (
-			<div className="bg-zinc-900/95 border border-white/10 rounded-md p-3 shadow-sm backdrop-blur-sm">
+			<div
+				style={{
+					background: "var(--color-panel-elevated)",
+					border: "1px solid var(--color-separator)",
+					borderRadius: "var(--radius-md)",
+					padding: "var(--space-6)",
+					boxShadow: "var(--shadow-dropdown)",
+					backdropFilter: "var(--backdrop-blur)",
+				}}
+			>
 				{label && (
-					<p className="text-zinc-100 font-medium mb-2">
+					<p
+						style={{
+							color: "var(--color-text-primary)",
+							fontWeight: 500,
+							marginBottom: "var(--space-4)",
+						}}
+					>
 						{label}
 					</p>
 				)}
 				{payload.map((entry, index) => (
 					<div
 						key={`${entry.name}-${index}`}
-						className="flex items-center gap-2 text-sm"
+						style={{
+							display: "flex",
+							alignItems: "center",
+							gap: "var(--space-4)",
+							fontSize: "var(--font-size-md)",
+						}}
 					>
 						<div
-							className="w-3 h-3 rounded-full"
-							style={{ backgroundColor: entry.color }}
+							style={{
+								width: 12,
+								height: 12,
+								borderRadius: "var(--radius-pill)",
+								backgroundColor: entry.color,
+							}}
 						/>
-						<span className="text-zinc-400">
+						<span style={{ color: "var(--color-text-tertiary)" }}>
 							{entry.name}:
 						</span>
-						<span className="text-zinc-100 font-medium">
+						<span style={{ color: "var(--color-text-primary)", fontWeight: 500 }}>
 							{entry.value}
 						</span>
 					</div>
@@ -102,22 +130,22 @@ export function BarChart({
 				{showGrid && (
 					<CartesianGrid
 						strokeDasharray="3 3"
-						stroke="#27272a"
+						stroke={CHART_GRID_STROKE}
 					/>
 				)}
 				<XAxis
 					dataKey={xKey}
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<YAxis
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<Tooltip content={<CustomTooltip />} />
 				{showLegend && (
 					<Legend
-						wrapperStyle={{ color: "#a1a1aa" }}
+						wrapperStyle={{ color: CHART_LEGEND_COLOR }}
 						iconType="circle"
 					/>
 				)}
@@ -164,22 +192,22 @@ export function LineChart({
 				{showGrid && (
 					<CartesianGrid
 						strokeDasharray="3 3"
-						stroke="#27272a"
+						stroke={CHART_GRID_STROKE}
 					/>
 				)}
 				<XAxis
 					dataKey={xKey}
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<YAxis
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<Tooltip content={<CustomTooltip />} />
 				{showLegend && (
 					<Legend
-						wrapperStyle={{ color: "#a1a1aa" }}
+						wrapperStyle={{ color: CHART_LEGEND_COLOR }}
 						iconType="circle"
 					/>
 				)}
@@ -237,22 +265,22 @@ export function AreaChart({
 				{showGrid && (
 					<CartesianGrid
 						strokeDasharray="3 3"
-						stroke="#27272a"
+						stroke={CHART_GRID_STROKE}
 					/>
 				)}
 				<XAxis
 					dataKey={xKey}
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<YAxis
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<Tooltip content={<CustomTooltip />} />
 				{showLegend && (
 					<Legend
-						wrapperStyle={{ color: "#a1a1aa" }}
+						wrapperStyle={{ color: CHART_LEGEND_COLOR }}
 						iconType="circle"
 					/>
 				)}
@@ -316,7 +344,7 @@ export function PieChart({
 						const entry = data[props.index];
 						return `${entry[nameKey]}: ${entry[valueKey]}`;
 					}}
-					labelLine={{ stroke: "#3f3f46" }}
+					labelLine={{ stroke: CHART_AXIS_STROKE }}
 				>
 					{data.map((item, index) => (
 						<Cell
@@ -328,7 +356,7 @@ export function PieChart({
 				<Tooltip content={<CustomTooltip />} />
 				{showLegend && (
 					<Legend
-						wrapperStyle={{ color: "#a1a1aa" }}
+						wrapperStyle={{ color: CHART_LEGEND_COLOR }}
 						iconType="circle"
 					/>
 				)}
@@ -388,22 +416,22 @@ export function StackedBarChart({
 				{showGrid && (
 					<CartesianGrid
 						strokeDasharray="3 3"
-						stroke="#27272a"
+						stroke={CHART_GRID_STROKE}
 					/>
 				)}
 				<XAxis
 					dataKey={xKey}
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<YAxis
-					stroke="#3f3f46"
-					tick={{ fill: "#a1a1aa", fontSize: 12 }}
+					stroke={CHART_AXIS_STROKE}
+					tick={{ fill: CHART_AXIS_TICK_FILL, fontSize: 12 }}
 				/>
 				<Tooltip content={<CustomTooltip />} />
 				{showLegend && (
 					<Legend
-						wrapperStyle={{ color: "#a1a1aa" }}
+						wrapperStyle={{ color: CHART_LEGEND_COLOR }}
 						iconType="circle"
 					/>
 				)}

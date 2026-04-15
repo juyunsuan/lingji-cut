@@ -8,3 +8,7 @@ export * from './SaveButton';
 export * from './SettingsPageHeader';
 export * from './StepIndicator';
 export * from './SummaryCard';
+export * from './QuickActionCard';
+export * from './FileSelectionGroup';
+export * from './InspectorSection';
+export * from './StatusCheckRow';

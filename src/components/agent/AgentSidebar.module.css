@@ -1,8 +1,8 @@
 .sidebar {
   width: 420px;
   flex-shrink: 0;
-  border-left: 1px solid var(--color-border-subtle, #38383A);
-  background: #1C1C1E;
+  border-left: 1px solid var(--color-border-subtle);
+  background: var(--color-window-bg);
   display: flex;
   flex-direction: row;
   height: 100%;
@@ -18,7 +18,7 @@
 }
 
 .resizeHandle:hover {
-  background: #0A84FF40;
+  background: color-mix(in srgb, var(--color-selection-blue) 25%, transparent);
 }
 
 .content {

@@ -19,8 +19,8 @@
 .heroBanner {
   position: relative;
   height: 140px;
-  margin: 16px 20px 0;
-  border-radius: 12px;
+  margin: var(--space-8) var(--space-8) 0 var(--space-8);
+  border-radius: var(--radius-2xl);
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -50,20 +50,19 @@
 .projectBadge {
   position: absolute;
   top: 14px;
-  left: 16px;
+  left: var(--space-8);
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 4px 12px;
-  border-radius: 980px;
-  background: rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  color: rgba(255, 255, 255, 0.85);
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 12px;
+  padding: var(--space-2) var(--space-6);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-text-primary) 12%, transparent);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  color: color-mix(in srgb, var(--color-text-primary) 85%, transparent);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
   font-weight: 500;
-  letter-spacing: -0.01em;
   z-index: 2;
 }
 
@@ -72,29 +71,28 @@
   z-index: 2;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 28px;
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  color: white;
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 15px;
+  gap: var(--space-4);
+  padding: var(--space-5) 28px;
+  background: color-mix(in srgb, var(--color-text-primary) 15%, transparent);
+  backdrop-filter: var(--backdrop-blur);
+  -webkit-backdrop-filter: var(--backdrop-blur);
+  border: 1px solid color-mix(in srgb, var(--color-text-primary) 20%, transparent);
+  border-radius: var(--radius-lg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-2xl);
   font-weight: 600;
-  letter-spacing: -0.02em;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease;
+  transition: background-color var(--motion-fast), border-color var(--motion-fast);
 }
 
 .createButton:hover {
-  background: rgba(255, 255, 255, 0.22);
-  border-color: rgba(255, 255, 255, 0.35);
+  background: color-mix(in srgb, var(--color-text-primary) 22%, transparent);
+  border-color: color-mix(in srgb, var(--color-text-primary) 35%, transparent);
 }
 
 .createButton:active {
-  background: rgba(255, 255, 255, 0.1);
+  background: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
 }
 
 /* ── 快捷功能行 ── */
@@ -102,7 +100,7 @@
 .quickBar {
   display: flex;
   gap: 24px;
-  padding: 20px 20px 16px;
+  padding: 20px 20px var(--space-8);
   flex-shrink: 0;
 }
 
@@ -110,7 +108,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   background: transparent;
   border: none;
   padding: 0;
@@ -120,28 +118,27 @@
 .quickItemIcon {
   width: 56px;
   height: 56px;
-  background: #2C2C2E;
-  border: 1px solid #3A3A3C;
-  border-radius: 14px;
+  background: var(--color-panel-elevated);
+  border: 1px solid var(--color-control-bg);
+  border-radius: var(--radius-2xl);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #EBEBF5CC;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+  color: color-mix(in srgb, var(--color-text-primary) 80%, transparent);
+  transition: border-color var(--motion-fast), background-color var(--motion-fast), color var(--motion-fast);
 }
 
 .quickItem:hover .quickItemIcon {
-  border-color: #0A84FF;
-  background: #333335;
-  color: #0A84FF;
+  border-color: var(--color-system-blue);
+  background: color-mix(in srgb, var(--color-panel-elevated) 85%, var(--color-text-primary));
+  color: var(--color-system-blue);
 }
 
 .quickItemLabel {
-  color: #EBEBF580;
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 12px;
+  color: var(--color-text-secondary-strong);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
   font-weight: 500;
-  letter-spacing: -0.01em;
 }
 
 /* ── 本地草稿 ── */
@@ -150,7 +147,7 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 4px 20px 20px;
+  padding: var(--space-2) 20px 20px;
 }
 
 /* ── 导入弹窗内部样式 ── */
@@ -159,22 +156,22 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 14px;
-  background: #2C2C2E;
-  border: 1px dashed #48484A;
-  border-radius: 10px;
-  color: #EBEBF5CC;
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 13px;
+  gap: var(--space-5);
+  padding: var(--space-6) 14px;
+  background: var(--color-panel-elevated);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--radius-xl);
+  color: color-mix(in srgb, var(--color-text-primary) 80%, transparent);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-lg);
   cursor: pointer;
-  transition: border-color 0.15s ease, background-color 0.15s ease;
+  transition: border-color var(--motion-fast), background-color var(--motion-fast);
   text-align: left;
 }
 
 .dirPickerButton:hover {
-  border-color: #0A84FF;
-  background: #333335;
+  border-color: var(--color-system-blue);
+  background: color-mix(in srgb, var(--color-panel-elevated) 85%, var(--color-text-primary));
 }
 
 .dirPickerButton:disabled {
@@ -191,7 +188,7 @@
 }
 
 .scanResults {
-  margin-top: 16px;
+  margin-top: var(--space-8);
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -200,45 +197,45 @@
 .scanGroup {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .scanGroupHeader {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .scanIconOk {
-  color: #32D74B;
+  color: var(--color-success);
 }
 
 .scanIconWarn {
-  color: #FF9F0A;
+  color: var(--color-brand-warm);
 }
 
 .scanGroupTitle {
-  font-size: 13px;
+  font-size: var(--font-size-lg);
   font-weight: 600;
-  color: #EBEBF5CC;
+  color: color-mix(in srgb, var(--color-text-primary) 80%, transparent);
 }
 
 .scanGroupCount {
   font-weight: 400;
-  color: #EBEBF580;
-  margin-left: 4px;
+  color: var(--color-text-secondary-strong);
+  margin-left: var(--space-2);
 }
 
 .scanFileList {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
   padding-left: 20px;
 }
 
 .scanFileName {
-  font-size: 13px;
-  color: #EBEBF5;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -246,31 +243,31 @@
 
 .scanEmpty {
   padding-left: 20px;
-  font-size: 12px;
-  color: #EBEBF54D;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
 }
 
 /* ── 抖音导入弹窗样式 ── */
 
 .douyinUrlRow {
   display: flex;
-  gap: 8px;
+  gap: var(--space-4);
   align-items: stretch;
 }
 
 .douyinResultCard {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: var(--space-5);
   margin-top: 14px;
-  padding: 12px 14px;
-  background: rgba(50, 215, 75, 0.08);
-  border: 1px solid rgba(50, 215, 75, 0.2);
-  border-radius: 10px;
+  padding: var(--space-6) 14px;
+  background: var(--color-bg-success);
+  border: 1px solid color-mix(in srgb, var(--color-success) 20%, transparent);
+  border-radius: var(--radius-xl);
 }
 
 .douyinResultIcon {
-  color: #32D74B;
+  color: var(--color-success);
   flex-shrink: 0;
   margin-top: 1px;
 }
@@ -283,14 +280,14 @@
 }
 
 .douyinResultLabel {
-  font-size: 11px;
-  color: #EBEBF580;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary-strong);
   font-weight: 500;
 }
 
 .douyinResultTitle {
-  font-size: 13px;
-  color: #EBEBF5;
+  font-size: var(--font-size-lg);
+  color: var(--color-text-primary);
   font-weight: 600;
   word-break: break-all;
 }
@@ -298,13 +295,13 @@
 .douyinProjectPath {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 10px;
-  padding: 8px 12px;
-  background: rgba(10, 132, 255, 0.08);
-  border-radius: 8px;
-  font-size: 12px;
-  color: #EBEBF599;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-bg-info);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
 }
 
 @keyframes spin {

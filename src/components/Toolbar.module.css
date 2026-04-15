@@ -41,7 +41,7 @@
 .historyButton {
   color: color-mix(in srgb, var(--color-text-primary) 82%, transparent);
   background: transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   transition:
     color var(--motion-fast, 120ms),
     background var(--motion-fast, 120ms),
@@ -58,7 +58,7 @@
 }
 
 .historyButton[data-enabled='false'] {
-  color: color-mix(in srgb, var(--color-text-tertiary, #8E8E93) 72%, transparent);
+  color: color-mix(in srgb, var(--color-text-tertiary) 72%, transparent);
 }
 
 /* ── 居中标题（absolute，不影响 flex 两端） ── */
@@ -88,7 +88,7 @@
 .saveStatus {
   font-size: var(--font-size-xs);
   font-weight: 400;
-  color: rgba(235, 235, 245, 0.48);
+  color: var(--color-text-muted);
   line-height: 1;
 }
 

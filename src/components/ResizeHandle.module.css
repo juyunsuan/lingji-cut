@@ -25,7 +25,7 @@
 
 .thumb {
   background: var(--color-border-subtle);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   transition: background 200ms ease-out;
 }
 

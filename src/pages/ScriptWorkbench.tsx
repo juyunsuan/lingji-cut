@@ -1663,12 +1663,20 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                   <span>此文件已被外部修改，保存前需要先处理冲突。</span>
                 </div>
                 <div className={styles.conflictBannerActions}>
-                  <button type="button" onClick={() => handleUseExternalVersion(activeFile)}>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => handleUseExternalVersion(activeFile)}
+                  >
                     使用外部版本
-                  </button>
-                  <button type="button" onClick={() => clearConflict(activeFile)}>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => clearConflict(activeFile)}
+                  >
                     保留当前版本
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : null}

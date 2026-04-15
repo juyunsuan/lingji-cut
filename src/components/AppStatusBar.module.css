@@ -1,14 +1,15 @@
 .statusBar {
+  /* 铁律：AppStatusBar 高度必须保持 28px，不得修改 */
   height: 28px;
   flex-shrink: 0;
-  border-top: 1px solid var(--color-border-subtle, #38383A);
-  background: var(--color-panel-bg, #1C1C1E);
+  border-top: 1px solid var(--color-border-subtle);
+  background: var(--color-panel-bg);
   padding: 0 12px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 11px;
-  color: var(--color-text-tertiary, #8E8E93);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
   user-select: none;
   -webkit-app-region: no-drag;
   position: relative;
@@ -39,7 +40,7 @@
 }
 
 .contextUsage:hover {
-  color: var(--color-text-secondary, #EBEBF599) !important;
+  color: var(--color-text-secondary) !important;
   background: transparent !important;
 }
 
@@ -53,7 +54,7 @@
 }
 
 .connectionStatus:hover {
-  color: var(--color-text-secondary, #EBEBF599);
+  color: var(--color-text-secondary);
 }
 
 .statusDot {
@@ -65,20 +66,20 @@
 
 .statusDot[data-status="connected"],
 .statusDot[data-status="prompting"] {
-  background: #32D74B;
+  background: var(--color-success);
 }
 
 .statusDot[data-status="connecting"] {
-  background: #FFD60A;
+  background: var(--color-warning);
   animation: pulse 1.5s ease-in-out infinite;
 }
 
 .statusDot[data-status="disconnected"] {
-  background: #636366;
+  background: var(--color-text-quaternary);
 }
 
 .statusDot[data-status="error"] {
-  background: #FF453A;
+  background: var(--color-danger);
 }
 
 @keyframes pulse {
@@ -93,23 +94,23 @@
 
 .popover {
   padding: 12px;
-  background: var(--color-panel-bg, #1E1E20);
-  font-size: 12px;
-  color: var(--color-text-secondary, #EBEBF599);
+  background: var(--color-panel-bg);
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary);
 }
 
 .popoverTitle {
   font-weight: 600;
-  color: var(--color-text-primary, #EBEBF5);
+  color: var(--color-text-primary);
   margin-bottom: 8px;
-  font-size: 12px;
+  font-size: var(--font-size-md);
 }
 
 .progressBar {
   position: relative;
   height: 4px;
-  border-radius: 2px;
-  background: var(--color-border-subtle, #48484A);
+  border-radius: var(--radius-sm);
+  background: var(--color-border-subtle);
   overflow: hidden;
   margin: 6px 0;
 }
@@ -117,8 +118,8 @@
 .progressFill {
   position: absolute;
   inset: 0;
-  border-radius: 2px;
-  background: var(--color-text-secondary, #EBEBF599);
+  border-radius: var(--radius-sm);
+  background: var(--color-text-secondary);
   transition: width 0.3s ease;
 }
 

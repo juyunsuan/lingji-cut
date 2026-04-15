@@ -1,6 +1,6 @@
 import { Check, X } from 'lucide-react';
 import type { Annotation } from '../../store/script';
-import { Button } from '../../ui';
+import { Badge, Button } from '../../ui';
 import styles from './ReviewStatusBar.module.css';
 
 interface ReviewStatusBarProps {
@@ -27,19 +27,19 @@ export function ReviewStatusBar({
     <div className={styles.bar}>
       <div className={styles.stats}>
         {pending > 0 && (
-          <span className={`${styles.badge} ${styles.badgePending}`}>
+          <Badge variant="warning" className={styles.badge}>
             {pending} 待处理
-          </span>
+          </Badge>
         )}
         {accepted > 0 && (
-          <span className={`${styles.badge} ${styles.badgeAccepted}`}>
+          <Badge variant="success" className={styles.badge}>
             {accepted} 采纳
-          </span>
+          </Badge>
         )}
         {dismissed > 0 && (
-          <span className={`${styles.badge} ${styles.badgeDismissed}`}>
+          <Badge variant="secondary" className={styles.badge}>
             {dismissed} 忽略
-          </span>
+          </Badge>
         )}
         <span className={styles.sep}>/</span>
         <span className={styles.total}>{total} 条批注</span>

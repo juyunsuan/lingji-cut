@@ -6,8 +6,8 @@
 .section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--space-5);
+  padding: var(--space-6);
   min-width: 0;
 }
 
@@ -16,8 +16,8 @@
 }
 
 .sectionTitle {
-  color: #ffffff;
-  font-size: 12px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
   font-weight: 600;
   line-height: 1;
 }
@@ -25,14 +25,14 @@
 .pillRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .pillItem {
   min-height: 22px;
-  padding: 3px 8px;
-  font-size: 10px;
+  padding: 3px var(--space-4);
+  font-size: var(--font-size-xs);
   font-weight: 400;
   line-height: 1;
 }
@@ -44,50 +44,50 @@
 .fieldStack {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .fieldLabel {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 11px;
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-sm);
   line-height: 1;
 }
 
 .textInput,
 .textArea,
 .promptArea {
-  padding: 8px 10px;
-  border-color: #38383a;
-  background: #2c2c2e;
-  color: #ffffff;
+  padding: var(--space-4) var(--space-5);
+  border-color: var(--color-separator);
+  background: var(--color-panel-elevated);
+  color: var(--color-text-primary);
   box-shadow: none;
 }
 
 .textInput {
   min-height: 32px;
-  font-size: 12px;
+  font-size: var(--font-size-md);
 }
 
 .textArea {
   min-height: 72px;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .promptArea {
   min-height: 48px;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .promptArea::placeholder,
 .textArea::placeholder {
-  color: rgba(235, 235, 245, 0.3);
-  font-size: 11px;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
 }
 
 .inlineFieldRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
@@ -103,34 +103,34 @@
 .previewFrameShell {
   height: 130px;
   overflow: hidden;
-  border: 1px solid #38383a;
-  border-radius: 8px;
-  background: #1a1a2e;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-lg);
+  background: var(--color-preview-bg);
 }
 
 .importedSource {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
 .importedSourceBadge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
-  border-radius: 999px;
-  background: rgba(10, 132, 255, 0.12);
-  color: #8cc9ff;
-  font-size: 9px;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-system-blue) 12%, transparent);
+  color: color-mix(in srgb, var(--color-system-blue) 80%, var(--color-text-primary));
+  font-size: var(--font-size-xs);
   font-weight: 600;
   flex-shrink: 0;
 }
 
 .importedSourceName {
   min-width: 0;
-  color: rgba(235, 235, 245, 0.72);
-  font-size: 10px;
+  color: color-mix(in srgb, var(--color-text-primary) 72%, transparent);
+  font-size: var(--font-size-xs);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -141,7 +141,7 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #1a1a2e;
+  background: var(--color-preview-bg);
 }
 
 .previewCanvas {
@@ -176,33 +176,33 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .previewIcon {
-  color: rgba(235, 235, 245, 0.3);
+  color: var(--color-text-disabled);
 }
 
 .previewHint {
-  color: rgba(235, 235, 245, 0.3);
-  font-size: 11px;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
 }
 
 .previewBadge {
   display: inline-flex;
   align-items: center;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: rgba(10, 132, 255, 0.1);
-  color: #0a84ff;
-  font-size: 9px;
+  padding: 2px var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-info);
+  color: var(--color-system-blue);
+  font-size: var(--font-size-xs);
   font-weight: 600;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
@@ -212,7 +212,7 @@
 
 .dangerTitle {
   color: var(--color-danger);
-  font-size: 12px;
+  font-size: var(--font-size-md);
   font-weight: 600;
 }
 
@@ -222,9 +222,9 @@
 
 .errorText {
   color: var(--color-danger);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   line-height: 1.4;
-  padding: 0 12px 10px;
+  padding: 0 var(--space-6) var(--space-5);
 }
 
 @keyframes spin {

@@ -27,7 +27,7 @@
   justify-content: center;
   font-size: var(--font-size-sm);
   line-height: 1;
-  color: #98989D;
+  color: var(--color-text-tertiary);
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -36,7 +36,7 @@
 }
 
 .btn:hover:not(:disabled) {
-  color: #FFFFFF;
+  color: var(--color-text-primary);
   background: var(--color-panel-elevated);
 }
 
@@ -45,15 +45,15 @@
 }
 
 .btnActive {
-  background: rgba(10, 132, 255, 0.15);
-  color: #FFFFFF;
-  border-color: rgba(10, 132, 255, 0.4);
+  background: color-mix(in srgb, var(--color-system-blue) 15%, transparent);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-system-blue) 40%, transparent);
 }
 
 .btnActive:hover:not(:disabled) {
-  background: rgba(10, 132, 255, 0.22);
-  color: #FFFFFF;
-  border-color: rgba(10, 132, 255, 0.5);
+  background: color-mix(in srgb, var(--color-system-blue) 22%, transparent);
+  color: var(--color-text-primary);
+  border-color: color-mix(in srgb, var(--color-system-blue) 50%, transparent);
 }
 
 .btn:disabled {
@@ -68,7 +68,7 @@
 }
 
 .zoomResetLabel {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 600;
   letter-spacing: 0.02em;
 }

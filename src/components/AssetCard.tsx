@@ -86,8 +86,9 @@ export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart
       ].filter(Boolean).join(' ')}
     >
       {canRemove ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="icon"
           className={styles.removeButton}
           aria-label={`移除素材 ${asset.name}`}
           title="移除素材"
@@ -99,7 +100,7 @@ export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart
           }}
         >
           <AppIcon name="x" size={10} />
-        </button>
+        </Button>
       ) : null}
 
       {/* 顶部预览区 */}

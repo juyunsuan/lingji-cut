@@ -2,7 +2,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--space-8);
 }
 
 .header {
@@ -12,18 +12,18 @@
 }
 
 .title {
-  font-size: 12px;
+  font-size: var(--font-size-md);
   letter-spacing: 0.18em;
-  color: #EBEBF54D;
+  color: var(--color-text-muted);
   text-transform: uppercase;
 }
 
 .viewToggle {
   display: flex;
-  gap: 4px;
+  gap: var(--space-2);
   padding: 2px;
-  background: #2C2C2E;
-  border-radius: 6px;
+  background: var(--color-panel-elevated);
+  border-radius: var(--radius-md);
 }
 
 /* 网格视图 */
@@ -31,30 +31,30 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
+  gap: var(--space-8);
 }
 
 .card {
   position: relative;
-  background: #2C2C2E;
-  border: 1px solid #38383A;
-  border-radius: 16px;
+  background: var(--color-panel-elevated);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-2xl);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: transform var(--motion-fast), border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
 .card:hover {
   transform: translateY(-2px);
-  border-color: #0071e3;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  border-color: var(--color-system-blue);
+  box-shadow: var(--shadow-card);
 }
 
 .coverArea {
   position: relative;
   width: 100%;
   padding-top: 56.25%;
-  background: #1d1d1f;
+  background: var(--color-preview-bg);
   overflow: hidden;
 }
 
@@ -69,16 +69,16 @@
 }
 
 .infoArea {
-  padding: 14px 16px 16px;
+  padding: 14px var(--space-8) var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--space-3);
 }
 
 .projectName {
-  font-size: 15px;
-  font-weight: 650;
-  color: #EBEBF5;
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -91,13 +91,13 @@
 }
 
 .metaItem {
-  font-size: 11px;
-  color: #EBEBF580;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary-strong);
 }
 
 .projectPath {
-  font-size: 11px;
-  color: #EBEBF54D;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -105,10 +105,10 @@
 
 .removeButton {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: var(--space-4);
+  right: var(--space-4);
   opacity: 0;
-  transition: opacity 0.15s ease;
+  transition: opacity var(--motion-fast);
 }
 
 .card:hover .removeButton {
@@ -120,23 +120,22 @@
 .table {
   display: flex;
   flex-direction: column;
-  background: #1C1C1E;
-  border-radius: 8px;
+  background: var(--color-window-bg);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  border: 0.5px solid #38383A;
+  border: 0.5px solid var(--color-separator);
 }
 
 .tableHeader {
   display: flex;
   align-items: center;
   height: 28px;
-  padding: 0 12px;
-  background: #2C2C2E;
-  border-bottom: 0.5px solid #38383A;
-  font-size: 11px;
+  padding: 0 var(--space-6);
+  background: var(--color-panel-elevated);
+  border-bottom: 0.5px solid var(--color-separator);
+  font-size: var(--font-size-sm);
   font-weight: 500;
-  color: #EBEBF580;
-  letter-spacing: -0.06px;
+  color: var(--color-text-secondary-strong);
   user-select: none;
 }
 
@@ -149,10 +148,10 @@
   display: flex;
   align-items: center;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 var(--space-6);
   cursor: pointer;
-  transition: background 0.08s ease;
-  border-bottom: 0.5px solid rgba(56, 56, 58, 0.5);
+  transition: background var(--motion-fast);
+  border-bottom: 0.5px solid color-mix(in srgb, var(--color-separator) 50%, transparent);
 }
 
 .listRow:last-child {
@@ -160,11 +159,11 @@
 }
 
 .listRow:hover {
-  background: rgba(0, 113, 227, 0.12);
+  background: color-mix(in srgb, var(--color-system-blue) 12%, transparent);
 }
 
 .listRow:active {
-  background: rgba(0, 113, 227, 0.2);
+  background: color-mix(in srgb, var(--color-system-blue) 20%, transparent);
 }
 
 .colName {
@@ -172,24 +171,23 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 13px;
+  gap: var(--space-4);
+  font-size: var(--font-size-lg);
   font-weight: 400;
-  color: #EBEBF5;
-  letter-spacing: -0.08px;
+  color: var(--color-text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 16px;
+  padding-right: var(--space-8);
 }
 
 .rowThumb {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: #1d1d1f;
+  background: var(--color-preview-bg);
 }
 
 .rowThumbImg {
@@ -201,24 +199,22 @@
 
 .colDate {
   flex: 0 0 90px;
-  font-size: 12px;
-  color: #EBEBF580;
-  letter-spacing: -0.06px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-secondary-strong);
   white-space: nowrap;
   text-align: left;
-  padding-right: 16px;
+  padding-right: var(--space-8);
 }
 
 .colPath {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
-  color: #EBEBF54D;
-  letter-spacing: -0.06px;
+  font-size: var(--font-size-md);
+  color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding-right: 8px;
+  padding-right: var(--space-4);
 }
 
 .colAction {
@@ -227,7 +223,7 @@
 
 .listRemoveButton {
   opacity: 0;
-  transition: opacity 0.1s ease;
+  transition: opacity var(--motion-fast);
   flex-shrink: 0;
 }
 

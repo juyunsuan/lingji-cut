@@ -29,9 +29,9 @@ import { createReadOnlyGuard } from '../../lib/editor-readonly-guard';
 // --- Severity display config ---
 
 const SEVERITY_LABEL: Record<AnnotationSeverity, { color: string; text: string }> = {
-  error: { color: '#FF453A', text: '错误' },
-  warning: { color: '#FF9F0A', text: '警告' },
-  info: { color: '#0A84FF', text: '建议' },
+  error: { color: 'var(--color-danger)', text: '错误' },
+  warning: { color: 'var(--color-brand-warm)', text: '警告' },
+  info: { color: 'var(--color-system-blue)', text: '建议' },
 };
 
 // --- AnnotationPopover ---
@@ -78,14 +78,14 @@ function AnnotationPopover({
         zIndex: 9999,
         width: 320,
         padding: 14,
-        borderRadius: 10,
-        backgroundColor: '#2C2C2E',
-        border: `1px solid ${severity.color}40`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+        borderRadius: 'var(--radius-xl)',
+        backgroundColor: 'var(--color-panel-elevated)',
+        border: `1px solid color-mix(in srgb, ${severity.color} 25%, transparent)`,
+        boxShadow: 'var(--shadow-dropdown)',
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        fontSize: 12,
+        fontSize: 'var(--font-size-md)',
       }}
     >
       {/* header */}
@@ -104,7 +104,7 @@ function AnnotationPopover({
       </div>
 
       {/* issue */}
-      <div style={{ color: '#EBEBF599', lineHeight: 1.5 }}>
+      <div style={{ color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
         {annotation.issue}
       </div>
 
@@ -113,18 +113,18 @@ function AnnotationPopover({
         <div
           style={{
             padding: '8px 10px',
-            borderRadius: 6,
-            backgroundColor: `${severity.color}08`,
-            border: `1px solid ${severity.color}20`,
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: `color-mix(in srgb, ${severity.color} 3%, transparent)`,
+            border: `1px solid color-mix(in srgb, ${severity.color} 12%, transparent)`,
             lineHeight: 1.5,
           }}
         >
-          <div style={{ color: '#EBEBF54D', marginBottom: 4 }}>
+          <div style={{ color: 'var(--color-text-muted)', marginBottom: 4 }}>
             <span style={{ textDecoration: 'line-through' }}>
               {annotation.originalText}
             </span>
           </div>
-          <div style={{ color: '#EBEBF5CC' }}>{annotation.suggestion}</div>
+          <div style={{ color: 'color-mix(in srgb, var(--color-text-primary) 80%, transparent)' }}>{annotation.suggestion}</div>
         </div>
       )}
 
@@ -135,11 +135,11 @@ function AnnotationPopover({
           onClick={onDismiss}
           style={{
             padding: '6px 14px',
-            borderRadius: 6,
-            border: '1px solid #48484A',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--color-border-strong)',
             background: 'transparent',
-            color: '#EBEBF599',
-            fontSize: 12,
+            color: 'var(--color-text-secondary)',
+            fontSize: 'var(--font-size-md)',
             cursor: 'pointer',
           }}
         >
@@ -151,11 +151,11 @@ function AnnotationPopover({
             onClick={onAccept}
             style={{
               padding: '6px 14px',
-              borderRadius: 6,
+              borderRadius: 'var(--radius-md)',
               border: 'none',
               background: severity.color,
-              color: '#fff',
-              fontSize: 12,
+              color: 'var(--color-text-primary)',
+              fontSize: 'var(--font-size-md)',
               fontWeight: 600,
               cursor: 'pointer',
             }}
@@ -350,8 +350,8 @@ export function ScriptEditor({
       style={{
         height: '100%',
         overflow: 'hidden',
-        borderRadius: 6,
-        border: '1px solid var(--color-mac-separator, #38383A)',
+        borderRadius: 'var(--radius-md)',
+        border: '1px solid var(--color-separator)',
       }}
     >
       {clickInfo && (

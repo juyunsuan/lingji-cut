@@ -94,7 +94,7 @@
   font-size: var(--font-size-md);
   font-weight: 500;
   color: var(--color-text-primary);
-  font-family: var(--font-mono, "SF Mono", Menlo, Monaco, "Courier New", monospace);
+  font-family: var(--font-mono);
   line-height: 1;
 }
 
@@ -108,7 +108,7 @@
   font-size: var(--font-size-md);
   font-weight: 400;
   color: var(--color-text-secondary);
-  font-family: var(--font-mono, "SF Mono", Menlo, Monaco, "Courier New", monospace);
+  font-family: var(--font-mono);
   line-height: 1;
 }
 
@@ -124,7 +124,7 @@
   width: 32px;
   height: 32px;
   color: var(--color-text-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   transition:
     background var(--motion-fast, 120ms),
     color var(--motion-fast, 120ms),
@@ -145,7 +145,7 @@
   justify-content: center;
   width: 36px;
   height: 36px;
-  border-radius: 18px;
+  border-radius: var(--radius-pill);
   background: var(--color-text-primary);
   border: none;
   cursor: pointer;
@@ -183,7 +183,7 @@
   font-size: var(--font-size-sm);
   font-weight: 600;
   line-height: 1;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   transition:
     background var(--motion-fast, 120ms),
     color var(--motion-fast, 120ms);
@@ -198,7 +198,7 @@
   width: 32px;
   height: 32px;
   color: var(--color-text-primary);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   transition:
     background var(--motion-fast, 120ms),
     color var(--motion-fast, 120ms),

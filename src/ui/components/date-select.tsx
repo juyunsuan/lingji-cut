@@ -157,8 +157,8 @@ function DatePickerButton({
 					<div className="rdp-custom">
 						<style>{`
               .rdp-custom {
-                --rdp-accent-color: #0A84FF;
-                --rdp-background-color: rgba(10, 132, 255, 0.15);
+                --rdp-accent-color: var(--color-system-blue);
+                --rdp-background-color: color-mix(in srgb, var(--color-system-blue) 15%, transparent);
               }
               .rdp-custom .rdp {
                 margin: 0;
@@ -171,14 +171,14 @@ function DatePickerButton({
               }
               .rdp-custom .rdp-day {
                 color: var(--color-text-primary);
-                border-radius: 4px;
+                border-radius: var(--radius-sm);
               }
               .rdp-custom .rdp-day:hover:not(.rdp-day_selected) {
                 background-color: var(--color-control-bg);
               }
               .rdp-custom .rdp-day_selected {
-                background-color: #0A84FF;
-                color: #ffffff;
+                background-color: var(--color-system-blue);
+                color: var(--color-text-primary);
               }
               .rdp-custom .rdp-day_outside {
                 opacity: 0.3;

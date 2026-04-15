@@ -50,7 +50,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--color-text-muted);
@@ -62,7 +62,7 @@
 }
 
 .podcastSectionSummary {
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
 
@@ -88,7 +88,7 @@
 .podcastRowName {
   flex: 1;
   min-width: 0;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -122,12 +122,12 @@
 
 .searchInput {
   height: 30px !important;
-  border-radius: 8px !important;
+  border-radius: var(--radius-lg) !important;
   border-color: var(--color-separator) !important;
   background: var(--color-panel-elevated) !important;
   padding-inline: 10px !important;
   padding-left: 30px !important;
-  font-size: 12px !important;
+  font-size: var(--font-size-md) !important;
   color: var(--color-text-secondary) !important;
 }
 
@@ -159,9 +159,9 @@
 
 .filterPill {
   min-height: 22px !important;
-  border-radius: 5px !important;
+  border-radius: var(--radius-sm) !important;
   padding: 3px 8px !important;
-  font-size: 11px !important;
+  font-size: var(--font-size-sm) !important;
   font-weight: 400 !important;
   color: var(--color-text-secondary) !important;
   background: var(--color-control-bg) !important;
@@ -206,10 +206,10 @@
   width: 64px;
   min-height: 18px;
   border: 1px solid color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-selection-blue) 12%, transparent);
   color: var(--color-text-primary);
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
   padding: 2px 4px;
   cursor: pointer;
@@ -251,7 +251,7 @@
   flex: 1;
   min-width: 0;
   color: var(--color-text-secondary);
-  font-size: 12px;
+  font-size: var(--font-size-md);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -268,10 +268,10 @@
   padding: 20px;
   background: var(--color-surface-secondary);
   border: 1px dashed color-mix(in srgb, var(--color-selection-blue) 56%, transparent);
-  border-radius: 10px;
+  border-radius: var(--radius-xl);
   cursor: pointer;
   color: var(--color-text-secondary);
-  font-size: 13px;
+  font-size: var(--font-size-lg);
   font-weight: 500;
   transition:
     background var(--motion-fast, 120ms),
@@ -291,6 +291,6 @@
 }
 
 .addTextHint {
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   color: var(--color-text-muted);
 }

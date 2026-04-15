@@ -27,5 +27,5 @@
   flex: 1 0 0;
   min-width: 1px;
   background: color-mix(in srgb, var(--color-brand-accent) 74%, var(--color-selection-blue));
-  border-radius: 999px 999px 2px 2px;
+  border-radius: var(--radius-pill) var(--radius-pill) 2px 2px;
 }

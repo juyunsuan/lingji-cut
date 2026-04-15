@@ -5,17 +5,17 @@
 
 .errorText {
   color: var(--color-danger);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   line-height: 1.4;
-  padding: 0 12px 10px;
+  padding: 0 var(--space-6) var(--space-5);
 }
 
 /* ─── Section ─── */
 .section {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px;
+  gap: var(--space-5);
+  padding: var(--space-6);
   min-width: 0;
 }
 
@@ -24,8 +24,8 @@
 }
 
 .sectionTitle {
-  color: #ffffff;
-  font-size: 12px;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
   font-weight: 600;
   line-height: 1;
 }
@@ -34,47 +34,47 @@
 .fieldStack {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .fieldLabel {
-  color: rgba(235, 235, 245, 0.6);
-  font-size: 11px;
+  color: var(--color-text-placeholder);
+  font-size: var(--font-size-sm);
   line-height: 1;
 }
 
 .textInput,
 .textArea {
-  padding: 8px 10px;
-  border-color: #38383a;
-  background: #2c2c2e;
-  color: #ffffff;
+  padding: var(--space-4) var(--space-5);
+  border-color: var(--color-separator);
+  background: var(--color-panel-elevated);
+  color: var(--color-text-primary);
   box-shadow: none;
 }
 
 .textInput {
   min-height: 32px;
-  font-size: 12px;
+  font-size: var(--font-size-md);
 }
 
 .textArea {
   min-height: 60px;
-  font-size: 11px;
+  font-size: var(--font-size-sm);
 }
 
 .textArea::placeholder {
-  color: rgba(235, 235, 245, 0.3);
-  font-size: 11px;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
 }
 
 .promptPreview {
   margin: 0;
-  padding: 6px 8px;
+  padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
   border: 1px solid var(--color-separator);
   background: color-mix(in srgb, var(--color-panel-elevated) 60%, transparent);
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   line-height: 1.5;
   word-break: break-word;
   white-space: pre-wrap;
@@ -83,7 +83,7 @@
 .inlineFieldRow {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   min-width: 0;
 }
 
@@ -99,14 +99,14 @@
 .pillRow {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: var(--space-2);
   flex-wrap: wrap;
 }
 
 .pillItem {
   min-height: 22px;
-  padding: 3px 8px;
-  font-size: 10px;
+  padding: 3px var(--space-4);
+  font-size: var(--font-size-xs);
   font-weight: 400;
   line-height: 1;
 }
@@ -118,9 +118,9 @@
 /* ─── Preview ─── */
 .previewShell {
   overflow: hidden;
-  border: 1px solid #38383a;
-  border-radius: 8px;
-  background: #0a0a0f;
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-lg);
+  background: var(--color-preview-bg);
   min-height: 100px;
 }
 
@@ -129,31 +129,31 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 24px 16px;
+  gap: var(--space-4);
+  padding: 24px var(--space-8);
   min-height: 100px;
 }
 
 .previewIcon {
-  color: rgba(235, 235, 245, 0.3);
+  color: var(--color-text-disabled);
   display: inline-flex;
 }
 
 .previewHint {
-  color: rgba(235, 235, 245, 0.35);
-  font-size: 11px;
+  color: var(--color-text-disabled);
+  font-size: var(--font-size-sm);
   text-align: center;
 }
 
 .previewError {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 10px 12px;
+  gap: var(--space-3);
+  padding: var(--space-5) var(--space-6);
   border-top: 1px solid color-mix(in srgb, var(--color-danger) 28%, transparent);
   background: color-mix(in srgb, var(--color-danger) 8%, transparent);
   color: var(--color-danger);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   line-height: 1.45;
   white-space: pre-wrap;
 }
@@ -167,7 +167,7 @@
 .actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-4);
   flex-wrap: wrap;
 }
 
@@ -176,41 +176,41 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: var(--space-2);
   min-height: 30px;
   flex: 1 1 0;
   border: none;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 11px;
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-sm);
   cursor: pointer;
 }
 
 .secondaryAction {
-  background: #3a3a3c;
-  color: rgba(235, 235, 245, 0.6);
+  background: var(--color-control-bg);
+  color: var(--color-text-placeholder);
   font-weight: 400;
 }
 
 .primaryAction {
-  background: #0a84ff;
-  color: #ffffff;
+  background: var(--color-system-blue);
+  color: var(--color-text-primary);
   font-weight: 600;
 }
 
 /* ─── Danger ─── */
 .dangerTitle {
-  color: #ff453a;
-  font-size: 12px;
+  color: var(--color-danger);
+  font-size: var(--font-size-md);
   font-weight: 600;
 }
 
 .dangerButton {
   min-height: 34px;
-  background: rgba(255, 69, 58, 0.1);
-  border: 1px solid rgba(255, 69, 58, 0.25);
-  color: #ff453a;
-  font-size: 12px;
+  background: var(--color-bg-error);
+  border: 1px solid color-mix(in srgb, var(--color-danger) 25%, transparent);
+  color: var(--color-danger);
+  font-size: var(--font-size-md);
   font-weight: 500;
 }
 

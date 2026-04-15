@@ -85,6 +85,6 @@
 
 .value {
   color: var(--color-text-primary);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   line-height: 1;
 }

@@ -17,6 +17,9 @@
   --font-size-md: 12px;
   --font-size-lg: 13px;
   --font-size-xl: 14px;
+  /* Section title 与 large heading — 仅用于面板标题、Setup 首屏等关键区域 */
+  --font-size-2xl: 15px;
+  --font-size-3xl: 24px;
   --line-height-tight: 1.25;
   --line-height-normal: 1.45;
   --line-height-relaxed: 1.6;

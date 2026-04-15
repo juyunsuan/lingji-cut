@@ -120,11 +120,12 @@
   width: 3px;
   min-width: 3px;
   height: 36px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   margin-top: 1px;
   flex-shrink: 0;
 }
 
+/* AI 铁律：AI 来源标识使用 #a78bfa 紫色 */
 .bar[data-source="ai"] {
   background: #a78bfa;
 }
@@ -154,10 +155,11 @@
   border-radius: var(--radius-sm);
 }
 
+/* AI 铁律：AI 来源标签复用紫色系 */
 .sourceTag[data-source="ai"] {
   color: #c4b5fd;
-  background: rgba(167, 139, 250, 0.15);
-  border: 1px solid rgba(167, 139, 250, 0.25);
+  background: color-mix(in srgb, #a78bfa 15%, transparent);
+  border: 1px solid color-mix(in srgb, #a78bfa 25%, transparent);
 }
 
 .sourceTag[data-source="manual"] {

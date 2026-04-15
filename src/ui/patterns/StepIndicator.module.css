@@ -79,7 +79,7 @@
 }
 
 .errorGlyph {
-  font-size: 12px;
+  font-size: var(--font-size-md);
   font-weight: 700;
   line-height: 1;
 }

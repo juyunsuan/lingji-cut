@@ -32,7 +32,7 @@
 
 .zoomPill {
   padding: 3px 8px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   border: 1px solid var(--color-border-strong);
   background: var(--color-panel-elevated);
   color: var(--color-text-primary);
@@ -109,7 +109,7 @@
   padding: 0 6px;
   border-bottom: 1px solid var(--color-separator);
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   overflow: hidden;
@@ -148,7 +148,7 @@
 .tickLabel {
   margin-top: 11px;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -169,7 +169,7 @@
   width: 20px;
   height: 20px;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-muted);
   cursor: pointer;
@@ -187,8 +187,8 @@
 }
 
 .trackDeleteButton:hover {
-  color: var(--color-error, #ef4444);
-  background: color-mix(in srgb, var(--color-error, #ef4444) 14%, transparent);
+  color: var(--color-danger);
+  background: color-mix(in srgb, var(--color-danger) 14%, transparent);
 }
 
 .trackDeleteButton:active {
@@ -203,7 +203,7 @@
   width: 20px;
   height: 20px;
   border: none;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   cursor: pointer;
@@ -323,7 +323,7 @@
   left: 10px;
   transform: translateY(-50%);
   color: var(--color-text-disabled);
-  font-size: 11px;
+  font-size: var(--font-size-sm);
   font-weight: 500;
   pointer-events: none;
   transition: color var(--motion-fast);
@@ -383,7 +383,7 @@
   height: 1px;
   background-image: repeating-linear-gradient(
     to right,
-    color-mix(in srgb, var(--color-text-secondary, #9ca3af) 72%, transparent) 0 6px,
+    color-mix(in srgb, var(--color-text-secondary) 72%, transparent) 0 6px,
     transparent 6px 12px
   );
   opacity: 0;
@@ -400,7 +400,7 @@
   position: absolute;
   top: 0;
   width: 0;
-  border-left: 1px dashed var(--color-system-blue, #0a84ff);
+  border-left: 1px dashed var(--color-system-blue);
   pointer-events: none;
   z-index: 5;
 }

@@ -345,7 +345,7 @@ export function Setup({
             )}
 
             {errorMessage && (
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 'var(--space-6)' }}>
                 <Alert variant="error">{errorMessage}</Alert>
               </div>
             )}
@@ -425,7 +425,7 @@ export function Setup({
                 type="button"
                 className={styles.dirPickerButton}
                 onClick={() => void handleSelectDouyinDir()}
-                style={{ marginTop: 12 }}
+                style={{ marginTop: 'var(--space-6)' }}
               >
                 <FolderSearch size={20} strokeWidth={1.5} />
                 <span className={styles.dirPickerText}>
@@ -446,7 +446,7 @@ export function Setup({
 
             {/* 错误提示 */}
             {douyinError && (
-              <div style={{ marginTop: 12 }}>
+              <div style={{ marginTop: 'var(--space-6)' }}>
                 <Alert variant="error">{douyinError}</Alert>
               </div>
             )}

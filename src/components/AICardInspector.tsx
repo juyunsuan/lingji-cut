@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getAICardOverlayPosition } from '../lib/ai-card-layout';
 import { createImportedHtmlWebCardPayload } from '../lib/web-card';
 import type { AICard, AICardType } from '../types/ai';
-import { Button, Input, NumberField, PillGroup, type PillGroupItem, Textarea } from '../ui';
+import { Alert, Button, Input, NumberField, PillGroup, type PillGroupItem, Textarea } from '../ui';
 import { AppIcon } from './AppIcon';
 import { WebCardPreview } from './WebCardPreview';
 import styles from './AICardInspector.module.css';
@@ -156,8 +156,8 @@ export function AICardInspector({
 
   return (
     <div className={styles.root}>
-      {errorMessage ? <span className={styles.errorText}>{errorMessage}</span> : null}
-      {importError ? <span className={styles.errorText}>{importError}</span> : null}
+      {errorMessage ? <Alert variant="error" description={errorMessage} /> : null}
+      {importError ? <Alert variant="error" description={importError} /> : null}
 
       <div className={styles.section} data-ai-card-section="text-content">
         <span className={styles.sectionTitle}>文字内容</span>

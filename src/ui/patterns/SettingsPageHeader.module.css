@@ -41,8 +41,8 @@
 .title {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: 20px;
-  font-weight: 700;
+  font-size: var(--font-size-3xl);
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -54,7 +54,7 @@
 .description {
   margin: var(--space-4) 0 0;
   color: var(--color-text-secondary-strong);
-  font-size: 13px;
+  font-size: var(--font-size-lg);
   line-height: var(--line-height-normal);
 }
 

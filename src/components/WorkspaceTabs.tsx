@@ -2,6 +2,7 @@ import { Film, PenLine } from 'lucide-react';
 import { m, LayoutGroup } from 'framer-motion';
 import type { AppPage } from '../lib/electron-api';
 import { springs } from '../ui/lib/motion';
+import { Button } from '../ui';
 import styles from './WorkspaceTabs.module.css';
 
 type WorkspaceTab = 'script-workbench' | 'editor';
@@ -83,7 +84,8 @@ export function WorkspaceTabs({ active, onSwitch, scriptProgress }: WorkspaceTab
           return (
             <span key={tab.key} style={{ display: 'contents' }}>
               {i > 0 && <span className={styles.separator} />}
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 className={`${styles.tab} ${isActive ? styles.active : ''}`}
                 onClick={() => onSwitch(tab.key)}
@@ -109,7 +111,7 @@ export function WorkspaceTabs({ active, onSwitch, scriptProgress }: WorkspaceTab
                     <ScriptProgressRing progress={scriptProgress} />
                   )}
                 </span>
-              </button>
+              </Button>
             </span>
           );
         })}

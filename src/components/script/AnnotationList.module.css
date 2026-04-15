@@ -4,17 +4,17 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
-  background: #2a2a2c;
-  border-radius: 6px;
+  background: var(--color-separator);
+  border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .empty {
-  padding: 20px 16px;
+  padding: var(--space-8) var(--space-8);
   text-align: center;
-  font-size: 11px;
-  color: #636366;
-  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-quaternary);
+  font-family: var(--font-sans);
 }
 
 /* ─── 单条批注卡片 ─── */
@@ -22,12 +22,12 @@
 .card {
   display: flex;
   gap: 0;
-  background: #232325;
+  background: color-mix(in srgb, var(--color-panel-elevated) 80%, var(--color-window-bg));
   transition: background 0.1s;
 }
 
 .card:hover {
-  background: #2a2a2d;
+  background: var(--color-panel-elevated);
 }
 
 .cardResolved {
@@ -45,25 +45,25 @@
 }
 
 .severityStripe[data-severity="error"] {
-  background: #ff453a;
+  background: var(--color-danger);
 }
 
 .severityStripe[data-severity="warning"] {
-  background: #ff9f0a;
+  background: var(--color-brand-warm);
 }
 
 .severityStripe[data-severity="info"] {
-  background: #0a84ff;
+  background: var(--color-selection-blue);
 }
 
 /* 已采纳：绿色条 */
 .severityStripeAccepted {
-  background: #30d158 !important;
+  background: var(--color-success) !important;
 }
 
 /* 已忽略：灰色条 */
 .severityStripeDismissed {
-  background: #48484a !important;
+  background: var(--color-border-strong) !important;
 }
 
 /* 内容区 */
@@ -72,21 +72,21 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 10px;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
 }
 
 /* 第一行：序号 + 状态 + severity 标签 */
 .cardMeta {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  font-family: var(--font-sans);
 }
 
 .cardIndex {
-  color: #48484a;
+  color: var(--color-border-strong);
   font-variant-numeric: tabular-nums;
 }
 
@@ -96,58 +96,58 @@
   gap: 3px;
   padding: 0 5px;
   height: 16px;
-  border-radius: 3px;
-  font-size: 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-xs);
   font-weight: 500;
   line-height: 1;
 }
 
 .statusPending {
-  color: #ff9f0a;
-  background: rgba(255, 159, 10, 0.1);
+  color: var(--color-brand-warm);
+  background: var(--color-bg-warning);
 }
 
 .statusAccepted {
-  color: #30d158;
-  background: rgba(48, 209, 88, 0.1);
+  color: var(--color-success);
+  background: var(--color-bg-success);
 }
 
 .statusDismissed {
-  color: #636366;
-  background: rgba(99, 99, 102, 0.1);
+  color: var(--color-text-quaternary);
+  background: color-mix(in srgb, var(--color-text-quaternary) 10%, transparent);
 }
 
 /* 问题描述 */
 .issueText {
-  font-size: 12px;
+  font-size: var(--font-size-md);
   line-height: 1.45;
-  color: #e5e5e7;
-  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
 }
 
 /* 原文引用 */
 .quoteBlock {
   display: flex;
   gap: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: #1c1c1e;
+  background: var(--color-window-bg);
 }
 
 .quoteBorder {
   width: 2px;
   flex-shrink: 0;
-  background: #3a3a3c;
+  background: var(--color-separator);
 }
 
 .quoteText {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
   line-height: 1.4;
-  color: #636366;
-  font-family: var(--font-mono, "SF Mono", Menlo, Monaco, "Courier New", monospace);
+  color: var(--color-text-quaternary);
+  font-family: var(--font-mono);
   white-space: pre-wrap;
   word-break: break-all;
   /* 最多显示两行 */
@@ -161,25 +161,25 @@
 .suggestion {
   display: flex;
   gap: 0;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   overflow: hidden;
-  background: rgba(48, 209, 88, 0.06);
+  background: color-mix(in srgb, var(--color-success) 6%, transparent);
 }
 
 .suggestionBorder {
   width: 2px;
   flex-shrink: 0;
-  background: #30d158;
+  background: var(--color-success);
 }
 
 .suggestionText {
   flex: 1;
   min-width: 0;
-  padding: 4px 8px;
-  font-size: 11px;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--font-size-sm);
   line-height: 1.4;
-  color: #98989d;
-  font-family: var(--font-mono, "SF Mono", Menlo, Monaco, "Courier New", monospace);
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
   white-space: pre-wrap;
   word-break: break-all;
   display: -webkit-box;
@@ -191,8 +191,8 @@
 /* 操作按钮行 */
 .cardActions {
   display: flex;
-  gap: 4px;
-  padding-top: 2px;
+  gap: var(--space-2);
+  padding-top: var(--space-1);
 }
 
 .actionBtn {
@@ -200,12 +200,12 @@
   align-items: center;
   gap: 3px;
   height: 20px;
-  padding: 0 8px;
+  padding: 0 var(--space-4);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  font-size: 11px;
-  font-family: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
   cursor: pointer;
   transition: background 0.1s;
 }
@@ -215,17 +215,17 @@
 }
 
 .btnAccept {
-  color: #30d158;
+  color: var(--color-success);
 }
 
 .btnAccept:hover {
-  background: rgba(48, 209, 88, 0.12);
+  background: color-mix(in srgb, var(--color-success) 12%, transparent);
 }
 
 .btnDismiss {
-  color: #636366;
+  color: var(--color-text-quaternary);
 }
 
 .btnDismiss:hover {
-  background: rgba(99, 99, 102, 0.12);
+  background: color-mix(in srgb, var(--color-text-quaternary) 12%, transparent);
 }

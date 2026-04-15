@@ -3,7 +3,7 @@
   position: relative;
   width: 64px;
   height: 64px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--color-panel-elevated);
   border: 1px solid var(--color-control-bg);
   overflow: hidden;
@@ -141,11 +141,11 @@
 }
 
 .typeSrt .iconArea {
-  --icon-area-bg: color-mix(in srgb, #B48CFF 14%, var(--color-panel-bg));
+  --icon-area-bg: color-mix(in srgb, var(--color-brand-accent) 14%, var(--color-panel-bg));
 }
 
 .typeText .iconArea {
-  --icon-area-bg: color-mix(in srgb, #10b981 12%, var(--color-panel-bg));
+  --icon-area-bg: color-mix(in srgb, var(--color-success) 12%, var(--color-panel-bg));
 }
 
 /* 底部文件名区域 */
@@ -157,7 +157,7 @@
 
 .name {
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
   overflow: hidden;
   white-space: nowrap;
@@ -192,6 +192,6 @@
 
 .ghostLabel {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: var(--font-size-xs);
   line-height: 1.2;
 }
