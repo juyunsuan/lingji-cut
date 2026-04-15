@@ -4,6 +4,7 @@ import {
   filterValidSubtitleHighlights,
   isExpiredSubtitleHighlight,
   isValidSubtitleHighlight,
+  remapHighlightsAfterResegment,
 } from '../src/lib/subtitle-highlights';
 
 function createEntry(overrides: Partial<SrtEntry> = {}): SrtEntry {
@@ -76,5 +77,69 @@ describe('subtitle highlight helpers', () => {
     ];
 
     expect(filterValidSubtitleHighlights(entries, highlights)).toEqual([createHighlight()]);
+  });
+});
+
+describe('remapHighlightsAfterResegment', () => {
+  it('remaps highlight to new entry when highlightText still present', () => {
+    const oldHighlight: SubtitleHighlight = {
+      entryIndex: 1,
+      start: 8,
+      end: 12,
+      highlightText: '世界冠军',
+      sourceText: '中国品牌首次拿下世界冠军',
+    };
+    const newEntries: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 1_000, text: '中国品牌首次拿下' },
+      { index: 2, startMs: 1_000, endMs: 2_000, text: '世界冠军' },
+    ];
+    const { remapped, dropped } = remapHighlightsAfterResegment([oldHighlight], newEntries);
+    expect(remapped).toHaveLength(1);
+    expect(dropped).toHaveLength(0);
+    expect(remapped[0]).toEqual({
+      entryIndex: 2,
+      start: 0,
+      end: 4,
+      highlightText: '世界冠军',
+      sourceText: '世界冠军',
+    });
+  });
+
+  it('drops highlight when text spans across split point', () => {
+    const oldHighlight: SubtitleHighlight = {
+      entryIndex: 1,
+      start: 6,
+      end: 10,
+      highlightText: '拿下世界',
+      sourceText: '中国品牌首次拿下世界冠军',
+    };
+    const newEntries: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 1_000, text: '中国品牌首次拿下' },
+      { index: 2, startMs: 1_000, endMs: 2_000, text: '世界冠军' },
+    ];
+    const { remapped, dropped } = remapHighlightsAfterResegment([oldHighlight], newEntries);
+    expect(remapped).toHaveLength(0);
+    expect(dropped).toHaveLength(1);
+  });
+
+  it('picks the first matching entry when multiple candidates exist', () => {
+    const oldHighlight: SubtitleHighlight = {
+      entryIndex: 1,
+      start: 0,
+      end: 2,
+      highlightText: '创新',
+      sourceText: '创新驱动',
+    };
+    const newEntries: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 500, text: '创新驱动' },
+      { index: 2, startMs: 500, endMs: 1_000, text: '创新精神' },
+    ];
+    const { remapped } = remapHighlightsAfterResegment([oldHighlight], newEntries);
+    expect(remapped).toHaveLength(1);
+    expect(remapped[0].entryIndex).toBe(1);
+  });
+
+  it('handles empty inputs gracefully', () => {
+    expect(remapHighlightsAfterResegment([], [])).toEqual({ remapped: [], dropped: [] });
   });
 });
