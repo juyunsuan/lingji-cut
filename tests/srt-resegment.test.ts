@@ -117,3 +117,39 @@ describe('splitLongEntry', () => {
     expect(result.every((e) => e.index === 7)).toBe(true);
   });
 });
+
+describe('resegmentSrtEntries', () => {
+  it('returns entries unchanged when all under limit', () => {
+    const entries: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 1_000, text: '第一句' },
+      { index: 2, startMs: 1_000, endMs: 2_000, text: '第二句' },
+    ];
+    const result = resegmentSrtEntries(entries, 35);
+    expect(result).toEqual(entries);
+  });
+
+  it('splits long entries and renumbers indices continuously', () => {
+    const entries: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 1_000, text: '短' },
+      {
+        index: 2,
+        startMs: 1_000,
+        endMs: 5_000,
+        text: '这是第一段很长的话，这是第二段话',
+      },
+      { index: 3, startMs: 5_000, endMs: 6_000, text: '结束' },
+    ];
+    const result = resegmentSrtEntries(entries, 10);
+    // Middle entry splits into 2 pieces → total 4 entries
+    expect(result).toHaveLength(4);
+    expect(result.map((e) => e.index)).toEqual([1, 2, 3, 4]);
+    expect(result[0].text).toBe('短');
+    expect(result[result.length - 1].text).toBe('结束');
+    expect(result[result.length - 1].startMs).toBe(5_000);
+    expect(result[result.length - 1].endMs).toBe(6_000);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(resegmentSrtEntries([], 35)).toEqual([]);
+  });
+});

@@ -94,5 +94,9 @@ export function splitLongEntry(entry: SrtEntry, maxChars: number): SrtEntry[] {
  * 遍历 entries，对每条超长的调用 splitLongEntry，最后重新编号 index 为 1..N。
  */
 export function resegmentSrtEntries(entries: SrtEntry[], maxChars: number): SrtEntry[] {
-  throw new Error('not implemented');
+  const split: SrtEntry[] = [];
+  for (const entry of entries) {
+    split.push(...splitLongEntry(entry, maxChars));
+  }
+  return split.map((entry, idx) => ({ ...entry, index: idx + 1 }));
 }
