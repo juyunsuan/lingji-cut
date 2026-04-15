@@ -38,9 +38,11 @@
 }
 
 .fieldLabel {
+  flex-shrink: 0;
   color: var(--color-text-placeholder);
   font-size: var(--font-size-sm);
   line-height: 1;
+  white-space: nowrap;
 }
 
 .textInput,
@@ -93,7 +95,7 @@
 
 .durationField {
   flex-shrink: 0;
-  width: 120px;
+  width: 160px;
 }
 
 .pillRow {

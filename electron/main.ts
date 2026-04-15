@@ -2,13 +2,15 @@ import { bundle } from '@remotion/bundler';
 import { getVideoMetadata, renderMedia, selectComposition } from '@remotion/renderer';
 import chokidar from 'chokidar';
 import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, shell } from 'electron';
+import { createWriteStream, existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import type { FSWatcher } from 'chokidar';
 import type { MenuContext, MenuEvent, ProjectMetadata } from '../src/lib/electron-api';
-import { addAppLog, getAppLogFilePath, getAppLogs } from './app-logger';
+import { addAppLog, configureAppLogger, getAppLogFilePath, getAppLogs } from './app-logger';
 import { analyzeSrt, regenerateAICard, regenerateCoverPrompt } from '../src/lib/ai-analysis';
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/jimeng-client';
@@ -28,7 +30,14 @@ import { parseSrt } from '../src/lib/srt-parser';
 import type { SrtEntry, TimelineData } from '../src/types';
 import type { AICard, AISegment, AISettings } from '../src/types/ai';
 import { createApplicationMenuTemplate } from './app-menu';
+import {
+  loadRuntimeDebugConfigSync,
+  resolveAppConfig,
+  saveRuntimeDebugConfig,
+  type ResolvedAppConfig,
+} from './app-config';
 import { toRendererConsoleLog } from './console-message';
+import { resolveDebugRuntimeState, shouldAutoOpenDevTools } from './debug-runtime';
 import { materializePersistedAIState, materializeTimelineWebCards } from './web-card-storage';
 import { registerAgentIpc } from './acp/ipc';
 import { registerConversationIpc } from './conversations/ipc';
@@ -55,6 +64,8 @@ import { resolveDouyinVideoSource } from './video-import/douyin-downloader';
 import type { VideoImportRequest } from '../src/lib/video-import-types';
 import { createWorkbenchTabContextMenuTemplate } from './workbench-tab-context-menu';
 
+const execFileAsync = promisify(execFile);
+
 function resolveAppIconPath(): string | null {
   const candidates = [
     path.join(__dirname, '../build/icon.png'),
@@ -74,6 +85,7 @@ let fileWatcher: FSWatcher | null = null;
 const activeTtsRequests = new Map<string, AbortController>();
 let isAppQuitting = false;
 const videoImportService = getVideoImportService();
+let appConfig: ResolvedAppConfig | null = null;
 
 function sendMenuEvent(event: MenuEvent) {
   mainWindow?.webContents.send('menu-action', event);
@@ -81,14 +93,162 @@ function sendMenuEvent(event: MenuEvent) {
 
 function writeAppLog(level: 'info' | 'warn' | 'error', scope: string, message: string, details?: string) {
   const entry = addAppLog(level, scope, message, details);
-  mainWindow?.webContents.send('app-log', entry);
+  if (entry) {
+    mainWindow?.webContents.send('app-log', entry);
+  }
+}
+
+function getCurrentAppConfig(): ResolvedAppConfig {
+  if (appConfig) {
+    return appConfig;
+  }
+
+  appConfig = resolveAppConfig({
+    userDataPath: app.getPath('userData'),
+    env: {
+      MAIN_VITE_DEBUG_MODE: import.meta.env.MAIN_VITE_DEBUG_MODE,
+      MAIN_VITE_LOG_LEVEL: import.meta.env.MAIN_VITE_LOG_LEVEL,
+    },
+  });
+  return appConfig;
+}
+
+function refreshAppConfig(): ResolvedAppConfig {
+  const nextConfig = resolveAppConfig({
+    userDataPath: app.getPath('userData'),
+    env: {
+      MAIN_VITE_DEBUG_MODE: import.meta.env.MAIN_VITE_DEBUG_MODE,
+      MAIN_VITE_LOG_LEVEL: import.meta.env.MAIN_VITE_LOG_LEVEL,
+    },
+    runtimeConfig: loadRuntimeDebugConfigSync(app.getPath('userData')),
+  });
+  appConfig = nextConfig;
+  configureAppLogger({
+    logDirPath: nextConfig.logDirPath,
+    logLevel: nextConfig.logLevel,
+  });
+  return nextConfig;
+}
+
+async function openLogDirectory(): Promise<void> {
+  const currentConfig = getCurrentAppConfig();
+  await fs.mkdir(currentConfig.logDirPath, { recursive: true });
+  const result = await shell.openPath(currentConfig.logDirPath);
+  if (result) {
+    writeAppLog('warn', 'log', '打开日志目录失败', result);
+  }
+}
+
+async function exportLogsArchive(): Promise<void> {
+  const currentConfig = getCurrentAppConfig();
+  await fs.mkdir(currentConfig.logDirPath, { recursive: true });
+
+  const result = mainWindow
+    ? await dialog.showSaveDialog(mainWindow, {
+        title: '导出日志 ZIP',
+        defaultPath: path.join(currentConfig.logDirPath, `video-web-master-logs-${Date.now()}.zip`),
+        filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }],
+      })
+    : await dialog.showSaveDialog({
+        title: '导出日志 ZIP',
+        defaultPath: path.join(currentConfig.logDirPath, `video-web-master-logs-${Date.now()}.zip`),
+        filters: [{ name: 'ZIP 压缩包', extensions: ['zip'] }],
+      });
+
+  if (result.canceled || !result.filePath) {
+    return;
+  }
+
+  const files = (await fs.readdir(currentConfig.logDirPath))
+    .filter((fileName) => /^app-\d{4}-\d{2}-\d{2}\.log$/.test(fileName))
+    .sort();
+
+  if (files.length === 0) {
+    await fs.writeFile(result.filePath, '');
+    writeAppLog('warn', 'log', '日志目录为空，已导出空归档', result.filePath);
+    return;
+  }
+
+  const tmpZipDir = await fs.mkdtemp(path.join(os.tmpdir(), 'video-web-master-log-export-'));
+  try {
+    await Promise.all(
+      files.map(async (fileName) => {
+        await fs.copyFile(
+          path.join(currentConfig.logDirPath, fileName),
+          path.join(tmpZipDir, fileName),
+        );
+      }),
+    );
+    await execFileAsync('zip', ['-r', result.filePath, '.'], {
+      cwd: tmpZipDir,
+    });
+    writeAppLog('info', 'log', '日志归档已导出', result.filePath);
+  } finally {
+    await fs.rm(tmpZipDir, { recursive: true, force: true });
+  }
+}
+
+async function toggleRuntimeDebugMode(): Promise<void> {
+  const userDataPath = app.getPath('userData');
+  const currentRuntimeConfig = loadRuntimeDebugConfigSync(userDataPath);
+  const currentConfig = getCurrentAppConfig();
+  const nextDebugMode = !(currentRuntimeConfig?.debugMode ?? currentConfig.debugMode);
+
+  await saveRuntimeDebugConfig(userDataPath, {
+    debugMode: nextDebugMode,
+    logLevel: currentRuntimeConfig?.logLevel ?? currentConfig.logLevel,
+  });
+
+  const nextConfig = refreshAppConfig();
+  refreshApplicationMenu();
+
+  const { response } = mainWindow
+    ? await dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        buttons: ['稍后手动重启', '立即重启'],
+        defaultId: 1,
+        cancelId: 0,
+        title: '调试模式已更新',
+        message: nextDebugMode ? '调试模式已启用。' : '调试模式已关闭。',
+        detail: `新的配置会在应用重启后生效。\n日志级别：${nextConfig.logLevel}\n日志文件：${nextConfig.logFilePath}`,
+      })
+    : await dialog.showMessageBox({
+        type: 'info',
+        buttons: ['稍后手动重启', '立即重启'],
+        defaultId: 1,
+        cancelId: 0,
+        title: '调试模式已更新',
+        message: nextDebugMode ? '调试模式已启用。' : '调试模式已关闭。',
+        detail: `新的配置会在应用重启后生效。\n日志级别：${nextConfig.logLevel}\n日志文件：${nextConfig.logFilePath}`,
+      });
+
+  if (response === 1) {
+    app.relaunch();
+    app.quit();
+  }
 }
 
 function createApplicationMenu() {
+  const currentConfig = getCurrentAppConfig();
+  const runtimeState = resolveDebugRuntimeState({
+    isPackaged: app.isPackaged,
+    debugMode: currentConfig.debugMode,
+  });
   return Menu.buildFromTemplate(
     createApplicationMenuTemplate(sendMenuEvent, {
       ...menuContext,
-      isDevelopment: !app.isPackaged,
+      isDevelopment: runtimeState.isDevelopment,
+      debugMode: currentConfig.debugMode,
+    }, {
+      onToggleDebugMode: () => {
+        void toggleRuntimeDebugMode();
+      },
+      onOpenLogDirectory: () => {
+        void openLogDirectory();
+      },
+      onExportLogs: () => {
+        void exportLogsArchive();
+      },
     }),
   );
 }
@@ -99,7 +259,11 @@ function refreshApplicationMenu() {
 
 function createWindow() {
   const isMac = process.platform === 'darwin';
-  const isDevelopment = !app.isPackaged;
+  const currentConfig = getCurrentAppConfig();
+  const runtimeState = resolveDebugRuntimeState({
+    isPackaged: app.isPackaged,
+    debugMode: currentConfig.debugMode,
+  });
   const appIconPath = resolveAppIconPath();
 
   mainWindow = new BrowserWindow({
@@ -121,7 +285,7 @@ function createWindow() {
           },
         }),
     webPreferences: {
-      devTools: isDevelopment,
+      devTools: runtimeState.allowDevTools,
       preload: path.join(__dirname, 'preload.js'),
       webSecurity: false, // 允许 file:// 加载本地媒体
     },
@@ -165,6 +329,10 @@ function createWindow() {
 
   // 确保标题设置正确
   mainWindow.setTitle('灵机剪影');
+
+  if (shouldAutoOpenDevTools({ isPackaged: app.isPackaged, debugMode: currentConfig.debugMode })) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
+  }
 
   refreshApplicationMenu();
   writeAppLog('info', 'app', '主窗口已创建');
@@ -1138,7 +1306,12 @@ ipcMain.handle('toggle-devtools', () => {
     return;
   }
 
-  if (app.isPackaged) {
+  const currentConfig = getCurrentAppConfig();
+  const runtimeState = resolveDebugRuntimeState({
+    isPackaged: app.isPackaged,
+    debugMode: currentConfig.debugMode,
+  });
+  if (!runtimeState.allowDevTools) {
     writeAppLog('warn', 'security', '已拦截生产环境 DevTools 打开请求');
     return;
   }
@@ -1374,6 +1547,7 @@ registerScriptHistoryIpc();
 app.setName('灵机剪影');
 
 app.whenReady().then(async () => {
+  refreshAppConfig();
   // 开发模式下显式设置 Dock 图标；打包后 macOS 会使用 .app 自带的 icns
   if (process.platform === 'darwin' && !app.isPackaged) {
     const iconPath = resolveAppIconPath();

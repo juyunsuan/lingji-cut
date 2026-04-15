@@ -3,6 +3,13 @@ import type { MenuContext, MenuEvent } from '../src/lib/electron-api';
 
 interface ApplicationMenuContext extends MenuContext {
   isDevelopment: boolean;
+  debugMode: boolean;
+}
+
+interface ApplicationMenuHandlers {
+  onToggleDebugMode: () => void;
+  onOpenLogDirectory: () => void;
+  onExportLogs: () => void;
 }
 
 function createRecentProjectsSubmenu(
@@ -32,7 +39,13 @@ function createRecentProjectsSubmenu(
 export function createApplicationMenuTemplate(
   sendMenuEvent: (event: MenuEvent) => void,
   context: ApplicationMenuContext,
+  handlers?: Partial<ApplicationMenuHandlers>,
 ): MenuItemConstructorOptions[] {
+  const menuHandlers: ApplicationMenuHandlers = {
+    onToggleDebugMode: handlers?.onToggleDebugMode ?? (() => sendMenuEvent({ type: 'command', action: 'open-settings' })),
+    onOpenLogDirectory: handlers?.onOpenLogDirectory ?? (() => sendMenuEvent({ type: 'command', action: 'open-settings' })),
+    onExportLogs: handlers?.onExportLogs ?? (() => sendMenuEvent({ type: 'command', action: 'open-settings' })),
+  };
   const template: MenuItemConstructorOptions[] = [
     {
       label: '项目',
@@ -210,6 +223,26 @@ export function createApplicationMenuTemplate(
       ],
     });
   }
+
+  template.push({
+    label: '帮助',
+    submenu: [
+      {
+        label: '启用调试模式（重启生效）',
+        type: 'checkbox',
+        checked: context.debugMode,
+        click: () => menuHandlers.onToggleDebugMode(),
+      },
+      {
+        label: '打开日志目录',
+        click: () => menuHandlers.onOpenLogDirectory(),
+      },
+      {
+        label: '导出日志 ZIP',
+        click: () => menuHandlers.onExportLogs(),
+      },
+    ],
+  });
 
   return template;
 }

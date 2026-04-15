@@ -4,3 +4,4 @@ dist-electron/
 .superpowers/
 release/
 .DS_Store
+.env

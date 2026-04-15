@@ -42,6 +42,7 @@ describe('package mac staging helpers', () => {
     expect(shouldStageProjectPath('.tmp/design-review/result.png')).toBe(false);
     expect(shouldStageProjectPath('docs/readme.md')).toBe(false);
     expect(shouldStageProjectPath('images/generated-1.png')).toBe(false);
+    expect(shouldStageProjectPath('.env.example')).toBe(false);
     expect(shouldStageProjectPath('AGENT.md')).toBe(false);
     expect(shouldStageProjectPath('package-lock.json')).toBe(false);
   });

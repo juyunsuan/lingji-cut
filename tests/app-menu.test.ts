@@ -5,21 +5,32 @@ describe('createApplicationMenuTemplate', () => {
   function createTemplate(options: {
     activePage: 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings';
     isDevelopment: boolean;
+    debugMode: boolean;
     hasProject: boolean;
     recentProjects: Array<{ path: string; name: string }>;
   }) {
+    const handlers = {
+      onToggleDebugMode: vi.fn(),
+      onOpenLogDirectory: vi.fn(),
+      onExportLogs: vi.fn(),
+    };
     const createMenu = createApplicationMenuTemplate as unknown as (
       sendMenuAction: ReturnType<typeof vi.fn>,
       menuContext: typeof options,
+      handlers: typeof handlers,
     ) => ReturnType<typeof createApplicationMenuTemplate>;
 
-    return createMenu(vi.fn(), options);
+    return {
+      template: createMenu(vi.fn(), options, handlers),
+      handlers,
+    };
   }
 
   it('provides native clipboard actions and hides development menu in production', () => {
-    const template = createTemplate({
+    const { template } = createTemplate({
       activePage: 'welcome',
       isDevelopment: false,
+      debugMode: false,
       hasProject: false,
       recentProjects: [],
     });
@@ -56,6 +67,7 @@ describe('createApplicationMenuTemplate', () => {
     const template = createMenu(sendMenuAction, {
       activePage: 'editor',
       isDevelopment: true,
+      debugMode: false,
       hasProject: true,
       recentProjects: [{ path: '/tmp/demo-project', name: 'demo-project' }],
     });
@@ -76,15 +88,17 @@ describe('createApplicationMenuTemplate', () => {
   });
 
   it('uses Cmd+W to close the project when a project is open, otherwise falls back to native close', () => {
-    const templateWithProject = createTemplate({
+    const { template: templateWithProject } = createTemplate({
       activePage: 'editor',
       isDevelopment: false,
+      debugMode: false,
       hasProject: true,
       recentProjects: [],
     });
-    const templateWithoutProject = createTemplate({
+    const { template: templateWithoutProject } = createTemplate({
       activePage: 'welcome',
       isDevelopment: false,
+      debugMode: false,
       hasProject: false,
       recentProjects: [],
     });
@@ -113,5 +127,76 @@ describe('createApplicationMenuTemplate', () => {
       role: 'close',
       accelerator: 'CmdOrCtrl+W',
     });
+  });
+
+  it('在帮助菜单中提供调试与日志能力入口', () => {
+    const { template } = createTemplate({
+      activePage: 'welcome',
+      isDevelopment: false,
+      debugMode: true,
+      hasProject: false,
+      recentProjects: [],
+    });
+
+    const helpMenu = template.find((item) => item.label === '帮助');
+    const submenu = Array.isArray(helpMenu?.submenu) ? helpMenu.submenu : [];
+    const debugItem = submenu.find(
+      (item) => 'label' in item && item.label === '启用调试模式（重启生效）',
+    );
+    const openLogsItem = submenu.find(
+      (item) => 'label' in item && item.label === '打开日志目录',
+    );
+    const exportLogsItem = submenu.find(
+      (item) => 'label' in item && item.label === '导出日志 ZIP',
+    );
+
+    expect(helpMenu).toBeDefined();
+    expect(debugItem).toMatchObject({
+      label: '启用调试模式（重启生效）',
+      type: 'checkbox',
+      checked: true,
+    });
+    expect(openLogsItem).toBeDefined();
+    expect(exportLogsItem).toBeDefined();
+  });
+
+  it('帮助菜单点击时走主进程处理器', () => {
+    const { template, handlers } = createTemplate({
+      activePage: 'welcome',
+      isDevelopment: false,
+      debugMode: false,
+      hasProject: false,
+      recentProjects: [],
+    });
+
+    const helpMenu = template.find((item) => item.label === '帮助');
+    const submenu = Array.isArray(helpMenu?.submenu) ? helpMenu.submenu : [];
+    const debugItem = submenu.find(
+      (item) => 'label' in item && item.label === '启用调试模式（重启生效）',
+    );
+    const openLogsItem = submenu.find(
+      (item) => 'label' in item && item.label === '打开日志目录',
+    );
+    const exportLogsItem = submenu.find(
+      (item) => 'label' in item && item.label === '导出日志 ZIP',
+    );
+
+    if (!debugItem || !('click' in debugItem) || !debugItem.click) {
+      throw new Error('debug item click handler is missing');
+    }
+    if (!openLogsItem || !('click' in openLogsItem) || !openLogsItem.click) {
+      throw new Error('open logs item click handler is missing');
+    }
+    if (!exportLogsItem || !('click' in exportLogsItem) || !exportLogsItem.click) {
+      throw new Error('export logs item click handler is missing');
+    }
+
+    debugItem.click(undefined as never, undefined as never, undefined as never);
+    openLogsItem.click(undefined as never, undefined as never, undefined as never);
+    exportLogsItem.click(undefined as never, undefined as never, undefined as never);
+
+    expect(handlers.onToggleDebugMode).toHaveBeenCalledTimes(1);
+    expect(handlers.onOpenLogDirectory).toHaveBeenCalledTimes(1);
+    expect(handlers.onExportLogs).toHaveBeenCalledTimes(1);
   });
 });

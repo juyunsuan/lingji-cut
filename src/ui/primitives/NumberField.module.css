@@ -82,7 +82,7 @@
 /* 中央数值 */
 .value {
   flex: 1;
-  min-width: 0;
+  min-width: 4ch;
   padding: 6px 8px;
   margin: 0;
   border: none;
