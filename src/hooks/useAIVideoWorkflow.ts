@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { createPersistedAIState, selectCoverCandidate } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
+import { serializeSrtEntries } from '../lib/srt-parser';
 import {
   DEFAULT_WORKFLOW,
   loadAISettings,
@@ -110,6 +111,26 @@ async function hydrateReusablePodcastMedia(): Promise<void> {
     : 0;
 
   timelineState.setSrtEntries(entries);
+
+  // 若 autoResegment 触发了切分，将切分结果写回主 SRT 文件；
+  // .original.srt 由 main 进程在首次 TTS 时落盘，此处不改动。
+  {
+    const postSetState = useTimelineStore.getState();
+    if (postSetState.srtEntries.length !== postSetState.originalSrtEntries.length) {
+      const hydrateProjectDir = getProjectDir();
+      if (hydrateProjectDir) {
+        const splitSrtText = serializeSrtEntries(postSetState.srtEntries);
+        const projectFileName = srtPath.split(/[\\/]/).pop() ?? 'podcast-subtitles.srt';
+        try {
+          await window.electronAPI.saveScriptFile(hydrateProjectDir, projectFileName, splitSrtText);
+        } catch (error) {
+          // 非致命：内存状态已正确，磁盘回写仅做最佳努力
+          console.warn('[subtitle] hydrate 切分后写回 SRT 失败，磁盘保留原始版本', error);
+        }
+      }
+    }
+  }
+
   timelineState.setPodcast(
     audioPath,
     srtPath,
@@ -274,6 +295,23 @@ export function useAIVideoWorkflow() {
           const { entries } = await window.electronAPI.parseSrtFile(ttsResult.srtPath);
           const actualDurationMs = await window.electronAPI.getAudioDuration(ttsResult.audioPath).catch(() => 0);
           timelineStore.setSrtEntries(entries);
+
+          // 若 autoResegment 触发了切分，store 中的 srtEntries 比 originalSrtEntries 更多；
+          // 将切分结果写回主 SRT 文件，.original.srt 已由 main 进程保留原始副本。
+          {
+            const postSetState = useTimelineStore.getState();
+            if (postSetState.srtEntries.length !== postSetState.originalSrtEntries.length) {
+              const splitSrtText = serializeSrtEntries(postSetState.srtEntries);
+              const projectFileName = ttsResult.srtPath.split(/[\\/]/).pop() ?? 'podcast-subtitles.srt';
+              try {
+                await window.electronAPI.saveScriptFile(projectDir, projectFileName, splitSrtText);
+              } catch (error) {
+                // 非致命：内存状态已正确，磁盘回写仅做最佳努力
+                console.warn('[subtitle] 切分后写回 SRT 失败，磁盘保留原始版本', error);
+              }
+            }
+          }
+
           timelineStore.setPodcast(
             ttsResult.audioPath,
             ttsResult.srtPath,

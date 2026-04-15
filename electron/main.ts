@@ -1089,7 +1089,10 @@ ipcMain.handle(
       }
 
       const srtPath = path.join(projectDir, 'podcast-subtitles.srt');
-      await fs.writeFile(srtPath, subtitleJsonToSRT(subtitleSentences), 'utf-8');
+      const originalSrtPath = path.join(projectDir, 'podcast-subtitles.original.srt');
+      const srtText = subtitleJsonToSRT(subtitleSentences);
+      await fs.writeFile(srtPath, srtText, 'utf-8');
+      await fs.writeFile(originalSrtPath, srtText, 'utf-8');
       mainWindow?.webContents.send('tts-progress', 85);
 
       let durationMs = getMinimaxDurationMs(result, subtitleSentences);
