@@ -56,3 +56,64 @@ describe('findBestBreakPoint', () => {
     expect(findBestBreakPoint(text, 10)).toBe(6);
   });
 });
+
+describe('splitLongEntry', () => {
+  it('keeps short entry unchanged', () => {
+    const entry = createEntry({ text: '短字幕', startMs: 0, endMs: 1_000 });
+    const result = splitLongEntry(entry, 35);
+    expect(result).toEqual([entry]);
+  });
+
+  it('splits at Chinese punctuation and distributes time by char ratio', () => {
+    const entry = createEntry({
+      text: '这是第一小段话，这是第二小段话哈哈',
+      startMs: 0,
+      endMs: 10_000,
+    });
+    const result = splitLongEntry(entry, 10);
+    expect(result).toHaveLength(2);
+    expect(result[0].text).toBe('这是第一小段话，');
+    expect(result[1].text).toBe('这是第二小段话哈哈');
+
+    const totalLen = result[0].text.length + result[1].text.length;
+    const expectedFrontDuration = Math.round((10_000 * result[0].text.length) / totalLen);
+    expect(result[0].startMs).toBe(0);
+    expect(result[0].endMs).toBe(expectedFrontDuration);
+    expect(result[1].startMs).toBe(expectedFrontDuration);
+    expect(result[1].endMs).toBe(10_000);
+  });
+
+  it('recursively splits when a segment is still too long', () => {
+    // 24 chars, no punctuation → hard-cut recursion
+    const entry = createEntry({
+      text: '哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈哈',
+      startMs: 0,
+      endMs: 10_000,
+    });
+    const result = splitLongEntry(entry, 8);
+    expect(result.length).toBeGreaterThanOrEqual(3);
+    expect(result.every((e) => e.text.length <= 8)).toBe(true);
+  });
+
+  it('preserves last segment endMs and first segment startMs', () => {
+    const entry = createEntry({
+      text: '一二三四五六七八九十一二三四五六七八九十一',
+      startMs: 1_000,
+      endMs: 5_000,
+    });
+    const result = splitLongEntry(entry, 10);
+    expect(result[0].startMs).toBe(1_000);
+    expect(result[result.length - 1].endMs).toBe(5_000);
+  });
+
+  it('preserves the original entry index on all split segments', () => {
+    const entry = createEntry({
+      index: 7,
+      text: '一二三四五六七八九十一二三四五六七八九十一',
+      startMs: 0,
+      endMs: 4_000,
+    });
+    const result = splitLongEntry(entry, 10);
+    expect(result.every((e) => e.index === 7)).toBe(true);
+  });
+});
