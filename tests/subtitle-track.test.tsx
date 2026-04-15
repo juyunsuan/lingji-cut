@@ -31,6 +31,8 @@ const style: SubtitleStyle = {
   highlightPaddingY: 4,
   highlightRadius: 12,
   highlightAnimation: 'pop',
+  maxCharsPerEntry: 35,
+  autoResegment: true,
 };
 
 describe('SubtitleTrack', () => {

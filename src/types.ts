@@ -78,6 +78,10 @@ export interface SubtitleStyle {
   highlightPaddingY: number;
   highlightRadius: number;
   highlightAnimation: 'pop' | 'wipe' | 'none';
+  /** 单条字幕最多字符数，超过则自动切分。默认 35，范围 20~60 */
+  maxCharsPerEntry: number;
+  /** 是否启用自动切分。默认 true */
+  autoResegment: boolean;
 }
 
 export interface SubtitleHighlight {
@@ -245,6 +249,8 @@ export function createDefaultSubtitleStyle(): SubtitleStyle {
     highlightPaddingY: 4,
     highlightRadius: 12,
     highlightAnimation: 'pop',
+    maxCharsPerEntry: 35,
+    autoResegment: true,
   };
 }
 
