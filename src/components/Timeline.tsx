@@ -7,7 +7,11 @@ import {
   getTimelineContextMenuItems,
   type TimelineContextMenuActionKey,
 } from '../lib/timeline-context-menu';
-import { getRenderableVisualTracks, getVisualTracks } from '../lib/timeline-tracks';
+import {
+  getAudioOverlayTracks,
+  getRenderableVisualTracks,
+  getVisualTracks,
+} from '../lib/timeline-tracks';
 import { filterValidSubtitleHighlights } from '../lib/subtitle-highlights';
 import { formatTimecode, getEffectiveTimelineDurationMs } from '../lib/utils';
 import {
@@ -27,6 +31,8 @@ import {
   type AutoScrollScheduler,
 } from '../lib/timeline-autoscroll';
 import type { OverlayItem, TimelineTrack } from '../types';
+import { createDefaultAudioOverlayData } from '../types';
+import { readAudioDurationMs } from '../lib/utils';
 import { getTextTemplateById } from '../lib/text-templates';
 import { useTimelineStore } from '../store/timeline';
 import { AppIcon } from './AppIcon';
@@ -67,7 +73,7 @@ interface OverlayDragState {
 
 interface AssetLike {
   path: string;
-  type: 'video' | 'image' | 'text';
+  type: 'video' | 'image' | 'text' | 'audio';
   durationMs: number;
   overlayRole?: 'default-background';
 }
@@ -156,6 +162,10 @@ export function Timeline({
   }, [visualEndMs, zoomLevel]);
   const trackColumns = `${sidebarWidth}px ${contentWidth}px`;
   const visualTracks = useMemo(() => getVisualTracks(timeline.tracks), [timeline.tracks]);
+  const audioOverlayTracks = useMemo(
+    () => getAudioOverlayTracks(timeline.tracks),
+    [timeline.tracks],
+  );
   // 轨道数变动时裁剪 gapRefs 数组,避免保留已卸载的 DOM 引用
   useEffect(() => {
     const expected = visualTracks.length + 1;
@@ -217,6 +227,9 @@ export function Timeline({
     for (const track of renderableTracks) {
       groups.set(track.id, []);
     }
+    for (const track of audioOverlayTracks) {
+      groups.set(track.id, []);
+    }
 
     for (const overlay of timeline.overlays) {
       const group = groups.get(overlay.trackId);
@@ -226,7 +239,7 @@ export function Timeline({
     }
 
     return groups;
-  }, [renderableTracks, timeline.overlays]);
+  }, [renderableTracks, audioOverlayTracks, timeline.overlays]);
   const validSubtitleHighlights = useMemo(
     () => filterValidSubtitleHighlights(srtEntries, timeline.subtitleHighlights ?? []),
     [srtEntries, timeline.subtitleHighlights],
@@ -700,6 +713,39 @@ export function Timeline({
         },
         textData: { ...template.textData },
       });
+      return;
+    }
+
+    // 音频素材：落到音频 overlay 轨（若目标非 audio kind，则回落到已有音频轨或由 store 新建）
+    if (asset.type === 'audio') {
+      const targetTrack = timeline.tracks.find((t) => t.id === trackId);
+      const resolvedTrackId =
+        targetTrack && targetTrack.kind === 'audio' && targetTrack.id !== 'audio'
+          ? trackId
+          : audioOverlayTracks[0]?.id ?? 'audio-overlay-1';
+
+      const insertOverlay = (durationMs: number) => {
+        addOverlay({
+          type: 'audio',
+          assetPath: asset.path,
+          trackId: resolvedTrackId,
+          startMs,
+          durationMs,
+          position: { x: 0, y: 0, width: 0, height: 0 },
+          audioData: createDefaultAudioOverlayData(durationMs),
+        });
+      };
+
+      // 异步读取真实时长，失败则使用 asset.durationMs 兜底
+      void readAudioDurationMs(asset.path)
+        .then((decoded) => {
+          const finalDuration = decoded > 0 ? decoded : asset.durationMs;
+          insertOverlay(finalDuration);
+        })
+        .catch((error) => {
+          console.warn('读取拖入音频时长失败，使用素材库缓存值:', error);
+          insertOverlay(asset.durationMs);
+        });
       return;
     }
 
@@ -1426,12 +1472,140 @@ export function Timeline({
             })}
             </div>
 
+            {audioOverlayTracks.map((track) => {
+              const overlays = overlaysByTrack.get(track.id) ?? [];
+              const isHover = hoverTrackId === track.id;
+              return (
+                <div
+                  key={track.id}
+                  ref={(node) => {
+                    trackRowRefs.current[track.id] = node;
+                  }}
+                  className={styles.overlayRow}
+                  data-locked={track.locked ? 'true' : 'false'}
+                  style={{
+                    gridTemplateColumns: trackColumns,
+                    minHeight: overlayTrackHeight,
+                  }}
+                >
+                  {renderTrackControls({
+                    track,
+                    tone: 'var(--color-track-audio)',
+                    name: track.label,
+                    actions: (
+                      <button
+                        className={styles.trackDeleteButton}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          if (overlays.length > 0) {
+                            setPendingTrackDeletion({
+                              trackId: track.id,
+                              trackLabel: track.label,
+                              overlayCount: overlays.length,
+                            });
+                            return;
+                          }
+                          removeTrack(track.id);
+                        }}
+                        aria-label={`删除${track.label}`}
+                        title="删除音轨"
+                      >
+                        <AppIcon name="trash-2" size={12} />
+                      </button>
+                    ),
+                  })}
+                  <div
+                    ref={(node) => {
+                      trackLaneRefs.current[track.id] = node;
+                    }}
+                    onContextMenu={(event) => {
+                      handleTrackContextMenu(track.id, event.clientX);
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'copy';
+                      if (hoverTrackId !== track.id) {
+                        setHoverTrackId(track.id);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (hoverTrackId === track.id) {
+                        setHoverTrackId(null);
+                      }
+                    }}
+                    onDrop={handleTrackDrop(track.id)}
+                    className={joinClassNames(
+                      styles.trackDropLane,
+                      isHover ? styles.trackDropLaneHover : '',
+                    )}
+                    style={{
+                      height: overlayTrackHeight,
+                      ...gridBackground,
+                    }}
+                  >
+                    {overlays.map((overlay) => {
+                      const activeDragForOverlay =
+                        dragState && dragState.overlayId === overlay.id ? dragState : null;
+                      return (
+                        <OverlayBlock
+                          key={overlay.id}
+                          overlay={overlay}
+                          pxPerMs={pxPerMs}
+                          trackHeight={overlayTrackHeight}
+                          selected={selectedOverlayId === overlay.id}
+                          trackLocked={Boolean(track.locked)}
+                          collisionState={
+                            activeDragForOverlay && activeDragForOverlay.collision
+                              ? 'invalid'
+                              : 'none'
+                          }
+                          dragPreviewStartMs={
+                            activeDragForOverlay
+                              ? activeDragForOverlay.candidateStartMs
+                              : undefined
+                          }
+                          dragPreviewDeltaY={
+                            activeDragForOverlay
+                              ? activeDragForOverlay.previewDeltaY
+                              : undefined
+                          }
+                          isDragging={Boolean(activeDragForOverlay)}
+                          computeSnapForTrim={computeSnapForTrim}
+                          onTrackHoverChange={setHoverTrackId}
+                          onContextMenu={(event) => {
+                            handleOverlayContextMenu(overlay.id, overlay.trackId, event.clientX);
+                          }}
+                          onSelect={() => {
+                            setSelectedOverlayId(overlay.id);
+                            onOpenOverlayInspector?.(overlay.id);
+                          }}
+                        />
+                      );
+                    })}
+
+                    {overlays.length === 0 ? (
+                      <div
+                        className={[
+                          styles.emptyHint,
+                          isHover ? styles.emptyHintHover : '',
+                        ]
+                          .filter(Boolean)
+                          .join(' ')}
+                      >
+                        拖入音频到 {track.label}
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })}
+
             <SnapGuides
               targets={dragState?.snapTargets ?? []}
               pxPerMs={pxPerMs}
               sidebarWidth={sidebarWidth}
               height={Math.max(
-                overlayTrackHeight * Math.max(visualTracks.length, 1)
+                overlayTrackHeight * (Math.max(visualTracks.length, 1) + audioOverlayTracks.length)
                   + audioTrackHeight
                   + subtitleTrackHeight
                   + rulerHeight,

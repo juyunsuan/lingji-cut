@@ -20,7 +20,7 @@ import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
 import { prefersReducedMotion } from './ui/lib/animation-config';
 import { WorkspaceTabs } from './components/WorkspaceTabs';
-import { getFileNameFromPath } from './lib/utils';
+import { getFileNameFromPath, readAudioDurationMs } from './lib/utils';
 import { createDefaultTimeline } from './types';
 import type { AICard, AIAnalysisResult } from './types/ai';
 import { getCurrentAISaveStatus, loadAISettings, subscribeToAISaveStatus, useAIStore } from './store/ai';
@@ -605,7 +605,19 @@ export default function App() {
       return;
     }
 
-    addAsset(asset.path, asset.type, asset.durationMs);
+    let durationMs = asset.durationMs;
+    if (asset.type === 'audio') {
+      try {
+        const decoded = await readAudioDurationMs(asset.path);
+        if (decoded > 0) {
+          durationMs = decoded;
+        }
+      } catch (error) {
+        console.warn('读取导入音频时长失败，使用主进程回退值:', error);
+      }
+    }
+
+    addAsset(asset.path, asset.type, durationMs);
   }, [addAsset]);
 
   const handleReplaceAudio = useCallback(async () => {

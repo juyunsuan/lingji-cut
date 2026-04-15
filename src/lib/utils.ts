@@ -68,6 +68,55 @@ export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
+/**
+ * 在渲染进程中通过 HTMLAudioElement 读取音频文件的真实时长（毫秒）。
+ * 用作 Electron 主进程 getVideoMetadata 失败时的兜底来源。
+ */
+export function readAudioDurationMs(filePath: string): Promise<number> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') {
+      resolve(0);
+      return;
+    }
+
+    const audio = new window.Audio();
+    audio.preload = 'metadata';
+    let settled = false;
+
+    const cleanup = () => {
+      audio.src = '';
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+    };
+
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('读取音频时长超时'));
+    }, 8_000);
+
+    audio.onloadedmetadata = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      const seconds = Number.isFinite(audio.duration) ? audio.duration : 0;
+      cleanup();
+      resolve(Math.max(0, Math.round(seconds * 1000)));
+    };
+
+    audio.onerror = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      cleanup();
+      reject(new Error(`音频解码失败: ${filePath}`));
+    };
+
+    audio.src = toFileSrc(filePath);
+  });
+}
+
 const MIN_TIMELINE_DURATION_MS = 1_000;
 
 interface TimelineDurationLike {

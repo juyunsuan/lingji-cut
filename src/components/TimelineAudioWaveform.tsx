@@ -93,6 +93,120 @@ function sampleWaveformPeaks(peaks: number[], targetLength: number): number[] {
   });
 }
 
+/**
+ * 按"源音频局部区间"采样绘制波形。
+ * - sourceDurationMs：源音频总时长
+ * - startOffsetMs：clip 对应源文件起点
+ * - visibleDurationMs：clip 实际要展示的源长度
+ * 用于叠加音频 clip 的波形缩略。
+ */
+export function TimelineAudioClipWaveform({
+  audioPath,
+  sourceDurationMs,
+  startOffsetMs,
+  visibleDurationMs,
+  width,
+  height,
+  inline = true,
+}: {
+  audioPath: string;
+  sourceDurationMs: number;
+  startOffsetMs: number;
+  visibleDurationMs: number;
+  width: number;
+  height: number;
+  inline?: boolean;
+}) {
+  const [peaks, setPeaks] = useState<number[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!audioPath || typeof window === 'undefined' || typeof document === 'undefined') {
+      setPeaks(null);
+      return;
+    }
+
+    void loadWaveformPeaks(audioPath, sourceDurationMs)
+      .then((nextPeaks) => {
+        if (!cancelled) {
+          setPeaks(nextPeaks);
+        }
+      })
+      .catch((error) => {
+        console.error('加载音频波形失败:', error);
+        if (!cancelled) {
+          setPeaks([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [audioPath, sourceDurationMs]);
+
+  const barCount = Math.min(600, Math.max(16, Math.floor(width / 2.5)));
+  const clipPeaks = useMemo(() => {
+    if (!peaks || peaks.length === 0 || sourceDurationMs <= 0) return [] as number[];
+    const startRatio = Math.max(0, Math.min(1, startOffsetMs / sourceDurationMs));
+    const endRatio = Math.max(
+      startRatio,
+      Math.min(1, (startOffsetMs + visibleDurationMs) / sourceDurationMs),
+    );
+    const startIdx = Math.floor(startRatio * peaks.length);
+    const endIdx = Math.max(startIdx + 1, Math.ceil(endRatio * peaks.length));
+    const slice = peaks.slice(startIdx, Math.min(peaks.length, endIdx));
+    return sampleWaveformPeaks(slice, barCount);
+  }, [peaks, sourceDurationMs, startOffsetMs, visibleDurationMs, barCount]);
+
+  const maxBarHeight = Math.max(4, height - 6);
+  const wrapperStyle = inline
+    ? ({
+        position: 'relative',
+        width,
+        height,
+        display: 'flex',
+        alignItems: 'flex-end',
+        gap: '1px',
+        padding: '3px 0',
+        overflow: 'hidden',
+      } as const)
+    : undefined;
+
+  if (!audioPath) return null;
+
+  if (!peaks || clipPeaks.length === 0) {
+    return (
+      <div style={wrapperStyle}>
+        <div
+          style={{
+            width: '100%',
+            height: 1,
+            background: 'color-mix(in srgb, var(--color-selection-blue) 28%, transparent)',
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div style={wrapperStyle}>
+      {clipPeaks.map((peak, index) => (
+        <span
+          key={`clip-peak-${index}`}
+          style={{
+            flex: '1 0 0',
+            minWidth: 1,
+            height: `${Math.max(2, Math.round(peak * maxBarHeight))}px`,
+            background: 'color-mix(in srgb, var(--color-track-audio, #f0abfc) 80%, white)',
+            borderRadius: '999px 999px 2px 2px',
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function TimelineAudioWaveform({
   audioPath,
   durationMs,

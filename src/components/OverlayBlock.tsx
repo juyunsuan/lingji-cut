@@ -7,6 +7,7 @@ import { useTimelineStore } from '../store/timeline';
 import { ContextMenu } from '../ui';
 import { AppIcon } from './AppIcon';
 import { AssetThumbnail } from './AssetThumbnail';
+import { TimelineAudioClipWaveform } from './TimelineAudioWaveform';
 import styles from './OverlayBlock.module.css';
 
 // Trim handle 命中区域宽度(像素)
@@ -76,12 +77,15 @@ export function OverlayBlock({
   const isAICard = overlay.overlayType === 'ai-card';
   const isDefaultBackground = overlay.overlayRole === 'default-background';
   const isTextOverlay = overlay.type === 'text';
+  const isAudioOverlay = overlay.type === 'audio';
   const color = isDefaultBackground
     ? 'var(--color-brand-accent)'
     : isAICard
     ? overlay.aiCardData?.style.primaryColor ?? 'var(--color-brand-accent)'
     : isTextOverlay
     ? '#10b981'
+    : isAudioOverlay
+    ? 'var(--color-track-audio, #f0abfc)'
     : overlay.type === 'video'
       ? 'var(--color-selection-blue-hover)'
       : 'var(--color-brand-warm)';
@@ -91,6 +95,8 @@ export function OverlayBlock({
     ? 'color-mix(in srgb, var(--color-brand-accent) 24%, transparent)'
     : isTextOverlay
     ? 'color-mix(in srgb, #10b981 22%, transparent)'
+    : isAudioOverlay
+    ? 'color-mix(in srgb, var(--color-track-audio, #f0abfc) 22%, transparent)'
     : overlay.type === 'video'
       ? 'color-mix(in srgb, var(--color-selection-blue-hover) 24%, transparent)'
       : 'color-mix(in srgb, var(--color-brand-warm) 22%, transparent)';
@@ -105,7 +111,15 @@ export function OverlayBlock({
   // 不再硬限制素材末端;拖拽路径已由 Timeline.tsx 接管且不做 project 末端 clamp
   const projectDuration = Number.POSITIVE_INFINITY;
   const maxDurationForAsset =
-    overlay.type === 'video' ? asset?.durationMs ?? overlay.durationMs : Number.POSITIVE_INFINITY;
+    overlay.type === 'video'
+      ? asset?.durationMs ?? overlay.durationMs
+      : isAudioOverlay
+        ? Math.max(
+            overlay.audioData?.sourceDurationMs ?? 0,
+            asset?.durationMs ?? 0,
+            overlay.durationMs,
+          )
+        : Number.POSITIVE_INFINITY;
   const label = isDefaultBackground
     ? `默认背景 · ${getFileNameFromPath(overlay.assetPath)}`
     : isAICard
@@ -119,9 +133,11 @@ export function OverlayBlock({
       ? 'AI'
       : isTextOverlay
         ? 'TXT'
-        : overlay.type === 'video'
-          ? 'VID'
-          : 'IMG';
+        : isAudioOverlay
+          ? 'AUD'
+          : overlay.type === 'video'
+            ? 'VID'
+            : 'IMG';
   const canManageOverlay = !isDefaultBackground;
   const canPaste = Boolean(overlayClipboard);
 
@@ -325,9 +341,38 @@ export function OverlayBlock({
     onContextMenu?.(event);
   };
 
+  const audioWaveformWidth = Math.max(0, Math.round(width - 8));
+  const audioWaveformHeight = Math.max(12, blockHeight - 10);
+
   const innerBlock = (
     <>
       <div className={styles.accentLine} />
+
+      {isAudioOverlay && overlay.assetPath ? (
+        <div
+          style={{
+            position: 'absolute',
+            left: 4,
+            right: 4,
+            top: 5,
+            bottom: 5,
+            pointerEvents: 'none',
+            opacity: 0.58,
+            overflow: 'hidden',
+          }}
+        >
+          <TimelineAudioClipWaveform
+            audioPath={overlay.assetPath}
+            sourceDurationMs={
+              overlay.audioData?.sourceDurationMs ?? asset?.durationMs ?? overlay.durationMs
+            }
+            startOffsetMs={overlay.audioData?.trimStartMs ?? 0}
+            visibleDurationMs={overlay.durationMs}
+            width={audioWaveformWidth}
+            height={audioWaveformHeight}
+          />
+        </div>
+      ) : null}
 
       {showImageThumbnail && asset ? (
         <div

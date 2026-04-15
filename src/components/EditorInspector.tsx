@@ -137,6 +137,10 @@ export function EditorInspector({
   );
 
   /* ── eyebrow pill 内容 ── */
+  const selectedOverlay =
+    selection.type === 'overlay'
+      ? timeline.overlays.find((item) => item.id === selection.overlayId) ?? null
+      : null;
   const eyebrowLabel =
     selection.type === 'subtitle-style'
       ? 'SUBTITLE'
@@ -145,7 +149,11 @@ export function EditorInspector({
       : selection.type === 'motion-card'
       ? 'MOTION CARD'
       : selection.type === 'overlay'
-      ? 'OVERLAY'
+      ? selectedOverlay?.type === 'audio'
+        ? 'AUDIO'
+        : selectedOverlay?.type === 'text'
+        ? 'TEXT'
+        : 'OVERLAY'
       : 'INSPECTOR';
 
   /* ── 右侧索引/状态标签 ── */

@@ -26,9 +26,24 @@ export interface TimelineTrack {
   locked?: boolean;
 }
 
+export interface AudioOverlayData {
+  /** 线性音量 0..1.5，1 表示原始响度 */
+  volume: number;
+  /** 淡入时长（毫秒） */
+  fadeInMs: number;
+  /** 淡出时长（毫秒） */
+  fadeOutMs: number;
+  /** 源音频裁剪起点（毫秒），从源文件的该位置开始播放 */
+  trimStartMs: number;
+  /** 源音频总时长（毫秒），用于 UI 限制裁剪上限 */
+  sourceDurationMs: number;
+  /** 静音 */
+  muted?: boolean;
+}
+
 export interface OverlayItem {
   id: string;
-  type: 'video' | 'image' | 'text';
+  type: 'video' | 'image' | 'text' | 'audio';
   assetPath: string;
   trackId: string;
   startMs: number;
@@ -39,6 +54,17 @@ export interface OverlayItem {
   overlayRole?: OverlayRole;
   aiCardData?: AICardOverlayData;
   textData?: TextOverlayData;
+  audioData?: AudioOverlayData;
+}
+
+export function createDefaultAudioOverlayData(sourceDurationMs: number): AudioOverlayData {
+  return {
+    volume: 1,
+    fadeInMs: 0,
+    fadeOutMs: 0,
+    trimStartMs: 0,
+    sourceDurationMs: Math.max(0, Math.round(sourceDurationMs)),
+  };
 }
 
 export interface SubtitleStyle {
@@ -149,6 +175,16 @@ export const DEFAULT_AUDIO_TRACK_ID = 'audio';
 export const DEFAULT_SUBTITLE_TRACK_ID = 'subtitle';
 export const DEFAULT_VISUAL_TRACK_ID = 'visual-1';
 export const DEFAULT_AI_CARDS_TRACK_ID = 'visual-2';
+export const DEFAULT_AUDIO_OVERLAY_TRACK_ID = 'audio-overlay-1';
+
+export function createAudioOverlayTrack(index: number): TimelineTrack {
+  return {
+    id: `audio-overlay-${index}`,
+    kind: 'audio',
+    label: `音轨 ${index}`,
+    order: index,
+  };
+}
 
 export function createVisualTrack(index: number, order = index): TimelineTrack {
   return {

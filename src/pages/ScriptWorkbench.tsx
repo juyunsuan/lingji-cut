@@ -1698,7 +1698,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                 <>
                   {activeFile === 'script.md' && thinkingText.trim() ? (
                     <div className={styles.thinkingPanel}>
-                      <ThinkingBlock text={thinkingText} />
+                      <ThinkingBlock
+                        text={thinkingText}
+                        streaming={agentOperation.isOperating}
+                      />
                     </div>
                   ) : null}
 

@@ -4,6 +4,7 @@ import { getRenderableOverlays } from '../lib/timeline-tracks';
 import type { SrtEntry, TimelineData } from '../types';
 import { resolveRemotionAssetSrc } from '../lib/remotion-assets';
 import { AICardOverlay } from './AICardOverlay';
+import { AudioOverlay } from './AudioOverlay';
 import { MediaOverlay } from './MediaOverlay';
 import { SubtitleTrack } from './SubtitleTrack';
 import { TextOverlay } from './TextOverlay';
@@ -18,12 +19,18 @@ export function PodcastComposition({ timeline, srtEntries }: PodcastCompositionP
   const { width, height } = useVideoConfig();
   const previewScale = Math.min(width / timeline.width, height / timeline.height);
   const renderableOverlays = getRenderableOverlays(timeline);
+  const audioOverlays = renderableOverlays.filter((overlay) => overlay.type === 'audio');
+  const visualOverlays = renderableOverlays.filter((overlay) => overlay.type !== 'audio');
   // AI 卡片需要独立计数以显示章节序号
   let aiCardIndex = 0;
 
   return (
     <AbsoluteFill style={{ background: '#04060a', overflow: 'hidden' }}>
       {timeline.podcast.audioPath ? <Audio src={resolveRemotionAssetSrc(timeline.podcast.audioPath)} /> : null}
+
+      {audioOverlays.map((overlay) => (
+        <AudioOverlay key={overlay.id} overlay={overlay} fps={timeline.fps} />
+      ))}
 
       <div
         style={{
@@ -40,7 +47,7 @@ export function PodcastComposition({ timeline, srtEntries }: PodcastCompositionP
             transformOrigin: 'top left',
           }}
         >
-          {renderableOverlays.map((overlay) => {
+          {visualOverlays.map((overlay) => {
             if (overlay.overlayType === 'ai-card') {
               aiCardIndex += 1;
               return (

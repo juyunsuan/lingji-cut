@@ -184,7 +184,7 @@ describe('EditorInspector', () => {
       />,
     );
 
-    expect(html).toContain('OVERLAY');
+    expect(html).toContain('TEXT');
     expect(html).toContain('动画');
     expect(html).toContain('这是文字标题');
   });

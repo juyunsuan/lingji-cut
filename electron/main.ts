@@ -609,13 +609,17 @@ ipcMain.handle('select-project-directory', async () => {
   return result.canceled ? null : result.filePaths[0];
 });
 
+const AUDIO_EXTENSIONS_FILTER = ['mp3', 'wav', 'aac', 'm4a', 'flac', 'ogg', 'opus'];
+const VIDEO_EXTENSIONS_FILTER = ['mp4', 'mov', 'webm', 'm4v'];
+const IMAGE_EXTENSIONS_FILTER = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+
 ipcMain.handle('select-setup-file', async (_event, kind: 'audio' | 'srt') => {
   if (!mainWindow) return null;
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openFile'],
     filters:
       kind === 'audio'
-        ? [{ name: 'MP3 Audio', extensions: ['mp3'] }]
+        ? [{ name: '音频文件', extensions: AUDIO_EXTENSIONS_FILTER }]
         : [{ name: 'SRT Subtitle', extensions: ['srt'] }],
   });
 
@@ -628,7 +632,7 @@ ipcMain.handle('select-media-file', async (_event, kind: 'audio' | 'srt') => {
     properties: ['openFile'],
     filters:
       kind === 'audio'
-        ? [{ name: 'MP3 Audio', extensions: ['mp3'] }]
+        ? [{ name: '音频文件', extensions: AUDIO_EXTENSIONS_FILTER }]
         : [{ name: 'SRT Subtitle', extensions: ['srt'] }],
   });
 
@@ -642,7 +646,11 @@ ipcMain.handle('add-asset', async () => {
     filters: [
       {
         name: '媒体素材',
-        extensions: ['mp4', 'mov', 'webm', 'm4v', 'jpg', 'jpeg', 'png', 'gif', 'webp'],
+        extensions: [
+          ...VIDEO_EXTENSIONS_FILTER,
+          ...IMAGE_EXTENSIONS_FILTER,
+          ...AUDIO_EXTENSIONS_FILTER,
+        ],
       },
     ],
   });
@@ -652,22 +660,40 @@ ipcMain.handle('add-asset', async () => {
   }
 
   const assetPath = result.filePaths[0];
-  const extension = path.extname(assetPath).toLowerCase();
-  const isVideo = ['.mp4', '.mov', '.webm', '.m4v'].includes(extension);
-  let durationMs = 5000;
+  const extension = path.extname(assetPath).toLowerCase().replace(/^\./, '');
+  const isVideo = VIDEO_EXTENSIONS_FILTER.includes(extension);
+  const isAudio = AUDIO_EXTENSIONS_FILTER.includes(extension);
+  let durationMs = isAudio || isVideo ? 10000 : 5000;
 
-  if (isVideo) {
+  if (isVideo || isAudio) {
     try {
       const metadata = await getVideoMetadata(assetPath);
-      durationMs = Math.max(1000, Math.round((metadata.durationInSeconds ?? 10) * 1000));
-    } catch {
-      durationMs = 10000;
+      const seconds = metadata.durationInSeconds;
+      if (typeof seconds === 'number' && seconds > 0) {
+        durationMs = Math.max(500, Math.round(seconds * 1000));
+      } else {
+        writeAppLog(
+          'warn',
+          'add-asset',
+          `媒体时长为空: ${assetPath}`,
+          JSON.stringify(metadata),
+        );
+      }
+    } catch (error) {
+      writeAppLog(
+        'warn',
+        'add-asset',
+        `读取媒体时长失败: ${assetPath}`,
+        error instanceof Error ? error.message : String(error),
+      );
     }
   }
 
+  const type: 'video' | 'audio' | 'image' = isVideo ? 'video' : isAudio ? 'audio' : 'image';
+
   return {
     path: assetPath,
-    type: isVideo ? 'video' : 'image',
+    type,
     durationMs,
   };
 });
@@ -718,12 +744,20 @@ ipcMain.handle('scan-project-assets', async (_event, projectDir: string) => {
 
       let durationMs = assetType === 'image' ? 5000 : 10000;
 
-      if (assetType === 'video') {
+      if (assetType === 'video' || assetType === 'audio') {
         try {
           const metadata = await getVideoMetadata(fullPath);
-          durationMs = Math.max(1000, Math.round((metadata.durationInSeconds ?? 10) * 1000));
-        } catch {
-          durationMs = 10000;
+          const seconds = metadata.durationInSeconds;
+          if (typeof seconds === 'number' && seconds > 0) {
+            durationMs = Math.max(500, Math.round(seconds * 1000));
+          }
+        } catch (error) {
+          writeAppLog(
+            'warn',
+            'asset-scan',
+            `读取媒体时长失败: ${fullPath}`,
+            error instanceof Error ? error.message : String(error),
+          );
         }
       }
 
@@ -1163,6 +1197,11 @@ ipcMain.handle('refresh-recent-projects', async () => {
 ipcMain.handle(
   'render-video',
   async (_event, args: { timeline: string; outputPath: string; exportConfig: ExportConfig }) => {
+    const isDev = !app.isPackaged;
+    const renderLogPrefix = '[render-video]';
+    const renderStartedAt = Date.now();
+    const timestamp = () => `${((Date.now() - renderStartedAt) / 1000).toFixed(2)}s`;
+
     const timelineData = JSON.parse(args.timeline) as TimelineData;
     const srtContent = await fs.readFile(timelineData.podcast.srtPath, 'utf-8');
     const srtEntries = parseSrt(srtContent);
@@ -1174,37 +1213,143 @@ ipcMain.handle(
       quality: args.exportConfig.quality,
     });
 
+    const cpuCount = os.cpus().length;
+    // 显式把并发拉满到物理核数；null = Remotion 默认策略（约 cpuCount/2）
+    const explicitConcurrency = cpuCount;
+
+    if (isDev) {
+      console.log(`${renderLogPrefix} 开始导出`, {
+        outputPath: args.outputPath,
+        resolution: args.exportConfig.resolution,
+        quality: args.exportConfig.quality,
+        renderWidth: renderConfig.renderWidth,
+        renderHeight: renderConfig.renderHeight,
+        x264Preset: renderConfig.x264Preset,
+        videoBitrate: renderConfig.videoBitrate,
+        audioBitrate: renderConfig.audioBitrate,
+        cpuCount,
+        explicitConcurrency,
+        platform: process.platform,
+        arch: process.arch,
+      });
+    }
+
     try {
+      const bundleStart = Date.now();
       const serveUrl = await bundle({
         entryPoint: resolveCompositionEntryPath(),
         publicDir,
       });
+      if (isDev) {
+        console.log(
+          `${renderLogPrefix} bundle 完成 耗时=${((Date.now() - bundleStart) / 1000).toFixed(2)}s @${timestamp()}`,
+        );
+      }
+
       const inputProps = {
         timeline: renderTimeline,
         srtEntries,
         renderConfig,
       };
+      const selectStart = Date.now();
       const composition = await selectComposition({
         serveUrl,
         id: 'PodcastComposition',
         inputProps,
       });
+      if (isDev) {
+        console.log(
+          `${renderLogPrefix} selectComposition 完成 耗时=${((Date.now() - selectStart) / 1000).toFixed(2)}s durationInFrames=${composition.durationInFrames} fps=${composition.fps} ${composition.width}x${composition.height} @${timestamp()}`,
+        );
+      }
 
+      const renderStart = Date.now();
+      let lastProgressLog = 0;
+      let firstFrameAt: number | null = null;
+      let lastFrameRenderAt: number | null = null;
+      let lastRenderedFrames = 0;
       await renderMedia({
         serveUrl,
         composition,
         codec: 'h264',
         outputLocation: args.outputPath,
         inputProps,
+        concurrency: explicitConcurrency,
         x264Preset: renderConfig.x264Preset,
         videoBitrate: renderConfig.videoBitrate,
         audioBitrate: renderConfig.audioBitrate as `${number}k` | `${number}K` | `${number}M`,
-        onProgress: ({ progress }) => {
+        ...(isDev
+          ? {
+              logLevel: 'verbose' as const,
+              onBrowserLog: (log) => {
+                // 跳过 OffthreadVideo / delayRender 的噪声 log，只保留 warning/error
+                if (log.type === 'warning' || log.type === 'error') {
+                  console.log(`${renderLogPrefix}[chromium:${log.type}]`, log.text);
+                }
+              },
+            }
+          : {}),
+        onProgress: ({ progress, renderedFrames, encodedFrames, stitchStage }) => {
           mainWindow?.webContents.send('render-progress', progress);
+          if (isDev) {
+            const now = Date.now();
+            if (firstFrameAt === null && renderedFrames > 0) {
+              firstFrameAt = now;
+            }
+            // 记录帧渲染阶段的结束时刻（最后一帧被渲染完）
+            if (
+              renderedFrames > lastRenderedFrames &&
+              renderedFrames >= composition.durationInFrames
+            ) {
+              lastFrameRenderAt = now;
+            }
+            lastRenderedFrames = renderedFrames;
+
+            if (now - lastProgressLog > 2000 || progress >= 1) {
+              lastProgressLog = now;
+              const elapsedTotal = (now - renderStart) / 1000;
+              // 纯帧渲染阶段的 fps（排除初始化时间）
+              const renderPhaseMs = firstFrameAt ? now - firstFrameAt : 0;
+              const pureRenderFps =
+                renderedFrames && renderPhaseMs > 0
+                  ? (renderedFrames / (renderPhaseMs / 1000)).toFixed(1)
+                  : '0.0';
+              console.log(
+                `${renderLogPrefix} progress=${(progress * 100).toFixed(1)}% rendered=${renderedFrames}/${composition.durationInFrames} encoded=${encodedFrames} stage=${stitchStage} renderFps=${pureRenderFps} elapsed=${elapsedTotal.toFixed(2)}s`,
+              );
+            }
+          }
         },
       });
 
+      if (isDev) {
+        const renderMediaMs = Date.now() - renderStart;
+        const framePhaseMs =
+          firstFrameAt && lastFrameRenderAt ? lastFrameRenderAt - firstFrameAt : null;
+        const stitchingMs =
+          lastFrameRenderAt !== null ? Date.now() - lastFrameRenderAt : null;
+        const pureFps =
+          framePhaseMs && composition.durationInFrames
+            ? (composition.durationInFrames / (framePhaseMs / 1000)).toFixed(2)
+            : 'n/a';
+        console.log(
+          `${renderLogPrefix} renderMedia 完成 总耗时=${(renderMediaMs / 1000).toFixed(2)}s`,
+          {
+            framePhaseS: framePhaseMs ? (framePhaseMs / 1000).toFixed(2) : 'n/a',
+            stitchingS: stitchingMs ? (stitchingMs / 1000).toFixed(2) : 'n/a',
+            pureRenderFps: pureFps,
+            concurrency: explicitConcurrency,
+            cpuCount,
+          },
+        );
+      }
+
       return { outputPath: args.outputPath };
+    } catch (err) {
+      if (isDev) {
+        console.error(`${renderLogPrefix} 导出失败 @${timestamp()}`, err);
+      }
+      throw err;
     } finally {
       await fs.rm(publicDir, { recursive: true, force: true });
     }

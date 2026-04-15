@@ -157,7 +157,7 @@ export interface ElectronAPI {
   getPathForFile: (file: File) => string;
   addAsset: () => Promise<{
     path: string;
-    type: 'video' | 'image';
+    type: 'video' | 'image' | 'audio';
     durationMs: number;
   } | null>;
   scanProjectAssets: (projectDir: string) => Promise<

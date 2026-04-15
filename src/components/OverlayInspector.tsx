@@ -3,6 +3,7 @@ import { getFileNameFromPath } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
 import type { OverlayMotion } from '../types';
 import { Button, NumberField, Select, type SelectOption } from '../ui';
+import { AudioInspector } from './AudioInspector';
 import { TextInspector } from './TextInspector';
 import styles from './OverlayInspector.module.css';
 
@@ -75,6 +76,10 @@ export function OverlayInspector({ overlayId, onDelete }: OverlayInspectorProps)
 
   if (overlay.type === 'text') {
     return <TextInspector overlayId={overlayId} onDelete={onDelete} />;
+  }
+
+  if (overlay.type === 'audio') {
+    return <AudioInspector overlayId={overlayId} onDelete={onDelete} />;
   }
 
   return (

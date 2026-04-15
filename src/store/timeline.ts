@@ -10,10 +10,20 @@ import type {
   TimelineData,
   TimelineTrack,
 } from '../types';
-import { DEFAULT_VISUAL_TRACK_ID, DEFAULT_AI_CARDS_TRACK_ID, createDefaultTimeline, createVisualTrack } from '../types';
+import {
+  DEFAULT_VISUAL_TRACK_ID,
+  DEFAULT_AI_CARDS_TRACK_ID,
+  createDefaultTimeline,
+  createVisualTrack,
+} from '../types';
 import type { AICardTimelineDraft } from '../types/ai';
 import { getFileNameFromPath } from '../lib/utils';
-import { getNextVisualTrack, normalizeTimelineData } from '../lib/timeline-tracks';
+import {
+  getAudioOverlayTracks,
+  getNextAudioOverlayTrack,
+  getNextVisualTrack,
+  normalizeTimelineData,
+} from '../lib/timeline-tracks';
 import { getAICardOverlayPosition, isFullscreenAICardPosition } from '../lib/ai-card-layout';
 import {
   clampOverlayDurationByNeighbors,
@@ -243,9 +253,45 @@ function buildCommittedTimelineState(
 function resolveOverlayInsert(
   state: TimelineCommitState,
   draft: OverlayItem,
-): { overlay: OverlayItem; createdTrack?: ReturnType<typeof getNextVisualTrack> } {
+): { overlay: OverlayItem; createdTrack?: TimelineTrack } {
   if (!isOverlayTrackManaged(draft)) {
     return { overlay: draft };
+  }
+
+  // 音频 overlay：先确认目标轨存在；不存在则挑一条可用或新建
+  if (draft.type === 'audio') {
+    const audioTracks = getAudioOverlayTracks(state.timeline.tracks);
+    const targetTrack = audioTracks.find((track) => track.id === draft.trackId);
+
+    if (targetTrack) {
+      const placement = canPlaceAt({
+        trackId: targetTrack.id,
+        startMs: draft.startMs,
+        durationMs: draft.durationMs,
+        overlays: state.timeline.overlays,
+      });
+      if (placement.ok) {
+        return { overlay: draft };
+      }
+    }
+
+    for (const track of audioTracks) {
+      if (track.id === draft.trackId) continue;
+      const retry = canPlaceAt({
+        trackId: track.id,
+        startMs: draft.startMs,
+        durationMs: draft.durationMs,
+        overlays: state.timeline.overlays,
+      });
+      if (retry.ok) {
+        return { overlay: { ...draft, trackId: track.id } };
+      }
+    }
+    const newAudioTrack = getNextAudioOverlayTrack(state.timeline.tracks);
+    return {
+      overlay: { ...draft, trackId: newAudioTrack.id },
+      createdTrack: newAudioTrack,
+    };
   }
 
   const placement = canPlaceAt({
