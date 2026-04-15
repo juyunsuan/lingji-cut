@@ -28,6 +28,8 @@ describe('useTimelineStore', () => {
       highlightPaddingY: 4,
       highlightRadius: 12,
       highlightAnimation: 'pop',
+      maxCharsPerEntry: 35,
+      autoResegment: true,
     });
     expect(createDefaultTimeline().subtitleHighlights).toEqual([]);
   });
@@ -472,6 +474,8 @@ describe('useTimelineStore', () => {
       highlightPaddingY: 4,
       highlightRadius: 12,
       highlightAnimation: 'pop',
+      maxCharsPerEntry: 35,
+      autoResegment: true,
     });
     expect(timeline.subtitleHighlights).toEqual([]);
     expect(assets.map((asset) => asset.path)).toEqual([

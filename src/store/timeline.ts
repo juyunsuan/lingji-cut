@@ -30,6 +30,8 @@ import {
   canPlaceAt,
   isOverlayTrackManaged,
 } from '../lib/timeline-placement';
+import { resegmentSrtEntries } from '../lib/srt-resegment';
+import { remapHighlightsAfterResegment } from '../lib/subtitle-highlights';
 
 type OverlayDraft = Omit<OverlayItem, 'id'>;
 type TimelineSnapshot = TimelineData;
@@ -42,6 +44,7 @@ export type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 export interface TimelineStore {
   timeline: TimelineData;
   srtEntries: SrtEntry[];
+  originalSrtEntries: SrtEntry[];
   assets: AssetItem[];
   overlayClipboard: OverlayClipboardItem | null;
   canUndo: boolean;
@@ -359,6 +362,7 @@ export function subscribeToSaveStatus(listener: (status: SaveStatus) => void): (
 export const useTimelineStore = create<TimelineStore>((set) => ({
   timeline: createDefaultTimeline(),
   srtEntries: [],
+  originalSrtEntries: [],
   assets: [],
   overlayClipboard: null,
   canUndo: false,
@@ -379,7 +383,30 @@ export const useTimelineStore = create<TimelineStore>((set) => ({
         canRedo: false,
       };
     }),
-  setSrtEntries: (entries) => set({ srtEntries: entries }),
+  setSrtEntries: (entries) =>
+    set((state) => {
+      const maxChars = state.timeline.subtitle.maxCharsPerEntry;
+      const autoResegment = state.timeline.subtitle.autoResegment;
+      const needSplit = autoResegment && entries.some((e) => e.text.length > maxChars);
+      const nextSrtEntries = needSplit ? resegmentSrtEntries(entries, maxChars) : entries;
+
+      let nextHighlights = state.timeline.subtitleHighlights ?? [];
+      if (needSplit && nextHighlights.length > 0) {
+        const { remapped } = remapHighlightsAfterResegment(nextHighlights, nextSrtEntries);
+        nextHighlights = remapped;
+      }
+
+      const nextTimeline = normalizeTimeline({
+        ...state.timeline,
+        subtitleHighlights: nextHighlights,
+      });
+
+      return {
+        originalSrtEntries: entries,
+        srtEntries: nextSrtEntries,
+        timeline: nextTimeline,
+      };
+    }),
   setSubtitleHighlights: (highlights) =>
     set((state) => {
       const nextTimeline = normalizeTimeline({
