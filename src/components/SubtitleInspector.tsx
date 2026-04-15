@@ -129,27 +129,34 @@ export function SubtitleInspector() {
     [handleSubtitleStyleUpdate],
   );
 
+  const [sliderValue, setSliderValue] = useState(timeline.subtitle.maxCharsPerEntry);
+
+  // 当 store 值因 undo/redo 或项目加载而外部变更时，同步本地 state
+  useEffect(() => {
+    setSliderValue(timeline.subtitle.maxCharsPerEntry);
+  }, [timeline.subtitle.maxCharsPerEntry]);
+
   const maxCharsDebounceRef = useRef<number | null>(null);
 
   const handleMaxCharsChange = useCallback(
     (value: number) => {
-      // Update the stored setting immediately so the slider label reflects the change
-      updateSubtitleStyle({ maxCharsPerEntry: value });
+      setSliderValue(value); // 立即反映到 UI，不写 store
       if (maxCharsDebounceRef.current !== null) {
         window.clearTimeout(maxCharsDebounceRef.current);
       }
       maxCharsDebounceRef.current = window.setTimeout(() => {
-        setSubtitleMaxChars(value);
+        setSubtitleMaxChars(value); // 防抖后单次写 store
         maxCharsDebounceRef.current = null;
       }, 300);
     },
-    [updateSubtitleStyle, setSubtitleMaxChars],
+    [setSubtitleMaxChars],
   );
 
   const handleResegmentNow = useCallback(() => {
     const { droppedHighlights } = resegmentSubtitles();
     if (droppedHighlights > 0) {
-      // Lightweight inline notice until a full toast system is wired
+      // TODO: 接入 AppStatusBar toast 系统后显示用户可见提示
+      // 目前暂用 console.warn 记录被丢弃的高亮数量
       console.warn(`[subtitle] ${droppedHighlights} 条关键词高亮因切分失效`);
     }
   }, [resegmentSubtitles]);
@@ -188,12 +195,12 @@ export function SubtitleInspector() {
             min={20}
             max={60}
             step={1}
-            value={timeline.subtitle.maxCharsPerEntry}
+            value={sliderValue}
             onChange={(event) => handleMaxCharsChange(Number(event.target.value))}
             className={styles.maxCharsSlider}
             aria-label="单条最多字数"
           />
-          <span className={styles.maxCharsValue}>{timeline.subtitle.maxCharsPerEntry}</span>
+          <span className={styles.maxCharsValue}>{sliderValue}</span>
         </div>
 
         <div className={styles.inlineRow}>
