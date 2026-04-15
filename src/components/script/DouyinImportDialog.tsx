@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
+  Alert,
   Dialog,
   DialogBody,
   DialogClose,
@@ -9,7 +10,9 @@ import {
   DialogHeader,
   DialogTitle,
   Button,
+  Field,
   Progress,
+  Textarea,
 } from '../../ui';
 import type { VideoImportProgress, VideoImportResult } from '../../lib/video-import-types';
 import { getFileNameFromPath, toFileSrc } from '../../lib/utils';
@@ -64,21 +67,14 @@ export function DouyinImportDialog({
               gap: 12,
             }}
           >
-            <textarea
-              value={url}
-              onChange={(event) => setUrl(event.target.value)}
-              placeholder="https://v.douyin.com/..."
-              rows={4}
-              style={{
-                width: '100%',
-                borderRadius: 12,
-                border: '1px solid var(--color-border-subtle)',
-                background: 'var(--color-window-bg)',
-                color: 'var(--color-text-primary)',
-                padding: '12px 14px',
-                resize: 'vertical',
-              }}
-            />
+            <Field label="视频链接">
+              <Textarea
+                value={url}
+                onChange={(event) => setUrl(event.target.value)}
+                placeholder="https://v.douyin.com/..."
+                rows={4}
+              />
+            </Field>
 
             {/* 导入进度：标签 + 进度条 + 状态文本 */}
             {progress ? (
@@ -209,18 +205,7 @@ export function DouyinImportDialog({
             ) : null}
 
             {errorMessage ? (
-              <div
-                style={{
-                  borderRadius: 12,
-                  background: 'color-mix(in srgb, #ff453a 12%, transparent)',
-                  color: '#ffb4ab',
-                  padding: '10px 12px',
-                  fontSize: 12,
-                  lineHeight: 1.6,
-                }}
-              >
-                {errorMessage}
-              </div>
+              <Alert variant="error">{errorMessage}</Alert>
             ) : null}
           </div>
         </DialogBody>

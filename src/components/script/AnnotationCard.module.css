@@ -31,23 +31,3 @@
   gap: 6px;
   margin-top: 8px;
 }
-.actions button {
-  padding: 3px 10px;
-  border-radius: 4px;
-  font-size: 11px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-.acceptBtn {
-  background: #2ecc71;
-  color: #fff;
-}
-.dismissBtn {
-  background: var(--bg-tertiary, #555);
-  color: var(--text-secondary, #aaa);
-}
-.rewriteBtn {
-  background: #3498db;
-  color: #fff;
-}

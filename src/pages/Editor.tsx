@@ -38,7 +38,10 @@ import {
 import { loadAISettings, useAIStore } from '../store/ai';
 import { useTimelineStore } from '../store/timeline';
 import {
+  Alert,
   Button,
+  Card,
+  CardContent,
   Checkbox,
   ConfirmDialog,
   Dialog,
@@ -48,6 +51,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
 } from '../ui';
 import { AppIcon } from '../components/AppIcon';
 import styles from './Editor.module.css';
@@ -772,83 +779,74 @@ export function Editor({
               data-editor-sidebar-style="flat-panel"
               data-editor-sidebar-width="224"
             >
-              <div className={styles.tabStrip}>
-                <div className={styles.tabHeader}>
-                  <div className={styles.topTabBar} role="tablist" aria-label="侧边栏面板切换">
-                    <Button
-                      role="tab"
-                      aria-selected={activePanel === 'assets'}
-                      variant="ghost"
-                      size="sm"
-                      className={joinClassNames(
-                        styles.topTabButton,
-                        activePanel === 'assets' ? styles.topTabButtonActive : '',
-                      )}
-                      onClick={() => setActivePanel('assets')}
+              <Tabs
+                value={activePanel}
+                onValueChange={(next) => setActivePanel(next as 'assets' | 'ai')}
+                className={styles.sidebarTabs}
+              >
+                <div className={styles.tabStrip}>
+                  <TabsList className={styles.sidebarTabsList} aria-label="侧边栏面板切换">
+                    <TabsTrigger
+                      value="assets"
+                      className={styles.sidebarTabsTrigger}
+                      icon={<AppIcon name="folder-open" size={14} />}
                     >
-                      <AppIcon name="folder-open" size={14} className={styles.topTabIcon} />
-                      <span>素材</span>
-                    </Button>
-                    <Button
-                      role="tab"
-                      aria-selected={activePanel === 'ai'}
-                      variant="ghost"
-                      size="sm"
-                      className={joinClassNames(
-                        styles.topTabButton,
-                        activePanel === 'ai' ? styles.topTabButtonActive : '',
-                      )}
-                      onClick={() => setActivePanel('ai')}
+                      素材
+                    </TabsTrigger>
+                    <TabsTrigger
+                      value="ai"
+                      className={styles.sidebarTabsTrigger}
+                      icon={<AppIcon name="sparkles" size={14} />}
                     >
-                      <AppIcon name="sparkles" size={14} className={styles.topTabIcon} />
-                      <span>AI 助手</span>
-                    </Button>
-                  </div>
+                      AI 助手
+                    </TabsTrigger>
+                  </TabsList>
                 </div>
-              </div>
-              <div className={styles.panelBody}>
-                {activePanel === 'assets' ? (
-                  <AssetPanel
-                    compact={layout.stackSidebar}
-                    railHeight={layout.sidebarRailHeight}
-                    onAddAsset={onAddAsset}
-                    onOpenSubtitleInspector={handleOpenSubtitleInspector}
-                    onAddTextOverlay={handleAddTextOverlay}
-                    onUseAsPodcastAudio={onUseAsPodcastAudio}
-                    onUseAsPodcastSrt={onUseAsPodcastSrt}
-                    onReplaceAudio={handleReplaceAudio}
-                    onReplaceSrt={handleReplaceSrt}
-                    showAIClip={
-                      (workflow.step === 'idle' ||
-                        workflow.step === 'error') &&
-                      Boolean(projectDir) &&
-                      !hasAICardOverlays
-                    }
-                    onStartAIClip={() => {
-                      void handleStartAIClip();
-                    }}
-                    onRegeneratePodcastFromScript={
-                      projectDir
-                        ? () => {
-                            void handleRegeneratePodcastFromScript();
-                          }
-                        : undefined
-                    }
-                    regeneratePodcastFromScriptDisabled={
-                      workflow.step !== 'idle' && workflow.step !== 'error'
-                    }
-                  />
-                ) : (
-                  <AIPanel
-                    compact={layout.stackSidebar}
-                    railHeight={layout.sidebarRailHeight}
-                    inspectedCardId={inspectorSelection.type === 'ai-card' ? inspectorSelection.cardId : null}
-                    onClearInspector={handleCloseInspector}
-                    onOpenCardInspector={handleOpenAICardInspector}
-                    onOpenSettings={onOpenSettings}
-                  />
-                )}
-              </div>
+                <div className={styles.panelBody}>
+                  <TabsContent value="assets" className={styles.sidebarTabsContent}>
+                    <AssetPanel
+                      compact={layout.stackSidebar}
+                      railHeight={layout.sidebarRailHeight}
+                      onAddAsset={onAddAsset}
+                      onOpenSubtitleInspector={handleOpenSubtitleInspector}
+                      onAddTextOverlay={handleAddTextOverlay}
+                      onUseAsPodcastAudio={onUseAsPodcastAudio}
+                      onUseAsPodcastSrt={onUseAsPodcastSrt}
+                      onReplaceAudio={handleReplaceAudio}
+                      onReplaceSrt={handleReplaceSrt}
+                      showAIClip={
+                        (workflow.step === 'idle' ||
+                          workflow.step === 'error') &&
+                        Boolean(projectDir) &&
+                        !hasAICardOverlays
+                      }
+                      onStartAIClip={() => {
+                        void handleStartAIClip();
+                      }}
+                      onRegeneratePodcastFromScript={
+                        projectDir
+                          ? () => {
+                              void handleRegeneratePodcastFromScript();
+                            }
+                          : undefined
+                      }
+                      regeneratePodcastFromScriptDisabled={
+                        workflow.step !== 'idle' && workflow.step !== 'error'
+                      }
+                    />
+                  </TabsContent>
+                  <TabsContent value="ai" className={styles.sidebarTabsContent}>
+                    <AIPanel
+                      compact={layout.stackSidebar}
+                      railHeight={layout.sidebarRailHeight}
+                      inspectedCardId={inspectorSelection.type === 'ai-card' ? inspectorSelection.cardId : null}
+                      onClearInspector={handleCloseInspector}
+                      onOpenCardInspector={handleOpenAICardInspector}
+                      onOpenSettings={onOpenSettings}
+                    />
+                  </TabsContent>
+                </div>
+              </Tabs>
             </div>
             {!layout.stackSidebar ? (
               <ResizeHandle
@@ -970,23 +968,16 @@ export function Editor({
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div
-              style={{
-                display: 'grid',
-                gap: 10,
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                音频：{getFileNameFromPath(podcastAudioPath) || '未识别'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                字幕：{getFileNameFromPath(podcastSrtPath) || '未识别'}
-              </div>
-            </div>
+            <Card>
+              <CardContent className="grid gap-2.5">
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  音频：{getFileNameFromPath(podcastAudioPath) || '未识别'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  字幕：{getFileNameFromPath(podcastSrtPath) || '未识别'}
+                </div>
+              </CardContent>
+            </Card>
             <div style={{ marginTop: 16 }}>
               <Checkbox
                 checked={rememberExistingMediaDecision}
@@ -1042,39 +1033,22 @@ export function Editor({
             </DialogDescription>
           </DialogHeader>
           <DialogBody>
-            <div
-              style={{
-                display: 'grid',
-                gap: 10,
-                padding: '12px 14px',
-                borderRadius: 12,
-                background: 'rgba(255,255,255,0.04)',
-                border: '1px solid rgba(255,255,255,0.08)',
-              }}
-            >
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                当前音频：{getFileNameFromPath(podcastAudioPath) || '未设置'}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                当前字幕：{getFileNameFromPath(podcastSrtPath) || '未设置'}
-              </div>
-            </div>
+            <Card>
+              <CardContent className="grid gap-2.5">
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  当前音频：{getFileNameFromPath(podcastAudioPath) || '未设置'}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
+                  当前字幕：{getFileNameFromPath(podcastSrtPath) || '未设置'}
+                </div>
+              </CardContent>
+            </Card>
             {hasAICardOverlays ? (
-              <div
-                style={{
-                  marginTop: 12,
-                  padding: '10px 12px',
-                  borderRadius: 10,
-                  background: 'rgba(255, 214, 10, 0.08)',
-                  border: '1px solid rgba(255, 214, 10, 0.28)',
-                  color: 'var(--color-warning)',
-                  fontSize: 12,
-                  lineHeight: 1.6,
-                }}
-              >
-                注意：时间线上已有 AI 内容卡片。新字幕的时间点可能发生变化，卡片位置可能与音频不再对齐，
-                建议随后在 AI 面板重新运行"内容分析"来刷新卡片。
-              </div>
+              <Alert
+                variant="warning"
+                className="mt-3"
+                description={'注意：时间线上已有 AI 内容卡片。新字幕的时间点可能发生变化，卡片位置可能与音频不再对齐，建议随后在 AI 面板重新运行"内容分析"来刷新卡片。'}
+              />
             ) : null}
             <div style={{ marginTop: 12, fontSize: 12, color: 'var(--color-text-secondary)', lineHeight: 1.6 }}>
               本次仅重跑 TTS，不会自动运行 AI 分析、封面与排版。
@@ -1137,6 +1111,3 @@ function mapProjectMetadata(metadata: ProjectMetadata): ProjectOverviewMeta {
   };
 }
 
-function joinClassNames(...values: Array<string | undefined>): string {
-  return values.filter(Boolean).join(' ');
-}

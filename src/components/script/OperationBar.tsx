@@ -1,4 +1,5 @@
 import { Save } from 'lucide-react';
+import { Button } from '../../ui';
 
 interface OperationBarProps {
   originalStats: { charCount: number; lineCount: number };
@@ -54,39 +55,17 @@ export function OperationBar({
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon={<Save size={14} />}
           onClick={onSave}
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '7px 10px',
-            borderRadius: 8,
-            border: '1px solid var(--color-border-subtle)',
-            background: 'transparent',
-            color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-          }}
         >
-          <Save size={14} />
           保存
-        </button>
-
-        <button
-          type="button"
-          onClick={onBack}
-          style={{
-            padding: '7px 10px',
-            borderRadius: 8,
-            border: '1px solid var(--color-border-subtle)',
-            background: 'transparent',
-            color: 'var(--color-text-secondary)',
-            cursor: 'pointer',
-          }}
-        >
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onBack}>
           返回
-        </button>
+        </Button>
       </div>
     </div>
   );

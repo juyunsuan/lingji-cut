@@ -79,28 +79,6 @@
   white-space: nowrap;
 }
 
-.refreshBtn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: #0a84ff;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-
-.refreshBtn:hover {
-  background: #0a84ff1a;
-}
-
-.refreshBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
 @keyframes spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -162,41 +140,6 @@
 .statusUnregistered {
   color: #8e8e93;
   background: #8e8e931a;
-}
-
-/* ─── 注册 / 移除按钮 ────────────────────── */
-
-.registerBtn {
-  font-size: 12px;
-  font-weight: 500;
-  padding: 5px 14px;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.15s, background 0.15s;
-}
-
-.registerBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.registerBtnAdd {
-  background: #0a84ff;
-  color: #fff;
-}
-
-.registerBtnAdd:hover:not(:disabled) {
-  background: #0a6edb;
-}
-
-.registerBtnRemove {
-  background: #ff453a1a;
-  color: #ff453a;
-}
-
-.registerBtnRemove:hover:not(:disabled) {
-  background: #ff453a33;
 }
 
 /* ─── 不可用提示 ──────────────────────────── */

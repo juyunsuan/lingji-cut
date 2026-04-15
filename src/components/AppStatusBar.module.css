@@ -27,22 +27,20 @@
   gap: 12px;
 }
 
-/* 上下文窗口用量 */
+/* 上下文窗口用量 — 沿用 Button.Ghost 基础样式，仅调整布局与去除内边距 */
 .contextUsage {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  border: 0;
-  padding: 0;
+  gap: 4px !important;
+  padding: 0 !important;
   margin: 0;
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  transition: color 0.15s;
+  height: auto !important;
+  min-height: 0 !important;
+  color: inherit !important;
+  background: transparent !important;
 }
 
 .contextUsage:hover {
-  color: var(--color-text-secondary, #EBEBF599);
+  color: var(--color-text-secondary, #EBEBF599) !important;
+  background: transparent !important;
 }
 
 /* 连接状态 */

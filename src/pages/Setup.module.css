@@ -236,27 +236,6 @@
   padding-left: 20px;
 }
 
-.scanFileItem {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background-color 0.1s ease;
-}
-
-.scanFileItem:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.scanRadio {
-  accent-color: #0A84FF;
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
 .scanFileName {
   font-size: 13px;
   color: #EBEBF5;
@@ -271,60 +250,12 @@
   color: #EBEBF54D;
 }
 
-.importError {
-  margin-top: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.2);
-  color: #FF453A;
-  font-size: 12px;
-}
-
 /* ── 抖音导入弹窗样式 ── */
 
 .douyinUrlRow {
   display: flex;
   gap: 8px;
   align-items: stretch;
-}
-
-.douyinUrlInputWrap {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-  background: #2C2C2E;
-  border: 1px solid #48484A;
-  border-radius: 10px;
-  transition: border-color 0.15s ease;
-}
-
-.douyinUrlInputWrap:focus-within {
-  border-color: #0A84FF;
-}
-
-.douyinUrlIcon {
-  color: #EBEBF580;
-  flex-shrink: 0;
-}
-
-.douyinUrlInput {
-  flex: 1;
-  min-width: 0;
-  padding: 10px 0;
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #EBEBF5;
-  font-family: "SF Pro Text", "PingFang SC", -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 13px;
-}
-
-.douyinUrlInput::placeholder {
-  color: #EBEBF54D;
 }
 
 .douyinResultCard {

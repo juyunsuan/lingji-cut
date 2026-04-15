@@ -13,24 +13,6 @@
   border-bottom: 1px solid var(--color-border-subtle);
 }
 
-.headerButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.headerButton:hover {
-  background: var(--color-bg-hover, rgba(255, 255, 255, 0.08));
-  color: var(--color-text-primary);
-}
-
 .projectRoot {
   display: grid;
   grid-template-columns: 16px minmax(0, 1fr);
@@ -175,20 +157,3 @@
   text-align: center;
 }
 
-.primaryButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 9px 14px;
-  border: 1px solid color-mix(in srgb, var(--color-accent, #5b9cff) 28%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-accent, #5b9cff) 12%, transparent);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.primaryButton:hover {
-  background: color-mix(in srgb, var(--color-accent, #5b9cff) 18%, transparent);
-}

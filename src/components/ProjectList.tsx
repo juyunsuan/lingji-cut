@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
-import { LayoutGrid, List } from 'lucide-react';
+import { LayoutGrid, List, X } from 'lucide-react';
 import { getFileNameFromPath, toFileSrc } from '../lib/utils';
 import type { RecentProjectEntry } from '../lib/electron-api';
-import { ConfirmDialog } from '../ui';
+import { Button, ConfirmDialog } from '../ui';
 import styles from './ProjectList.module.css';
 
 interface ProjectListProps {
@@ -130,14 +130,15 @@ function ProjectCard({
           {getFileNameFromPath(project.path)}
         </div>
       </div>
-      <button
-        type="button"
+      <Button.Icon
+        size="xs"
+        variant="ghost"
         className={styles.removeButton}
         onClick={onRemove}
         aria-label="移除项目"
       >
-        ×
-      </button>
+        <X size={12} />
+      </Button.Icon>
     </div>
   );
 }
@@ -169,14 +170,15 @@ function ProjectListItem({
       <span className={styles.colPath} title={project.path}>
         {project.path}
       </span>
-      <button
-        type="button"
+      <Button.Icon
+        size="xs"
+        variant="ghost"
         className={styles.listRemoveButton}
         onClick={onRemove}
         aria-label="移除项目"
       >
-        ×
-      </button>
+        <X size={12} />
+      </Button.Icon>
     </div>
   );
 }
@@ -207,22 +209,22 @@ export function ProjectList({ projects, onOpenProject, onRemoveProject }: Projec
         <div className={styles.header}>
           <div className={styles.title}>本地草稿</div>
           <div className={styles.viewToggle}>
-            <button
-              type="button"
-              className={[styles.viewButton, viewMode === 'grid' ? styles.active : ''].join(' ')}
+            <Button.Icon
+              size="sm"
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
               onClick={() => setViewMode('grid')}
               aria-label="网格视图"
             >
               <LayoutGrid size={14} strokeWidth={1.8} />
-            </button>
-            <button
-              type="button"
-              className={[styles.viewButton, viewMode === 'list' ? styles.active : ''].join(' ')}
+            </Button.Icon>
+            <Button.Icon
+              size="sm"
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'}
               onClick={() => setViewMode('list')}
               aria-label="列表视图"
             >
               <List size={14} strokeWidth={1.8} />
-            </button>
+            </Button.Icon>
           </div>
         </div>
 

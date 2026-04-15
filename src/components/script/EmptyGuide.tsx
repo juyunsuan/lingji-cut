@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ArrowDownToLine, FilePlus2, FolderOpen, Import, PenSquare, Sparkles, Search } from 'lucide-react';
 import { useScriptStore } from '../../store/script';
+import { Button } from '../../ui';
 
 interface EmptyGuideProps {
   hasProjectDir: boolean;
@@ -86,15 +87,15 @@ export function EmptyGuide({
           </div>
         </div>
         <div style={buttonGroupStyle}>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            leftIcon={<Sparkles size={16} />}
             onClick={() => generateScriptCb && void generateScriptCb()}
             disabled={!generateScriptCb}
-            style={primaryBtnStyle}
           >
-            <Sparkles size={16} />
             AI 生成口播稿
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -114,15 +115,15 @@ export function EmptyGuide({
           </div>
         </div>
         <div style={buttonGroupStyle}>
-          <button
-            type="button"
+          <Button
+            variant="primary"
+            size="lg"
+            leftIcon={<Search size={16} />}
             onClick={() => reviewScriptCb && void reviewScriptCb()}
             disabled={!reviewScriptCb}
-            style={primaryBtnStyle}
           >
-            <Search size={16} />
             AI 审稿
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -163,23 +164,39 @@ export function EmptyGuide({
         <>
           <div style={buttonGroupStyle}>
             {!hasProjectDir ? (
-              <button type="button" onClick={onSelectProjectDir} style={primaryBtnStyle}>
-                <FolderOpen size={16} />
+              <Button
+                variant="primary"
+                size="lg"
+                leftIcon={<FolderOpen size={16} />}
+                onClick={onSelectProjectDir}
+              >
                 选择工作目录
-              </button>
+              </Button>
             ) : null}
-            <button type="button" onClick={onImportText} style={secondaryBtnStyle}>
-              <Import size={16} />
+            <Button
+              variant="outline"
+              size="lg"
+              leftIcon={<Import size={16} />}
+              onClick={onImportText}
+            >
               导入文本文件
-            </button>
-            <button type="button" onClick={onImportDouyin} style={secondaryBtnStyle}>
-              <Import size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              leftIcon={<Import size={16} />}
+              onClick={onImportDouyin}
+            >
               导入抖音视频
-            </button>
-            <button type="button" onClick={onCreateBlank} style={secondaryBtnStyle}>
-              <PenSquare size={16} />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              leftIcon={<PenSquare size={16} />}
+              onClick={onCreateBlank}
+            >
               新建空白文稿
-            </button>
+            </Button>
           </div>
           {canDrop && (
             <div style={dragHintStyle}>
@@ -240,30 +257,6 @@ const buttonGroupStyle: React.CSSProperties = {
   gap: 10,
   flexWrap: 'wrap',
   justifyContent: 'center',
-};
-
-const primaryBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: 'none',
-  background: 'var(--color-selection-blue, #0a84ff)',
-  color: '#fff',
-  cursor: 'pointer',
-};
-
-const secondaryBtnStyle: React.CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 14px',
-  borderRadius: 10,
-  border: '1px solid var(--color-border-subtle)',
-  background: 'transparent',
-  color: 'var(--color-text-secondary)',
-  cursor: 'pointer',
 };
 
 const dragHintStyle: React.CSSProperties = {

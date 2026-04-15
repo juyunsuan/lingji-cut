@@ -1,5 +1,6 @@
 import { Check, X } from 'lucide-react';
 import type { Annotation } from '../../store/script';
+import { Button } from '../../ui';
 import styles from './ReviewStatusBar.module.css';
 
 interface ReviewStatusBarProps {
@@ -46,24 +47,24 @@ export function ReviewStatusBar({
 
       {!allResolved ? (
         <div className={styles.actions}>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.btnDismiss}`}
+          <Button
+            variant="destructive"
+            size="xs"
+            leftIcon={<X size={10} strokeWidth={2} />}
             onClick={onDismissAll}
             title="忽略所有待处理批注"
           >
-            <X size={10} strokeWidth={2} />
             全部忽略
-          </button>
-          <button
-            type="button"
-            className={`${styles.actionBtn} ${styles.btnAccept}`}
+          </Button>
+          <Button
+            variant="primary"
+            size="xs"
+            leftIcon={<Check size={10} strokeWidth={2.5} />}
             onClick={onAcceptAll}
             title="采纳所有待处理批注"
           >
-            <Check size={10} strokeWidth={2.5} />
             全部采纳
-          </button>
+          </Button>
         </div>
       ) : (
         <span className={styles.resolvedHint}>已全部处理</span>

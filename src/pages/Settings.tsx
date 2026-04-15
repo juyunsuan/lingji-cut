@@ -1,14 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { ArrowLeft, Bot, Cpu, FileText, MessageSquare, Server, Volume2 } from 'lucide-react';
-import { m, AnimatePresence } from 'framer-motion';
-import { durations, easings } from '../ui/lib/motion';
 import { AIConfigTab } from '../components/settings/AIConfigTab';
 import { TemplateManagerTab } from '../components/settings/TemplateManagerTab';
 import { ReviewCriteriaTab } from '../components/settings/ReviewCriteriaTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
 import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import { McpSettingsTab } from '../components/settings/McpSettingsTab';
-import { Button } from '../ui';
+import { Button, Tabs, TabsContent } from '../ui';
 import styles from './Settings.module.css';
 import type { SettingsLeaveGuard } from '../components/settings/useSettingsTabGuard';
 
@@ -45,40 +43,19 @@ export function Settings({ onBack }: SettingsProps) {
     [],
   );
 
-  const renderTab = () => {
-    switch (activeTab) {
-      case 'ai-config':
-        return (
-          <AIConfigTab
-            onRegisterLeaveGuard={(guard) => {
-              tabLeaveGuardRef.current = guard;
-            }}
-          />
-        );
-      case 'templates': return <TemplateManagerTab />;
-      case 'review':
-        return (
-          <ReviewCriteriaTab
-            onRegisterLeaveGuard={(guard) => {
-              tabLeaveGuardRef.current = guard;
-            }}
-          />
-        );
-      case 'tts':
-        return (
-          <TTSConfigTab
-            onRegisterLeaveGuard={(guard) => {
-              tabLeaveGuardRef.current = guard;
-            }}
-          />
-        );
-      case 'agent': return <AgentSettingsTab />;
-      case 'mcp': return <McpSettingsTab />;
-    }
-  };
+  const handleSelectTab = useCallback(
+    (nextTab: string) => {
+      const target = nextTab as SettingsTab;
+      if (target === activeTab) {
+        return;
+      }
+      void handleProtectedLeave(() => setActiveTab(target));
+    },
+    [activeTab, handleProtectedLeave],
+  );
 
   return (
-    <div className={styles.page}>
+    <Tabs value={activeTab} onValueChange={handleSelectTab} className={styles.page}>
       <div className={styles.sidebar}>
         <div className={styles.sidebarHeader}>
           <Button.Icon
@@ -101,12 +78,7 @@ export function Settings({ onBack }: SettingsProps) {
             <Button
               key={tab.id}
               type="button"
-              onClick={() => {
-                if (tab.id === activeTab) {
-                  return;
-                }
-                void handleProtectedLeave(() => setActiveTab(tab.id));
-              }}
+              onClick={() => handleSelectTab(tab.id)}
               variant={activeTab === tab.id ? 'accent' : 'ghost'}
               size="sm"
               className={`${styles.tabButton} ${activeTab === tab.id ? styles.tabButtonActive : ''}`}
@@ -119,19 +91,37 @@ export function Settings({ onBack }: SettingsProps) {
       </div>
 
       <div className={styles.content}>
-        <AnimatePresence mode="wait" initial={false}>
-          <m.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: durations.base, ease: easings.apple }}
-            style={{ height: '100%', minHeight: 0 }}
-          >
-            {renderTab()}
-          </m.div>
-        </AnimatePresence>
+        <TabsContent value="ai-config" className={styles.contentPanel}>
+          <AIConfigTab
+            onRegisterLeaveGuard={(guard) => {
+              tabLeaveGuardRef.current = guard;
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="templates" className={styles.contentPanel}>
+          <TemplateManagerTab />
+        </TabsContent>
+        <TabsContent value="review" className={styles.contentPanel}>
+          <ReviewCriteriaTab
+            onRegisterLeaveGuard={(guard) => {
+              tabLeaveGuardRef.current = guard;
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="tts" className={styles.contentPanel}>
+          <TTSConfigTab
+            onRegisterLeaveGuard={(guard) => {
+              tabLeaveGuardRef.current = guard;
+            }}
+          />
+        </TabsContent>
+        <TabsContent value="agent" className={styles.contentPanel}>
+          <AgentSettingsTab />
+        </TabsContent>
+        <TabsContent value="mcp" className={styles.contentPanel}>
+          <McpSettingsTab />
+        </TabsContent>
       </div>
-    </div>
+    </Tabs>
   );
 }

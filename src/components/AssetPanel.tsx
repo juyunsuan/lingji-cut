@@ -5,6 +5,7 @@ import { useTimelineStore } from '../store/timeline';
 import { springs } from '../ui/lib/motion';
 import type { PillGroupItem } from '../ui';
 import {
+  Button,
   ConfirmDialog,
   ContextMenu,
   PillGroup,
@@ -71,8 +72,8 @@ function PodcastResourceSection({
 
   return (
     <section className={styles.podcastSection} aria-label="口播资源">
-      <button
-        type="button"
+      <Button.Ghost
+        size="sm"
         className={styles.podcastSectionToggle}
         aria-expanded={expanded}
         onClick={onToggleExpanded}
@@ -90,7 +91,7 @@ function PodcastResourceSection({
             {audioName || srtName ? '已配置' : '未设置'}
           </span>
         ) : null}
-      </button>
+      </Button.Ghost>
       {expanded ? (
         <div className={styles.podcastSectionBody}>
           <div className={styles.podcastRow}>
@@ -111,13 +112,14 @@ function PodcastResourceSection({
             >
               {audioName || '未设置音频'}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               className={styles.podcastRowAction}
               onClick={() => void onReplaceAudio?.()}
             >
               {audioName ? '替换音频' : '+ 添加'}
-            </button>
+            </Button>
           </div>
           <div className={styles.podcastRow}>
             <span className={styles.podcastRowIcon}>
@@ -132,25 +134,28 @@ function PodcastResourceSection({
             >
               {srtName || '未设置字幕'}
             </span>
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               className={styles.podcastRowAction}
               onClick={() => void onReplaceSrt?.()}
             >
               {srtName ? '替换字幕' : '+ 添加'}
-            </button>
+            </Button>
           </div>
           {onRegenerateFromScript ? (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
+              fullWidth
+              leftIcon={<AppIcon name="sparkles" size={12} />}
               className={styles.podcastRegenerateButton}
               onClick={onRegenerateFromScript}
               disabled={regenerateFromScriptDisabled}
               title="读取当前文稿（script.md），重新生成口播音频与字幕"
             >
-              <AppIcon name="sparkles" size={12} />
-              <span>从文稿重新生成</span>
-            </button>
+              从文稿重新生成
+            </Button>
           ) : null}
         </div>
       ) : null}
@@ -235,10 +240,17 @@ export function AssetPanel({
       className={[styles.root, compact ? styles.compact : styles.regular].join(' ')}
     >
       {showAIClip && onStartAIClip ? (
-        <button type="button" className={styles.aiClipButton} onClick={onStartAIClip}>
-          <AppIcon name="sparkles" size={13} />
-          <span>AI 一键剪辑</span>
-        </button>
+        <div className={styles.aiClipCard}>
+          <Button
+            variant="primary"
+            size="sm"
+            fullWidth
+            leftIcon={<AppIcon name="sparkles" size={13} />}
+            onClick={onStartAIClip}
+          >
+            AI 一键剪辑
+          </Button>
+        </div>
       ) : null}
       <PodcastResourceSection
         compact={compact}
@@ -296,11 +308,16 @@ export function AssetPanel({
       >
         {activeFilter === 'text' ? (
           /* 文字 tab — 仅显示添加按钮 */
-          <button className={styles.addTextButton} onClick={onAddTextOverlay}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={styles.addTextButton}
+            onClick={onAddTextOverlay}
+          >
             <AppIcon name="type" size={20} color="#10b981" />
             <span>添加文字</span>
             <span className={styles.addTextHint}>在时间轴当前位置添加</span>
-          </button>
+          </Button>
         ) : (
           <div className={compact ? styles.gridCompact : styles.grid}>
             {visibleAssets.map((asset) => {
@@ -377,13 +394,14 @@ export function AssetPanel({
                     cardNode
                   )}
                   {actionLabel && handleAssetAction ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       className={styles.assetAction}
                       onClick={handleAssetAction}
                     >
                       {actionLabel}
-                    </button>
+                    </Button>
                   ) : null}
                 </div>
               );

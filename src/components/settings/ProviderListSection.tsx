@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   EmptyState,
+  Field,
   Input,
   ModalFooter,
   Select,
@@ -121,11 +122,7 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <DialogBody className={styles.dialogBody}>
-          <label className={styles.field}>
-            <span className={styles.fieldLabelRow}>
-              <span className={styles.fieldLabel}>名称</span>
-              <span className={styles.requiredMark}>*</span>
-            </span>
+          <Field label="名称" required error={errors.name}>
             <Input
               value={form.name}
               onChange={(e) => set('name', e.target.value, 'name')}
@@ -133,23 +130,17 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
               size="sm"
               aria-invalid={Boolean(errors.name)}
             />
-            {errors.name ? <span className={styles.fieldError}>{errors.name}</span> : null}
-          </label>
+          </Field>
 
-          <div className={styles.field}>
-            <span className={styles.fieldLabel}>类型</span>
+          <Field label="类型">
             <Select
               value={form.type}
               options={PROVIDER_TYPE_OPTIONS}
               onChange={(e) => set('type', e.target.value as LLMProvider['type'])}
             />
-          </div>
+          </Field>
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabelRow}>
-              <span className={styles.fieldLabel}>Base URL</span>
-              <span className={styles.requiredMark}>*</span>
-            </span>
+          <Field label="Base URL" required error={errors.baseUrl}>
             <Input
               value={form.baseUrl}
               onChange={(e) => set('baseUrl', e.target.value, 'baseUrl')}
@@ -157,14 +148,9 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
               size="sm"
               aria-invalid={Boolean(errors.baseUrl)}
             />
-            {errors.baseUrl ? <span className={styles.fieldError}>{errors.baseUrl}</span> : null}
-          </label>
+          </Field>
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabelRow}>
-              <span className={styles.fieldLabel}>API Key</span>
-              <span className={styles.requiredMark}>*</span>
-            </span>
+          <Field label="API Key" required error={errors.apiKey}>
             <Input
               variant="password"
               value={form.apiKey}
@@ -173,14 +159,9 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
               size="sm"
               aria-invalid={Boolean(errors.apiKey)}
             />
-            {errors.apiKey ? <span className={styles.fieldError}>{errors.apiKey}</span> : null}
-          </label>
+          </Field>
 
-          <div className={styles.field}>
-            <span className={styles.fieldLabelRow}>
-              <span className={styles.fieldLabel}>模型列表</span>
-              <span className={styles.requiredMark}>*</span>
-            </span>
+          <Field label="模型列表" required error={errors.models}>
             {form.models.length > 0 ? (
               <div className={styles.modelList}>
                 {form.models.map((m, idx) => (
@@ -222,8 +203,7 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
                 添加
               </Button>
             </div>
-            {errors.models ? <span className={styles.fieldError}>{errors.models}</span> : null}
-          </div>
+          </Field>
 
           <Checkbox
             label="设为默认 Provider"

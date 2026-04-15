@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useAgentStore } from '../store/agent';
 import { useScriptStore } from '../store/script';
 import { getOriginalStats, getGeneratedScriptStats, getAnnotationSummary } from '../lib/script-utils';
-import { Popover, PopoverContent, PopoverTrigger, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
+import { Button, Popover, PopoverContent, PopoverTrigger, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
 import styles from './AppStatusBar.module.css';
 import { StatusBarProgressLine } from './StatusBarProgressLine';
 import { StatusBarTaskSummary } from './StatusBarTaskSummary';
@@ -77,7 +77,7 @@ function ContextWindowIndicator() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button type="button" className={styles.contextUsage} aria-label="上下文窗口用量详情">
+        <Button.Ghost size="xs" className={styles.contextUsage} aria-label="上下文窗口用量详情">
           <svg
             aria-hidden="true"
             width={14}
@@ -108,7 +108,7 @@ function ContextWindowIndicator() {
             />
           </svg>
           <span>{formatPercent(percent)}</span>
-        </button>
+        </Button.Ghost>
       </PopoverTrigger>
       <PopoverContent side="top" align="end" sideOffset={8} className={`w-[220px] p-0 ${styles.popoverContent}`}>
         <ContextPopover used={used} size={size} percent={percent} />

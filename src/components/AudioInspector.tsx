@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { getFileNameFromPath, formatTime } from '../lib/utils';
 import { useTimelineStore } from '../store/timeline';
-import { Button, NumberField } from '../ui';
+import { Button, NumberField, Switch } from '../ui';
 import type { AudioOverlayData } from '../types';
 import { createDefaultAudioOverlayData } from '../types';
 import styles from './OverlayInspector.module.css';
@@ -103,17 +103,14 @@ export function AudioInspector({ overlayId, onDelete }: AudioInspectorProps) {
               onChange={(value) => updateAudio({ volume: Math.max(0, value) / 100 })}
             />
           </label>
-          <label className={styles.field}>
+          <div className={styles.field}>
             <span className={styles.label}>静音</span>
-            <button
-              type="button"
-              className={styles.selectControl}
-              onClick={() => updateAudio({ muted: !audioData.muted })}
-              style={{ cursor: 'pointer', textAlign: 'left' }}
-            >
-              {audioData.muted ? '已静音（点击取消）' : '未静音（点击静音）'}
-            </button>
-          </label>
+            <Switch
+              checked={audioData.muted}
+              onChange={(checked) => updateAudio({ muted: checked })}
+              label={audioData.muted ? '已静音' : '未静音'}
+            />
+          </div>
         </div>
         <div className={styles.helper}>
           音量以线性值应用，100% 为原始响度；超过 100% 会放大但可能引入失真。

@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react';
+import { Checkbox } from '../../ui';
 import { getAllTemplates } from '../../lib/script-templates';
 
 export function TemplateDrawerContent({
@@ -11,7 +11,11 @@ export function TemplateDrawerContent({
   const templates = getAllTemplates();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div
+      role="radiogroup"
+      aria-label="模板选择"
+      style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
+    >
       {templates.map((template) => {
         const selected = template.id === selectedTemplate;
 
@@ -19,6 +23,8 @@ export function TemplateDrawerContent({
           <button
             key={template.id}
             type="button"
+            role="radio"
+            aria-checked={selected}
             onClick={() => onSelectTemplate(template.id)}
             style={{
               display: 'flex',
@@ -37,17 +43,9 @@ export function TemplateDrawerContent({
               textAlign: 'left',
             }}
           >
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: selected ? 'var(--color-selection-blue)' : 'transparent',
-              }}
-            >
-              <Check size={16} />
+            {/* 仅作为选中指示的勾选框，交互由外层 radio 按钮承担 */}
+            <div style={{ pointerEvents: 'none', marginTop: 2 }}>
+              <Checkbox checked={selected} tabIndex={-1} aria-hidden />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

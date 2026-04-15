@@ -1,7 +1,6 @@
-import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { PanelHeader } from '../../ui';
+import { CloseButton, PanelHeader } from '../../ui';
 import { springs, durations, easings } from '../../ui/lib/motion';
 
 interface SideDrawerProps {
@@ -47,26 +46,7 @@ export function SideDrawer({ open, title, onClose, children }: SideDrawerProps) 
       >
         <PanelHeader
           title={title}
-          actions={
-            <button
-              type="button"
-              onClick={onClose}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                border: '1px solid var(--color-border-subtle)',
-                background: 'transparent',
-                color: 'var(--color-text-secondary)',
-                cursor: 'pointer',
-              }}
-            >
-              <X size={14} />
-            </button>
-          }
+          actions={<CloseButton onClick={onClose} />}
         />
       </div>
 

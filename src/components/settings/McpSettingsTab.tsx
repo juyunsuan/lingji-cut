@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Server, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Button } from '../../ui';
 import styles from './McpSettingsTab.module.css';
 
 /** 支持注册的 AI 工具列表 */
@@ -101,15 +102,18 @@ export function McpSettingsTab() {
           {status?.running && (
             <span className={styles.statusUrl}>{status.url}</span>
           )}
-          <button
+          <Button.Ghost
             type="button"
-            className={styles.refreshBtn}
+            size="sm"
             onClick={refresh}
             disabled={refreshing}
             title="刷新状态"
+            leftIcon={
+              <RefreshCw size={12} className={refreshing ? styles.spinning : ''} />
+            }
           >
-            <RefreshCw size={14} className={refreshing ? styles.spinning : ''} />
-          </button>
+            刷新
+          </Button.Ghost>
         </div>
       </div>
 
@@ -140,16 +144,15 @@ export function McpSettingsTab() {
                 >
                   {registered ? '已注册' : '未注册'}
                 </span>
-                <button
+                <Button
                   type="button"
-                  className={`${styles.registerBtn} ${
-                    registered ? styles.registerBtnRemove : styles.registerBtnAdd
-                  }`}
+                  variant={registered ? 'destructive' : 'primary'}
+                  size="sm"
                   disabled={busy}
                   onClick={() => toggleRegistration(app, registered)}
                 >
                   {busy ? '处理中...' : registered ? '移除' : '注册'}
-                </button>
+                </Button>
               </div>
             );
           })}

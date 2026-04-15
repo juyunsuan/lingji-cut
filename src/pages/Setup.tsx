@@ -5,6 +5,7 @@ import { springs } from '../ui/lib/motion';
 import { getFileNameFromPath } from '../lib/utils';
 import type { RecentProjectEntry } from '../lib/electron-api';
 import {
+  Alert,
   Button,
   Dialog,
   DialogContent,
@@ -14,6 +15,8 @@ import {
   DialogBody,
   DialogFooter,
   DialogClose,
+  Field,
+  Input,
 } from '../ui';
 import { ProjectList } from '../components/ProjectList';
 import heroBg from '../assets/hero-bg.png';
@@ -277,20 +280,22 @@ export function Setup({
                     </span>
                   </div>
                   {scanResult.audioFiles.length > 0 ? (
-                    <div className={styles.scanFileList}>
+                    <div className={styles.scanFileList} role="radiogroup" aria-label="选择音频文件">
                       {scanResult.audioFiles.map((f) => (
-                        <label key={f} className={styles.scanFileItem}>
-                          <input
-                            type="radio"
-                            name="audio"
-                            checked={selectedAudio === f}
-                            onChange={() => setSelectedAudio(f)}
-                            className={styles.scanRadio}
-                          />
+                        <Button
+                          key={f}
+                          type="button"
+                          variant={selectedAudio === f ? 'primary' : 'ghost'}
+                          size="sm"
+                          fullWidth
+                          onClick={() => setSelectedAudio(f)}
+                          aria-pressed={selectedAudio === f}
+                          className="justify-start"
+                        >
                           <span className={styles.scanFileName}>
                             {getFileNameFromPath(f)}
                           </span>
-                        </label>
+                        </Button>
                       ))}
                     </div>
                   ) : (
@@ -314,20 +319,22 @@ export function Setup({
                     </span>
                   </div>
                   {scanResult.srtFiles.length > 0 ? (
-                    <div className={styles.scanFileList}>
+                    <div className={styles.scanFileList} role="radiogroup" aria-label="选择字幕文件">
                       {scanResult.srtFiles.map((f) => (
-                        <label key={f} className={styles.scanFileItem}>
-                          <input
-                            type="radio"
-                            name="srt"
-                            checked={selectedSrt === f}
-                            onChange={() => setSelectedSrt(f)}
-                            className={styles.scanRadio}
-                          />
+                        <Button
+                          key={f}
+                          type="button"
+                          variant={selectedSrt === f ? 'primary' : 'ghost'}
+                          size="sm"
+                          fullWidth
+                          onClick={() => setSelectedSrt(f)}
+                          aria-pressed={selectedSrt === f}
+                          className="justify-start"
+                        >
                           <span className={styles.scanFileName}>
                             {getFileNameFromPath(f)}
                           </span>
-                        </label>
+                        </Button>
                       ))}
                     </div>
                   ) : (
@@ -338,7 +345,9 @@ export function Setup({
             )}
 
             {errorMessage && (
-              <div className={styles.importError}>{errorMessage}</div>
+              <div style={{ marginTop: 12 }}>
+                <Alert variant="error">{errorMessage}</Alert>
+              </div>
             )}
           </DialogBody>
           <DialogFooter>
@@ -368,35 +377,36 @@ export function Setup({
           </DialogHeader>
           <DialogBody>
             {/* 链接输入 + 解析按钮 */}
-            <div className={styles.douyinUrlRow}>
-              <div className={styles.douyinUrlInputWrap}>
-                <Link size={16} strokeWidth={1.5} className={styles.douyinUrlIcon} />
-                <input
-                  type="text"
-                  value={douyinUrl}
-                  onChange={(e) => setDouyinUrl(e.target.value)}
-                  placeholder="粘贴抖音分享链接，如 https://v.douyin.com/..."
-                  className={styles.douyinUrlInput}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && douyinUrl.trim() && !douyinResolving) {
-                      void handleResolveDouyinUrl();
-                    }
-                  }}
-                />
+            <Field label="抖音视频链接">
+              <div className={styles.douyinUrlRow}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <Input
+                    type="text"
+                    value={douyinUrl}
+                    onChange={(e) => setDouyinUrl(e.target.value)}
+                    placeholder="粘贴抖音分享链接，如 https://v.douyin.com/..."
+                    leftIcon={<Link size={16} strokeWidth={1.5} />}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && douyinUrl.trim() && !douyinResolving) {
+                        void handleResolveDouyinUrl();
+                      }
+                    }}
+                  />
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={() => void handleResolveDouyinUrl()}
+                  disabled={!douyinUrl.trim() || douyinResolving}
+                >
+                  {douyinResolving ? (
+                    <>
+                      <Loader2 size={14} className={styles.spinIcon} />
+                      解析中
+                    </>
+                  ) : '解析链接'}
+                </Button>
               </div>
-              <Button
-                variant="secondary"
-                onClick={() => void handleResolveDouyinUrl()}
-                disabled={!douyinUrl.trim() || douyinResolving}
-              >
-                {douyinResolving ? (
-                  <>
-                    <Loader2 size={14} className={styles.spinIcon} />
-                    解析中
-                  </>
-                ) : '解析链接'}
-              </Button>
-            </div>
+            </Field>
 
             {/* 解析成功：显示标题 */}
             {douyinTitle && (
@@ -436,8 +446,8 @@ export function Setup({
 
             {/* 错误提示 */}
             {douyinError && (
-              <div className={styles.importError} style={{ marginTop: 12 }}>
-                {douyinError}
+              <div style={{ marginTop: 12 }}>
+                <Alert variant="error">{douyinError}</Alert>
               </div>
             )}
           </DialogBody>

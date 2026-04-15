@@ -82,33 +82,6 @@
   gap: var(--space-6);
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.fieldLabel {
-  font-size: var(--font-size-lg);
-  color: var(--color-text-secondary);
-}
-
-.fieldLabelRow {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.requiredMark {
-  font-size: var(--font-size-md);
-  color: var(--color-system-red);
-}
-
-.fieldError {
-  font-size: var(--font-size-md);
-  color: var(--color-system-red);
-}
-
 .hintText {
   margin: 0;
   font-size: var(--font-size-md);

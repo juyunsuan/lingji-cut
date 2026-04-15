@@ -1,4 +1,5 @@
 import type { Annotation } from '../../store/script';
+import { Button } from '../../ui';
 import styles from './AnnotationCard.module.css';
 
 const SEVERITY_CONFIG = {
@@ -39,24 +40,27 @@ export function AnnotationCard({
       )}
 
       <div className={styles.actions}>
-        <button
-          className={styles.acceptBtn}
+        <Button
+          variant="success"
+          size="xs"
           onClick={() => onAccept(annotation.id)}
         >
           ✓ 接受建议
-        </button>
-        <button
-          className={styles.dismissBtn}
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => onDismiss(annotation.id)}
         >
           忽略
-        </button>
-        <button
-          className={styles.rewriteBtn}
+        </Button>
+        <Button
+          variant="primary"
+          size="xs"
           onClick={() => onAIRewrite(annotation.id)}
         >
           AI 重写
-        </button>
+        </Button>
       </div>
     </div>
   );

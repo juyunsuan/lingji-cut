@@ -63,57 +63,6 @@
   border-bottom: 1px solid var(--color-separator);
 }
 
-.tabHeader {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.topTabBar {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 33px;
-  flex: 1;
-}
-
-.topTabButton {
-  flex: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 27px;
-  padding: 5px 12px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  font-weight: 500;
-  transition:
-    background var(--motion-fast),
-    color var(--motion-fast);
-  cursor: pointer;
-}
-
-.topTabButton:hover {
-  color: var(--color-text-primary);
-  background: color-mix(in srgb, var(--color-control-bg) 64%, transparent);
-}
-
-.topTabButtonActive {
-  background: var(--color-control-bg);
-  color: var(--color-text-primary);
-  font-weight: 600;
-}
-
-.topTabIcon {
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-}
-
 .workflowAction {
   flex-shrink: 0;
   min-height: 27px;
@@ -136,14 +85,48 @@
   display: flex;
 }
 
-/* 兼容旧 class，避免其他测试或未迁移节点引用时失效 */
-.tabList {
-  border-bottom: 1px solid var(--color-separator);
-  width: 100%;
+/* 侧边栏 Tabs 容器：纵向填满 sidebarShell */
+.sidebarTabs {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
-.tabTrigger {
+.sidebarTabsList {
+  display: flex;
+  width: 100%;
+  height: auto;
+  min-height: 27px;
+  padding: 0;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+}
+
+.sidebarTabsTrigger {
   flex: 1;
+  min-height: 27px;
+  padding-block: 5px;
+  padding-inline: 12px;
+}
+
+/* TabsContent 默认带 mt-2，这里去掉并让其填满 panelBody */
+.sidebarTabsContent {
+  margin-top: 0 !important;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.sidebarTabsContent > * {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .timelineWrap {

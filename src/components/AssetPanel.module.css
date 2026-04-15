@@ -22,28 +22,9 @@
 }
 
 /* ── AI 一键剪辑按钮 ── */
-.aiClipButton {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: calc(100% - 16px);
+.aiClipCard {
   margin: 10px 8px 6px;
-  padding: 7px 12px;
-  border-radius: 6px;
-  border: 1px solid color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
-  background: color-mix(in srgb, var(--color-selection-blue) 12%, transparent);
-  color: var(--color-text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
   flex-shrink: 0;
-  transition: background var(--motion-fast, 120ms);
-}
-
-.aiClipButton:hover {
-  background: color-mix(in srgb, var(--color-selection-blue) 20%, transparent);
-  border-color: color-mix(in srgb, var(--color-selection-blue) 44%, transparent);
 }
 
 /* ── 口播资源区块 ── */
@@ -117,52 +98,6 @@
 .podcastRowNameEmpty {
   color: var(--color-text-muted);
   font-style: italic;
-}
-
-.podcastRowAction {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--color-text-muted);
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: background var(--motion-fast, 120ms);
-}
-
-.podcastRowAction:hover {
-  background: var(--color-panel-elevated);
-  color: var(--color-text-primary);
-}
-
-.podcastRegenerateButton {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  border: 1px solid rgba(167, 139, 250, 0.28);
-  background: rgba(167, 139, 250, 0.08);
-  color: #c7b6ff;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: background var(--motion-fast, 120ms), border-color var(--motion-fast, 120ms), color var(--motion-fast, 120ms);
-}
-
-.podcastRegenerateButton:hover:not(:disabled) {
-  background: rgba(167, 139, 250, 0.16);
-  border-color: rgba(167, 139, 250, 0.48);
-  color: #dcccff;
-}
-
-.podcastRegenerateButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .compact .podcastSection {
