@@ -14,10 +14,13 @@ import {
   type AISegmentSemanticType,
   type AISettings,
   type CardStyle,
+  type PromptBindingMap,
   type WebCardPayload,
 } from '../types/ai';
 import type { MotionCardPayload } from '../types/motion';
 import { generateStructuredData } from './llm';
+import { resolvePromptBinding } from './llm/binding-resolver';
+import type { PromptKind } from './prompts/types';
 import {
   getBuiltinPromptTemplate,
   renderTemplate,
@@ -30,6 +33,7 @@ interface AnalyzeSrtOptions {
   globalPrompt?: string;
   planningTemplate?: PromptTemplate;
   cardTemplate?: PromptTemplate;
+  projectBindings?: PromptBindingMap | null;
 }
 
 interface RegenerateCardOptions {
@@ -39,6 +43,7 @@ interface RegenerateCardOptions {
   programSummary?: string;
   keywords?: string[];
   cardTemplate?: PromptTemplate;
+  projectBindings?: PromptBindingMap | null;
 }
 
 interface RegenerateCoverPromptOptions {
@@ -46,6 +51,21 @@ interface RegenerateCoverPromptOptions {
   globalPrompt?: string;
   currentPrompt?: string;
   coverTemplate?: PromptTemplate;
+  projectBindings?: PromptBindingMap | null;
+}
+
+/**
+ * 仅当显式传入 projectBindings（包括 null）时才解析绑定；undefined 时跳过（供测试 mock 调用）。
+ */
+function maybeResolveBinding(
+  kind: PromptKind,
+  settings: AISettings,
+  projectBindings: PromptBindingMap | null | undefined,
+): ReturnType<typeof resolvePromptBinding> | undefined {
+  if (projectBindings === undefined) {
+    return undefined;
+  }
+  return resolvePromptBinding(kind, settings, projectBindings);
 }
 
 interface SegmentPlanningResult {
@@ -418,16 +438,19 @@ export async function planTranscriptSegments(
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
     planningTemplate,
+    projectBindings,
   } = options;
 
   if (entries.length === 0) {
     throw new Error('没有可分析的字幕内容');
   }
 
+  const binding = maybeResolveBinding('planning.segment', settings, projectBindings);
   const payload = await requestStructuredData(
     settings,
     buildSegmentPlanningPrompt(globalPrompt, planningTemplate),
     buildSrtText(entries),
+    binding,
   );
   const parsed = parseSegmentPlanningResult(payload);
   if (!parsed) {
@@ -451,6 +474,7 @@ export async function generateCardForSegment(
     cardPrompt?: string;
     currentCard?: AICard;
     cardTemplate?: PromptTemplate;
+    projectBindings?: PromptBindingMap | null;
   } = {},
 ): Promise<AICard> {
   const {
@@ -459,6 +483,7 @@ export async function generateCardForSegment(
     cardPrompt,
     currentCard,
     cardTemplate,
+    projectBindings,
   } = options;
 
   if (entries.length === 0) {
@@ -466,6 +491,7 @@ export async function generateCardForSegment(
   }
 
   const fullTranscript = buildSrtText(entries);
+  const binding = maybeResolveBinding('cards.segment', settings, projectBindings);
   const payload = await requestStructuredData(
     settings,
     buildSegmentCardPrompt(
@@ -481,6 +507,7 @@ export async function generateCardForSegment(
       cardTemplate,
     ),
     fullTranscript,
+    binding,
   );
   const parsed = normalizeCard(payload, 0, segment.id, cardPrompt);
   if (!parsed) {
@@ -504,12 +531,14 @@ export async function analyzeSrt(
     globalPrompt,
     planningTemplate,
     cardTemplate,
+    projectBindings,
   } = options;
 
   const planning = await planTranscriptSegments(entries, settings, {
     generateStructuredData: requestStructuredData,
     globalPrompt,
     planningTemplate,
+    projectBindings,
   });
 
   const cards: AICard[] = [];
@@ -519,6 +548,7 @@ export async function analyzeSrt(
         generateStructuredData: requestStructuredData,
         globalPrompt: planning.globalPrompt,
         cardTemplate,
+        projectBindings,
       }),
     );
   }
@@ -547,6 +577,7 @@ export async function regenerateAICard(
     programSummary,
     keywords = [],
     cardTemplate,
+    projectBindings,
   } = options;
 
   if (!segment) {
@@ -568,6 +599,7 @@ export async function regenerateAICard(
       cardPrompt,
       currentCard: card,
       cardTemplate,
+      projectBindings,
     },
   );
 
@@ -591,12 +623,14 @@ export async function regenerateCoverPrompt(
     globalPrompt,
     currentPrompt,
     coverTemplate,
+    projectBindings,
   } = options;
 
   if (entries.length === 0) {
     throw new Error('没有可用于生成封面提示词的字幕内容');
   }
 
+  const binding = maybeResolveBinding('cover.regeneration', settings, projectBindings);
   const payload = await requestStructuredData(
     settings,
     buildCoverPromptRegenerationPrompt(
@@ -607,6 +641,7 @@ export async function regenerateCoverPrompt(
       coverTemplate,
     ),
     buildSrtText(entries),
+    binding,
   );
   const prompts = parseCoverPromptResult(payload);
 

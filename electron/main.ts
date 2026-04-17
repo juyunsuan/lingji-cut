@@ -29,7 +29,7 @@ import {
 } from '../src/lib/minimax-tts';
 import { parseSrt } from '../src/lib/srt-parser';
 import type { SrtEntry, TimelineData } from '../src/types';
-import type { AICard, AISegment, AISettings } from '../src/types/ai';
+import type { AICard, AISegment, AISettings, PromptBindingMap } from '../src/types/ai';
 import { createApplicationMenuTemplate } from './app-menu';
 import {
   loadRuntimeDebugConfigSync,
@@ -475,6 +475,7 @@ ipcMain.handle(
       settings: AISettings;
       globalPrompt?: string;
       projectDir?: string;
+      projectBindings?: PromptBindingMap | null;
     },
   ) => {
     writeAppLog(
@@ -500,6 +501,7 @@ ipcMain.handle(
         globalPrompt: args.globalPrompt,
         planningTemplate,
         cardTemplate,
+        projectBindings: args.projectBindings ?? null,
       });
       writeAppLog(
         'info',
@@ -524,7 +526,13 @@ ipcMain.handle(
   'plan-storyboard',
   async (
     _event,
-    args: { entries?: SrtEntry[]; srtContent?: string; settings: AISettings; globalPrompt?: string },
+    args: {
+      entries?: SrtEntry[];
+      srtContent?: string;
+      settings: AISettings;
+      globalPrompt?: string;
+      projectBindings?: PromptBindingMap | null;
+    },
   ) => {
     writeAppLog(
       'info',
@@ -539,6 +547,7 @@ ipcMain.handle(
     try {
       const plan = await planStoryboardFromTranscript(entries, args.settings, {
         globalPrompt: args.globalPrompt,
+        projectBindings: args.projectBindings ?? null,
       });
       writeAppLog(
         'info',
@@ -573,6 +582,7 @@ ipcMain.handle(
       programSummary?: string;
       keywords?: string[];
       projectDir?: string;
+      projectBindings?: PromptBindingMap | null;
     },
   ) => {
     writeAppLog(
@@ -594,6 +604,7 @@ ipcMain.handle(
         programSummary: args.programSummary,
         keywords: args.keywords,
         cardTemplate,
+        projectBindings: args.projectBindings ?? null,
       });
     } catch (error) {
       writeAppLog(
@@ -617,6 +628,7 @@ ipcMain.handle(
       globalPrompt?: string;
       currentPrompt?: string;
       projectDir?: string;
+      projectBindings?: PromptBindingMap | null;
     },
   ) => {
     writeAppLog(
@@ -636,6 +648,7 @@ ipcMain.handle(
         globalPrompt: args.globalPrompt,
         currentPrompt: args.currentPrompt,
         coverTemplate,
+        projectBindings: args.projectBindings ?? null,
       });
     } catch (error) {
       writeAppLog(
@@ -651,9 +664,21 @@ ipcMain.handle(
 
 ipcMain.handle(
   'generate-cover-images',
-  async (_event, args: { prompts: string[]; settings: AISettings; projectDir: string }) => {
+  async (
+    _event,
+    args: {
+      prompts: string[];
+      settings: AISettings;
+      projectDir: string;
+      projectBindings?: PromptBindingMap | null;
+    },
+  ) => {
     const coversDir = path.join(args.projectDir, 'covers');
-    const binding = resolvePromptBinding('cover.regeneration', args.settings, null);
+    const binding = resolvePromptBinding(
+      'cover.regeneration',
+      args.settings,
+      args.projectBindings ?? null,
+    );
     if (!binding.imageProvider || !binding.imageModel) {
       throw new Error('cover.regeneration 未绑定 ImageProvider/Model');
     }

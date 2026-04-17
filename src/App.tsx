@@ -326,6 +326,7 @@ export default function App() {
           entries,
           settings,
           projectDir: currentProjectDir ?? undefined,
+          projectBindings: useAIStore.getState().projectBindings,
         })) as AIAnalysisResult;
         setAIAnalysisResult(result);
         setCoverCandidates([]);

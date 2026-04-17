@@ -10,7 +10,7 @@ import type {
 } from '../src/lib/electron-api';
 import type { ExportConfig } from '../src/lib/export-settings';
 import type { SrtEntry } from '../src/types';
-import type { AICard, AISegment, AISettings } from '../src/types/ai';
+import type { AICard, AISegment, AISettings, PromptBindingMap } from '../src/types/ai';
 import type { ConversationAPI } from '../src/types/conversation';
 import type { VideoImportRequest } from '../src/lib/video-import-types';
 
@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     settings: AISettings;
     globalPrompt?: string;
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) =>
     ipcRenderer.invoke('analyze-srt', args),
   planStoryboard: (args: {
@@ -30,6 +31,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     srtContent?: string;
     settings: AISettings;
     globalPrompt?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => ipcRenderer.invoke('plan-storyboard', args),
   regenerateAICard: (args: {
     entries: SrtEntry[];
@@ -41,6 +43,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     programSummary?: string;
     keywords?: string[];
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => ipcRenderer.invoke('regenerate-ai-card', args),
   regenerateCoverPrompt: (args: {
     entries: SrtEntry[];
@@ -48,9 +51,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     globalPrompt?: string;
     currentPrompt?: string;
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => ipcRenderer.invoke('regenerate-cover-prompt', args),
-  generateCoverImages: (args: { prompts: string[]; settings: AISettings; projectDir: string }) =>
-    ipcRenderer.invoke('generate-cover-images', args),
+  generateCoverImages: (args: {
+    prompts: string[];
+    settings: AISettings;
+    projectDir: string;
+    projectBindings?: PromptBindingMap | null;
+  }) => ipcRenderer.invoke('generate-cover-images', args),
   saveTimeline: (projectDir: string, data: string) =>
     ipcRenderer.invoke('save-timeline', projectDir, data),
   loadTimeline: (projectDir: string) => ipcRenderer.invoke('load-timeline', projectDir),

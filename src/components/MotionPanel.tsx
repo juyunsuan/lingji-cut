@@ -466,6 +466,7 @@ export function MotionPanel({ onOpenCardInspector, onOpenSettings }: MotionPanel
         entries: srtEntries,
         settings,
         globalPrompt: storyboardPromptDraft.trim() || undefined,
+        projectBindings: useAIStore.getState().projectBindings,
       });
       setStoryboardPlan?.(nextPlan);
     } catch (error) {

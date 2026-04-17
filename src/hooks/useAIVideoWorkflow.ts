@@ -424,6 +424,7 @@ export function useAIVideoWorkflow() {
             entries: useTimelineStore.getState().srtEntries,
             settings,
             projectDir,
+            projectBindings: useAIStore.getState().projectBindings,
           })) as AIAnalysisResult;
 
           setAnalysisResult(analysisResult);
@@ -484,6 +485,7 @@ export function useAIVideoWorkflow() {
               prompts: coverPrompts,
               settings,
               projectDir,
+              projectBindings: useAIStore.getState().projectBindings,
             });
 
             const validCandidates = nextCandidates.filter(

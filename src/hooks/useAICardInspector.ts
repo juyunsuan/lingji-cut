@@ -165,6 +165,7 @@ export function useAICardInspector(cardId: string | null) {
           programSummary: analysisResult.summary,
           keywords: analysisResult.keywords,
           projectDir: getProjectDir() ?? undefined,
+          projectBindings: useAIStore.getState().projectBindings,
         });
 
         const nextResult = updateCardInResult(analysisResult, card.id, {

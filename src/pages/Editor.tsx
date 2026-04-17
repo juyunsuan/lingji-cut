@@ -461,6 +461,7 @@ export function Editor({
           entries,
           settings,
           projectDir: projectDir || undefined,
+          projectBindings: useAIStore.getState().projectBindings,
         })) as AIAnalysisResult;
         setAIAnalysisResult(result);
         setCoverCandidates([]);

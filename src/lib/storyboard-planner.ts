@@ -7,6 +7,7 @@ import {
   type AIStoryboardPlan,
   type AIVisualSuggestion,
   type AIVisualSuggestionType,
+  type PromptBindingMap,
 } from '../types/ai';
 
 function createSuggestion(
@@ -108,10 +109,12 @@ export async function planStoryboardFromTranscript(
   options: {
     globalPrompt?: string;
     planSegments?: typeof planTranscriptSegments;
+    projectBindings?: PromptBindingMap | null;
   } = {},
 ): Promise<AIStoryboardPlan> {
   const planning = await (options.planSegments ?? planTranscriptSegments)(entries, settings, {
     globalPrompt: options.globalPrompt,
+    projectBindings: options.projectBindings,
   });
 
   return buildStoryboardSuggestions(planning.segments, {

@@ -121,12 +121,14 @@ export interface ElectronAPI {
     settings: AISettings;
     globalPrompt?: string;
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => Promise<unknown>;
   planStoryboard: (args: {
     entries?: SrtEntry[];
     srtContent?: string;
     settings: AISettings;
     globalPrompt?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => Promise<AIStoryboardPlan>;
   regenerateAICard: (args: {
     entries: SrtEntry[];
@@ -138,6 +140,7 @@ export interface ElectronAPI {
     programSummary?: string;
     keywords?: string[];
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => Promise<AICard>;
   regenerateCoverPrompt: (args: {
     entries: SrtEntry[];
@@ -145,11 +148,13 @@ export interface ElectronAPI {
     globalPrompt?: string;
     currentPrompt?: string;
     projectDir?: string;
+    projectBindings?: PromptBindingMap | null;
   }) => Promise<string[]>;
   generateCoverImages: (args: {
     prompts: string[];
     settings: AISettings;
     projectDir: string;
+    projectBindings?: PromptBindingMap | null;
   }) => Promise<CoverCandidate[]>;
   saveTimeline: (projectDir: string, data: string) => Promise<string>;
   loadTimeline: (projectDir: string) => Promise<string | null>;

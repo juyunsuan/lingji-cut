@@ -332,6 +332,7 @@ export function AIPanel({
         entries: srtEntries,
         settings,
         globalPrompt: globalPromptDraft.trim() || undefined,
+        projectBindings: useAIStore.getState().projectBindings,
       })) as AIAnalysisResult;
       setStoryboardPlan(null);
       const persistedState = await persistAIState(result, [], null);
@@ -391,6 +392,7 @@ export function AIPanel({
           prompts,
           settings,
           projectDir,
+          projectBindings: useAIStore.getState().projectBindings,
         });
         await handlePersistedCovers(candidates);
       } catch (error) {
@@ -583,6 +585,7 @@ export function AIPanel({
         globalPrompt: analysisResult.globalPrompt,
         currentPrompt: analysisResult.coverPrompts[0],
         projectDir: projectDir ?? undefined,
+        projectBindings: useAIStore.getState().projectBindings,
       });
       const nextResult = {
         ...analysisResult,
