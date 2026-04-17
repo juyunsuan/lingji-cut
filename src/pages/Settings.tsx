@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { ArrowLeft, Bot, Cpu, DatabaseBackup, FileText, MessageSquare, Server, Volume2 } from 'lucide-react';
+import { ArrowLeft, Bot, Cpu, DatabaseBackup, FileText, MessageSquare, Server, Sparkles, Volume2 } from 'lucide-react';
 import { ConfigBackupTab } from '../components/settings/ConfigBackupTab';
 import { AIConfigTab } from '../components/settings/AIConfigTab';
 import { TemplateManagerTab } from '../components/settings/TemplateManagerTab';
@@ -7,11 +7,20 @@ import { ReviewCriteriaTab } from '../components/settings/ReviewCriteriaTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
 import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import { McpSettingsTab } from '../components/settings/McpSettingsTab';
+import { PromptsConfigTab } from '../components/settings/PromptsConfigTab';
 import { Button, Tabs, TabsContent } from '../ui';
 import styles from './Settings.module.css';
 import type { SettingsLeaveGuard } from '../components/settings/useSettingsTabGuard';
 
-type SettingsTab = 'ai-config' | 'templates' | 'review' | 'tts' | 'agent' | 'mcp' | 'backup';
+type SettingsTab =
+  | 'ai-config'
+  | 'templates'
+  | 'review'
+  | 'tts'
+  | 'agent'
+  | 'mcp'
+  | 'prompts'
+  | 'backup';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'ai-config', label: 'AI 基础配置', icon: Bot },
@@ -20,6 +29,7 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'tts', label: 'TTS 语音合成', icon: Volume2 },
   { id: 'agent', label: 'AI Agent', icon: Cpu },
   { id: 'mcp', label: 'MCP 服务', icon: Server },
+  { id: 'prompts', label: '提示词配置', icon: Sparkles },
   { id: 'backup', label: '配置备份', icon: DatabaseBackup },
 ];
 
@@ -122,6 +132,9 @@ export function Settings({ onBack }: SettingsProps) {
         </TabsContent>
         <TabsContent value="mcp" className={styles.contentPanel}>
           <McpSettingsTab />
+        </TabsContent>
+        <TabsContent value="prompts" className={styles.contentPanelWide}>
+          <PromptsConfigTab />
         </TabsContent>
         <TabsContent value="backup" className={styles.contentPanel}>
           <ConfigBackupTab />

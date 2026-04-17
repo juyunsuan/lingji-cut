@@ -1,0 +1,170 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: var(--space-8);
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── 左侧列表 Card ────────────────────────────── */
+
+.sidebarCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sidebarHeader {
+  padding: var(--space-6) var(--space-8) !important;
+}
+
+.sidebarList {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--space-6) var(--space-4) !important;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.groupTitle {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  padding: 0 var(--space-4);
+}
+
+.kindRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.kindButton {
+  flex: 1;
+  justify-content: space-between !important;
+  text-align: left;
+  padding: var(--space-4) var(--space-6) !important;
+  min-height: 34px;
+  font-weight: 500 !important;
+}
+
+.kindButton span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── 右侧编辑器 Card ────────────────────────── */
+
+.editorCard {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.editorHeader {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+}
+
+.editorHeaderText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.editorBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: var(--space-8) !important;
+}
+
+.varHint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.varHintTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.varHintGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-panel-bg);
+  border: 1px solid var(--color-separator);
+  border-radius: var(--radius-md);
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.varHintItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.varHintItem code {
+  font-family: 'SF Mono', Menlo, monospace;
+  color: var(--color-system-blue);
+  font-size: var(--font-size-xs);
+}
+
+.editorWrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.editorWrap > div {
+  flex: 1;
+}
+
+.statusBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-6);
+  align-items: center;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.editorFooter {
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
