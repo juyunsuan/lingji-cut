@@ -3,6 +3,7 @@ import { compileMotionSource } from './motion-compiler';
 import { buildMotionAutoFixUserPrompt, buildMotionSystemPrompt, extractMotionCode } from './motion-prompt';
 import type { MotionCardResult, MotionCompileResult } from '../types/motion';
 import type { AISettings } from '../types/ai';
+import type { MotionPromptTemplates } from './motion-card-service';
 
 export interface MotionAutoFixOptions {
   settings: AISettings;
@@ -13,6 +14,7 @@ export interface MotionAutoFixOptions {
   maxRetries?: number;
   generateTextImpl?: typeof generateText;
   compileImpl?: (sourceCode: string) => MotionCompileResult;
+  templates?: MotionPromptTemplates;
 }
 
 export async function autoFixMotionSource(options: MotionAutoFixOptions): Promise<MotionCardResult> {
@@ -25,6 +27,7 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
     maxRetries = 3,
     generateTextImpl = generateText,
     compileImpl = compileMotionSource,
+    templates,
   } = options;
 
   if (retryCount >= maxRetries) {
@@ -38,12 +41,15 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
 
   const rawText = await generateTextImpl(
     settings,
-    buildMotionSystemPrompt(),
-    buildMotionAutoFixUserPrompt({
-      sourceCode,
-      error,
-      stage,
-    }),
+    buildMotionSystemPrompt(templates?.system),
+    buildMotionAutoFixUserPrompt(
+      {
+        sourceCode,
+        error,
+        stage,
+      },
+      templates?.autofix,
+    ),
   );
   const nextSourceCode = extractMotionCode(rawText);
   const compileResult = compileImpl(nextSourceCode);
@@ -67,5 +73,6 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
     maxRetries,
     generateTextImpl,
     compileImpl,
+    templates,
   });
 }
