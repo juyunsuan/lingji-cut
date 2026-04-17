@@ -26,6 +26,20 @@ import {
   type PromptScope,
 } from '../../lib/prompts';
 import { getProjectDir } from '../../store/timeline';
+import { loadAISettings, useAIStore } from '../../store/ai';
+import {
+  PromptBindingError,
+  resolvePromptBinding,
+  type ResolvedBinding,
+} from '../../lib/llm/binding-resolver';
+import type {
+  AISettings,
+  ImageProvider,
+  LLMProvider,
+  PromptBinding,
+  PromptBindingMap,
+} from '../../types/ai';
+import { PromptBindingBar } from './PromptBindingBar';
 import styles from './PromptsConfigTab.module.css';
 
 type EditableScope = 'global' | 'project';
@@ -55,6 +69,56 @@ const SCOPE_BADGE_VARIANT: Record<PromptScope, React.ComponentProps<typeof Badge
   project: 'success',
 };
 
+type BindingBadgeVariant = React.ComponentProps<typeof Badge>['variant'];
+
+interface BindingBadgeInfo {
+  label: string;
+  variant: BindingBadgeVariant;
+}
+
+/**
+ * 计算某个 kind 的绑定 Badge 状态：
+ * - motion.system 不可配：—
+ * - 当前作用域无显式绑定：继承
+ * - 有绑定但解析失败：❗失效
+ * - 正常：model 或 model · imageModel
+ */
+function computeBindingBadge(
+  kind: PromptKind,
+  scope: 'global' | 'project',
+  settings: AISettings | null,
+  projectBindings: PromptBindingMap,
+): BindingBadgeInfo {
+  if (kind === 'motion.system') {
+    return { label: '—', variant: 'secondary' };
+  }
+
+  const explicit =
+    scope === 'project'
+      ? projectBindings[kind]
+      : settings?.promptBindings?.[kind];
+  if (!explicit) {
+    return { label: '继承', variant: 'secondary' };
+  }
+
+  if (!settings) {
+    return { label: '❗失效', variant: 'destructive' };
+  }
+
+  try {
+    const resolved = resolvePromptBinding(kind, settings, projectBindings);
+    if (kind === 'cover.regeneration' && resolved.imageModel) {
+      return {
+        label: `${resolved.model} · ${resolved.imageModel}`,
+        variant: 'info',
+      };
+    }
+    return { label: resolved.model, variant: 'info' };
+  } catch {
+    return { label: '❗失效', variant: 'destructive' };
+  }
+}
+
 export function PromptsConfigTab() {
   const { showToast } = useToast();
   const [projectDir] = useState<string>(() => getProjectDir());
@@ -71,6 +135,13 @@ export function PromptsConfigTab() {
   const [error, setError] = useState<string | null>(null);
   const [confirmReset, setConfirmReset] = useState<EditableScope | null>(null);
 
+  // ─── 提示词 × AI 绑定相关状态 ────────────────────
+  const [aiSettings, setAiSettings] = useState<AISettings | null>(null);
+  const projectBindings = useAIStore((s) => s.projectBindings);
+  const loadProjectBindings = useAIStore((s) => s.loadProjectBindings);
+  const setProjectBinding = useAIStore((s) => s.setProjectBinding);
+  const setGlobalBinding = useAIStore((s) => s.setGlobalBinding);
+
   const projectDirArg = hasProject ? projectDir : undefined;
 
   const refreshOverview = useCallback(async () => {
@@ -85,6 +156,25 @@ export function PromptsConfigTab() {
   useEffect(() => {
     if (!hasProject && scope === 'project') setScope('global');
   }, [hasProject, scope]);
+
+  /** 加载 AI settings（提供 llmProviders / imageProviders / 全局绑定） */
+  const refreshAISettings = useCallback(async () => {
+    try {
+      const loaded = await loadAISettings();
+      setAiSettings(loaded);
+    } catch (err) {
+      console.error('加载 AI Settings 失败:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshAISettings();
+  }, [refreshAISettings]);
+
+  /** projectDir 变化时，同步加载项目绑定 */
+  useEffect(() => {
+    void loadProjectBindings(projectDir || null);
+  }, [projectDir, loadProjectBindings]);
 
   const loadKind = useCallback(
     async (kind: PromptKind, targetScope: EditableScope) => {
@@ -131,6 +221,81 @@ export function PromptsConfigTab() {
   }, [overview]);
 
   const activeMeta = PROMPT_KIND_META[activeKind];
+
+  // ─── 绑定相关派生数据 ───────────────────────────
+  const llmProviders: LLMProvider[] = aiSettings?.llmProviders ?? [];
+  const imageProviders: ImageProvider[] = aiSettings?.imageProviders ?? [];
+
+  /** 当前作用域下该 kind 的显式绑定（undefined 表示继承） */
+  const currentScopeBinding: PromptBinding | undefined = useMemo(() => {
+    if (scope === 'project') return projectBindings[activeKind];
+    return aiSettings?.promptBindings?.[activeKind];
+  }, [scope, activeKind, projectBindings, aiSettings]);
+
+  /** 解析后的有效绑定与错误（供显示继承值与失效提示） */
+  const { resolved, bindingError } = useMemo<{
+    resolved: ResolvedBinding | null;
+    bindingError: PromptBindingError | null;
+  }>(() => {
+    if (!aiSettings) return { resolved: null, bindingError: null };
+    try {
+      const r = resolvePromptBinding(activeKind, aiSettings, projectBindings);
+      return { resolved: r, bindingError: null };
+    } catch (err) {
+      if (err instanceof PromptBindingError) {
+        return { resolved: null, bindingError: err };
+      }
+      return { resolved: null, bindingError: null };
+    }
+  }, [activeKind, aiSettings, projectBindings]);
+
+  /** 仅当当前作用域存在显式绑定、但解析失败时才显示顶部警告 */
+  const showBindingWarning = Boolean(currentScopeBinding && bindingError);
+
+  const handleBindingChange = useCallback(
+    async (next: PromptBinding | null) => {
+      try {
+        if (scope === 'project') {
+          await setProjectBinding(activeKind, next);
+        } else {
+          await setGlobalBinding(activeKind, next);
+          await refreshAISettings();
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast(message, { title: '更新绑定失败', type: 'error', duration: 4000 });
+      }
+    },
+    [
+      scope,
+      activeKind,
+      setProjectBinding,
+      setGlobalBinding,
+      refreshAISettings,
+      showToast,
+    ],
+  );
+
+  /** cover.regeneration 图像段变更：合并到同一 binding 中 */
+  const handleImageBindingChange = useCallback(
+    async (next: { imageProviderId: string | null; imageModel: string | null }) => {
+      const current: PromptBinding | undefined = currentScopeBinding;
+      const merged: PromptBinding = {
+        providerId: current?.providerId ?? null,
+        model: current?.model ?? null,
+        imageProviderId: next.imageProviderId,
+        imageModel: next.imageModel,
+      };
+      // 若 LLM 段与图像段都为空 → 删除整个绑定（回到继承）
+      const allCleared =
+        !merged.providerId &&
+        !merged.model &&
+        !merged.imageProviderId &&
+        !merged.imageModel;
+      await handleBindingChange(allCleared ? null : merged);
+    },
+    [currentScopeBinding, handleBindingChange],
+  );
 
   const handleSave = useCallback(async () => {
     if (saving) return;
@@ -235,6 +400,12 @@ export function PromptsConfigTab() {
                 <div className={styles.groupTitle}>{GROUP_LABEL[group]}</div>
                 {groupedKinds[group].map((item) => {
                   const isActive = item.kind === activeKind;
+                  const bindingBadge = computeBindingBadge(
+                    item.kind,
+                    scope,
+                    aiSettings,
+                    projectBindings,
+                  );
                   return (
                     <div className={styles.kindRow} key={item.kind}>
                       <Button
@@ -245,12 +416,17 @@ export function PromptsConfigTab() {
                         onClick={() => setActiveKind(item.kind)}
                       >
                         <span>{item.meta.label}</span>
-                        <Badge
-                          variant={SCOPE_BADGE_VARIANT[item.effectiveScope]}
-                          size="xs"
-                        >
-                          {SCOPE_LABEL[item.effectiveScope]}
-                        </Badge>
+                        <span className={styles.kindBadges}>
+                          <Badge
+                            variant={SCOPE_BADGE_VARIANT[item.effectiveScope]}
+                            size="xs"
+                          >
+                            {SCOPE_LABEL[item.effectiveScope]}
+                          </Badge>
+                          <Badge variant={bindingBadge.variant} size="xs">
+                            {bindingBadge.label}
+                          </Badge>
+                        </span>
                       </Button>
                     </div>
                   );
@@ -280,6 +456,33 @@ export function PromptsConfigTab() {
           </CardHeader>
 
           <CardContent className={styles.editorBody}>
+            {showBindingWarning && bindingError && (
+              <div className={styles.warning}>
+                {bindingError.message} —— 请在下方重选 Provider / Model
+              </div>
+            )}
+
+            {activeKind !== 'motion.system' && (
+              <PromptBindingBar
+                scope={scope}
+                kind={activeKind}
+                binding={currentScopeBinding}
+                llmProviders={llmProviders}
+                effectiveProviderId={resolved?.provider?.id ?? null}
+                effectiveModel={resolved?.model ?? null}
+                onChange={(next) => {
+                  void handleBindingChange(next);
+                }}
+                showImageBinding={activeKind === 'cover.regeneration'}
+                imageProviders={imageProviders}
+                effectiveImageProviderId={resolved?.imageProvider?.id ?? null}
+                effectiveImageModel={resolved?.imageModel ?? null}
+                onImageChange={(next) => {
+                  void handleImageBindingChange(next);
+                }}
+              />
+            )}
+
             {activeMeta.variables.length > 0 && (
               <div className={styles.varHint}>
                 <div className={styles.varHintTitle}>
