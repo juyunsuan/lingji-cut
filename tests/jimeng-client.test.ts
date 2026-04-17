@@ -4,19 +4,20 @@ import {
   extractJimengImageUrl,
   extractJimengImageUrls,
 } from '../src/lib/jimeng-client';
-import type { AISettings } from '../src/types/ai';
+import type { ImageProvider } from '../src/types/ai';
 
-const settings: AISettings = {
-  llmBaseUrl: '',
-  llmApiKey: '',
-  llmModel: '',
-  jimengApiUrl: 'https://jimeng.example.com/',
-  jimengSessionId: 'session-test',
+const provider: ImageProvider = {
+  id: 'jimeng-default',
+  name: '即梦',
+  type: 'jimeng',
+  baseUrl: 'https://jimeng.example.com/',
+  apiKey: 'session-test',
+  models: ['jimeng-5.0'],
 };
 
 describe('buildJimengImageRequest', () => {
   it('builds a Jimeng generation request with the expected defaults', () => {
-    const request = buildJimengImageRequest('一张科技感播客封面', settings);
+    const request = buildJimengImageRequest('一张科技感播客封面', provider, 'jimeng-5.0');
 
     expect(request.url).toBe('https://jimeng.example.com/v1/images/generations');
     expect(request.headers.Authorization).toBe('Bearer session-test');
@@ -25,14 +26,18 @@ describe('buildJimengImageRequest', () => {
     expect(request.body.n).toBe(4);
   });
 
-  it('uses jimengModel from settings when provided', () => {
-    const customSettings: AISettings = { ...settings, jimengModel: 'jimeng-3.0' };
-    const request = buildJimengImageRequest('封面', customSettings);
+  it('uses the passed model argument', () => {
+    const request = buildJimengImageRequest('封面', provider, 'jimeng-3.0');
     expect(request.body.model).toBe('jimeng-3.0');
   });
 
+  it('falls back to DEFAULT_JIMENG_MODEL when model is empty', () => {
+    const request = buildJimengImageRequest('封面', provider, '');
+    expect(request.body.model).toBe('jimeng-5.0');
+  });
+
   it('accepts a custom n parameter', () => {
-    const request = buildJimengImageRequest('封面', settings, 1);
+    const request = buildJimengImageRequest('封面', provider, 'jimeng-5.0', 1);
     expect(request.body.n).toBe(1);
   });
 });

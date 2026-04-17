@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { DEFAULT_JIMENG_MODEL, type AISettings, type CoverCandidate } from '../types/ai';
+import { DEFAULT_JIMENG_MODEL, type CoverCandidate, type ImageProvider } from '../types/ai';
 
 interface JimengApiResponse {
   data?: Array<{ url?: string | null } | null> | null;
@@ -19,17 +19,18 @@ export interface JimengImageRequest {
 
 export function buildJimengImageRequest(
   prompt: string,
-  settings: AISettings,
+  provider: ImageProvider,
+  model: string,
   n = 4,
 ): JimengImageRequest {
   return {
-    url: `${settings.jimengApiUrl.replace(/\/+$/, '')}/v1/images/generations`,
+    url: `${provider.baseUrl.replace(/\/+$/, '')}/v1/images/generations`,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${settings.jimengSessionId}`,
+      Authorization: `Bearer ${provider.apiKey}`,
     },
     body: {
-      model: settings.jimengModel?.trim() || DEFAULT_JIMENG_MODEL,
+      model: model?.trim() || DEFAULT_JIMENG_MODEL,
       prompt,
       ratio: '16:9',
       resolution: '2k',
@@ -48,8 +49,12 @@ export function extractJimengImageUrl(payload: JimengApiResponse): string | null
   return extractJimengImageUrls(payload)[0] ?? null;
 }
 
-export async function generateImage(prompt: string, settings: AISettings): Promise<string> {
-  const request = buildJimengImageRequest(prompt, settings);
+export async function generateImage(
+  prompt: string,
+  provider: ImageProvider,
+  model: string,
+): Promise<string> {
+  const request = buildJimengImageRequest(prompt, provider, model);
   const response = await fetch(request.url, {
     method: 'POST',
     headers: request.headers,
@@ -85,14 +90,15 @@ export async function downloadImage(imageUrl: string, outputPath: string): Promi
 
 export async function generateCoverCandidates(
   prompts: string[],
-  settings: AISettings,
+  provider: ImageProvider,
+  model: string,
   coversDir: string,
 ): Promise<CoverCandidate[]> {
   const path = await import('node:path');
   const candidates: CoverCandidate[] = [];
 
   for (const prompt of prompts) {
-    const request = buildJimengImageRequest(prompt, settings, 4);
+    const request = buildJimengImageRequest(prompt, provider, model, 4);
     try {
       const response = await fetch(request.url, {
         method: 'POST',

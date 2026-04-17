@@ -14,6 +14,7 @@ import { addAppLog, configureAppLogger, getAppLogFilePath, getAppLogs } from './
 import { analyzeSrt, regenerateAICard, regenerateCoverPrompt } from '../src/lib/ai-analysis';
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/jimeng-client';
+import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
 import { planStoryboardFromTranscript } from '../src/lib/storyboard-planner';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';
 import type { PersistedAIState } from '../src/lib/ai-persistence';
@@ -652,7 +653,16 @@ ipcMain.handle(
   'generate-cover-images',
   async (_event, args: { prompts: string[]; settings: AISettings; projectDir: string }) => {
     const coversDir = path.join(args.projectDir, 'covers');
-    return generateCoverCandidates(args.prompts, args.settings, coversDir);
+    const binding = resolvePromptBinding('cover.regeneration', args.settings, null);
+    if (!binding.imageProvider || !binding.imageModel) {
+      throw new Error('cover.regeneration 未绑定 ImageProvider/Model');
+    }
+    return generateCoverCandidates(
+      args.prompts,
+      binding.imageProvider,
+      binding.imageModel,
+      coversDir,
+    );
   },
 );
 
