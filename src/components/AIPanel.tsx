@@ -326,7 +326,9 @@ export function AIPanel({
     });
 
     try {
+      const projectDir = getProjectDir();
       const result = (await window.electronAPI.analyzeSrt({
+        projectDir: projectDir ?? undefined,
         entries: srtEntries,
         settings,
         globalPrompt: globalPromptDraft.trim() || undefined,
@@ -574,11 +576,13 @@ export function AIPanel({
     setAnalysisError(null);
 
     try {
+      const projectDir = getProjectDir();
       const prompts = await window.electronAPI.regenerateCoverPrompt({
         entries: srtEntries,
         settings,
         globalPrompt: analysisResult.globalPrompt,
         currentPrompt: analysisResult.coverPrompts[0],
+        projectDir: projectDir ?? undefined,
       });
       const nextResult = {
         ...analysisResult,

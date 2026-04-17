@@ -460,6 +460,7 @@ export function Editor({
         const result = (await window.electronAPI.analyzeSrt({
           entries,
           settings,
+          projectDir: projectDir || undefined,
         })) as AIAnalysisResult;
         setAIAnalysisResult(result);
         setCoverCandidates([]);
@@ -474,6 +475,7 @@ export function Editor({
     [
       clearAIAnalysis,
       persistAIState,
+      projectDir,
       setAIAnalysisError,
       setAIAnalysisResult,
       setCoverCandidates,

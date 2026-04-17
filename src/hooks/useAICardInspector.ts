@@ -164,6 +164,7 @@ export function useAICardInspector(cardId: string | null) {
           cardPrompt: draftCard.cardPrompt,
           programSummary: analysisResult.summary,
           keywords: analysisResult.keywords,
+          projectDir: getProjectDir() ?? undefined,
         });
 
         const nextResult = updateCardInResult(analysisResult, card.id, {

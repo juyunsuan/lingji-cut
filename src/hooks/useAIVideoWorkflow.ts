@@ -423,6 +423,7 @@ export function useAIVideoWorkflow() {
           const analysisResult = (await window.electronAPI.analyzeSrt({
             entries: useTimelineStore.getState().srtEntries,
             settings,
+            projectDir,
           })) as AIAnalysisResult;
 
           setAnalysisResult(analysisResult);

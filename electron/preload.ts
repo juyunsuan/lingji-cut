@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     srtContent?: string;
     settings: AISettings;
     globalPrompt?: string;
+    projectDir?: string;
   }) =>
     ipcRenderer.invoke('analyze-srt', args),
   planStoryboard: (args: {
@@ -39,12 +40,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     cardPrompt?: string;
     programSummary?: string;
     keywords?: string[];
+    projectDir?: string;
   }) => ipcRenderer.invoke('regenerate-ai-card', args),
   regenerateCoverPrompt: (args: {
     entries: SrtEntry[];
     settings: AISettings;
     globalPrompt?: string;
     currentPrompt?: string;
+    projectDir?: string;
   }) => ipcRenderer.invoke('regenerate-cover-prompt', args),
   generateCoverImages: (args: { prompts: string[]; settings: AISettings; projectDir: string }) =>
     ipcRenderer.invoke('generate-cover-images', args),
@@ -191,6 +194,25 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeRecentProject: (projectDir: string) =>
     ipcRenderer.invoke('remove-recent-project', projectDir),
   refreshRecentProjects: () => ipcRenderer.invoke('refresh-recent-projects'),
+
+  // ─── 提示词配置 ─────────────────────────────────────
+  listPrompts: (args: { projectDir?: string } = {}) =>
+    ipcRenderer.invoke('prompts:list', args),
+  listPromptKinds: () => ipcRenderer.invoke('prompts:kinds'),
+  readPrompt: (args: { kind: string; scope: 'builtin' | 'global' | 'project'; projectDir?: string }) =>
+    ipcRenderer.invoke('prompts:read', args),
+  readEffectivePrompt: (args: { kind: string; projectDir?: string }) =>
+    ipcRenderer.invoke('prompts:read-effective', args),
+  writePrompt: (args: {
+    kind: string;
+    scope: 'global' | 'project';
+    content: string;
+    projectDir?: string;
+  }) => ipcRenderer.invoke('prompts:write', args),
+  deletePrompt: (args: { kind: string; scope: 'global' | 'project'; projectDir?: string }) =>
+    ipcRenderer.invoke('prompts:delete', args),
+  getDefaultPrompt: (args: { kind: string }) =>
+    ipcRenderer.invoke('prompts:default', args),
 });
 
 // ─── Agent API ────────────────────────────────────────────

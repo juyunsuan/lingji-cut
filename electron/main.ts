@@ -61,6 +61,21 @@ import {
   ConfigBackupValidationError,
 } from './config-backup';
 import {
+  readRawPromptYaml,
+  writePromptYaml,
+  deletePromptYaml,
+  listPromptOverview,
+  loadEffectivePromptTemplate,
+} from './prompts-io';
+import {
+  DEFAULT_PROMPT_YAML,
+  PROMPT_KIND_META,
+  PROMPT_KINDS,
+  isPromptKind,
+  type PromptKind,
+  type PromptScope,
+} from '../src/lib/prompts';
+import {
   loadRecentProjects,
   addRecentProject,
   removeRecentProject as removeRecentProjectFromStore,
@@ -449,7 +464,13 @@ ipcMain.handle(
   'analyze-srt',
   async (
     _event,
-    args: { entries?: SrtEntry[]; srtContent?: string; settings: AISettings; globalPrompt?: string },
+    args: {
+      entries?: SrtEntry[];
+      srtContent?: string;
+      settings: AISettings;
+      globalPrompt?: string;
+      projectDir?: string;
+    },
   ) => {
     writeAppLog(
       'info',
@@ -461,8 +482,19 @@ ipcMain.handle(
       ? args.entries
       : parseSrt(args.srtContent ?? '');
     try {
+      const userDataPath = app.getPath('userData');
+      const planningTemplate = await loadEffectivePromptTemplate('planning.segment', {
+        userDataPath,
+        projectDir: args.projectDir,
+      });
+      const cardTemplate = await loadEffectivePromptTemplate('cards.segment', {
+        userDataPath,
+        projectDir: args.projectDir,
+      });
       const result = await analyzeSrt(entries, args.settings, {
         globalPrompt: args.globalPrompt,
+        planningTemplate,
+        cardTemplate,
       });
       writeAppLog(
         'info',
@@ -535,6 +567,7 @@ ipcMain.handle(
       cardPrompt?: string;
       programSummary?: string;
       keywords?: string[];
+      projectDir?: string;
     },
   ) => {
     writeAppLog(
@@ -545,11 +578,17 @@ ipcMain.handle(
     );
 
     try {
+      const userDataPath = app.getPath('userData');
+      const cardTemplate = await loadEffectivePromptTemplate('cards.segment', {
+        userDataPath,
+        projectDir: args.projectDir,
+      });
       return await regenerateAICard(args.entries, args.card, args.segment, args.settings, {
         globalPrompt: args.globalPrompt,
         cardPrompt: args.cardPrompt,
         programSummary: args.programSummary,
         keywords: args.keywords,
+        cardTemplate,
       });
     } catch (error) {
       writeAppLog(
@@ -572,6 +611,7 @@ ipcMain.handle(
       settings: AISettings;
       globalPrompt?: string;
       currentPrompt?: string;
+      projectDir?: string;
     },
   ) => {
     writeAppLog(
@@ -582,9 +622,15 @@ ipcMain.handle(
     );
 
     try {
+      const userDataPath = app.getPath('userData');
+      const coverTemplate = await loadEffectivePromptTemplate('cover.regeneration', {
+        userDataPath,
+        projectDir: args.projectDir,
+      });
       return await regenerateCoverPrompt(args.entries, args.settings, {
         globalPrompt: args.globalPrompt,
         currentPrompt: args.currentPrompt,
+        coverTemplate,
       });
     } catch (error) {
       writeAppLog(
@@ -717,6 +763,110 @@ ipcMain.handle(
     };
   },
 );
+
+// ─── Prompts 配置 ──────────────────────────────────────
+
+function assertPromptKind(kind: unknown): PromptKind {
+  if (!isPromptKind(kind)) {
+    throw new Error(`未知的 prompt kind：${String(kind)}`);
+  }
+  return kind;
+}
+
+function assertPromptScope(scope: unknown): PromptScope {
+  if (scope === 'global' || scope === 'project' || scope === 'builtin') return scope;
+  throw new Error(`未知的 prompt scope：${String(scope)}`);
+}
+
+function assertWritableScope(scope: unknown): 'global' | 'project' {
+  if (scope === 'global' || scope === 'project') return scope;
+  throw new Error(`不可写的 prompt scope：${String(scope)}`);
+}
+
+ipcMain.handle('prompts:list', async (_event, args: { projectDir?: string } = {}) => {
+  const userDataPath = app.getPath('userData');
+  const overview = await listPromptOverview({ userDataPath, projectDir: args.projectDir });
+  return overview.map((item) => ({
+    ...item,
+    meta: PROMPT_KIND_META[item.kind],
+  }));
+});
+
+ipcMain.handle('prompts:kinds', async () => {
+  return PROMPT_KINDS.map((kind) => ({
+    kind,
+    meta: PROMPT_KIND_META[kind],
+  }));
+});
+
+ipcMain.handle(
+  'prompts:read',
+  async (
+    _event,
+    args: { kind: string; scope: string; projectDir?: string },
+  ) => {
+    const kind = assertPromptKind(args.kind);
+    const scope = assertPromptScope(args.scope);
+    const userDataPath = app.getPath('userData');
+    const raw = await readRawPromptYaml(scope, kind, {
+      userDataPath,
+      projectDir: args.projectDir,
+    });
+    return { kind, scope, content: raw };
+  },
+);
+
+ipcMain.handle(
+  'prompts:read-effective',
+  async (_event, args: { kind: string; projectDir?: string }) => {
+    const kind = assertPromptKind(args.kind);
+    const userDataPath = app.getPath('userData');
+    const effective = await loadEffectivePromptTemplate(kind, {
+      userDataPath,
+      projectDir: args.projectDir,
+    });
+    return { kind, ...effective };
+  },
+);
+
+ipcMain.handle(
+  'prompts:write',
+  async (
+    _event,
+    args: { kind: string; scope: string; content: string; projectDir?: string },
+  ) => {
+    const kind = assertPromptKind(args.kind);
+    const scope = assertWritableScope(args.scope);
+    const userDataPath = app.getPath('userData');
+    const filePath = await writePromptYaml(scope, kind, args.content, {
+      userDataPath,
+      projectDir: args.projectDir,
+    });
+    return { kind, scope, filePath };
+  },
+);
+
+ipcMain.handle(
+  'prompts:delete',
+  async (
+    _event,
+    args: { kind: string; scope: string; projectDir?: string },
+  ) => {
+    const kind = assertPromptKind(args.kind);
+    const scope = assertWritableScope(args.scope);
+    const userDataPath = app.getPath('userData');
+    const removed = await deletePromptYaml(scope, kind, {
+      userDataPath,
+      projectDir: args.projectDir,
+    });
+    return { kind, scope, removed };
+  },
+);
+
+ipcMain.handle('prompts:default', async (_event, args: { kind: string }) => {
+  const kind = assertPromptKind(args.kind);
+  return { kind, content: DEFAULT_PROMPT_YAML[kind] };
+});
 
 ipcMain.handle('save-timeline', async (_event, projectDir: string, data: string) => {
   await fs.mkdir(projectDir, { recursive: true });

@@ -325,6 +325,7 @@ export default function App() {
         const result = (await window.electronAPI.analyzeSrt({
           entries,
           settings,
+          projectDir: currentProjectDir ?? undefined,
         })) as AIAnalysisResult;
         setAIAnalysisResult(result);
         setCoverCandidates([]);
@@ -334,7 +335,7 @@ export default function App() {
         window.alert(error instanceof Error ? error.message : '重新分析字幕失败，请稍后重试。');
       }
     },
-    [clearAIAnalysis, persistAIAnalysis, setAIAnalysisResult, setCoverCandidates],
+    [clearAIAnalysis, currentProjectDir, persistAIAnalysis, setAIAnalysisResult, setCoverCandidates],
   );
 
   const resolveAudioDuration = useCallback(

@@ -13,6 +13,12 @@ import type {
   VideoImportProgress,
   VideoImportRequest,
 } from './video-import-types';
+import type {
+  PromptKind,
+  PromptKindMeta,
+  PromptScope,
+  EffectivePromptTemplate,
+} from './prompts';
 
 export type AppPage = 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings';
 
@@ -113,6 +119,7 @@ export interface ElectronAPI {
     srtContent?: string;
     settings: AISettings;
     globalPrompt?: string;
+    projectDir?: string;
   }) => Promise<unknown>;
   planStoryboard: (args: {
     entries?: SrtEntry[];
@@ -129,12 +136,14 @@ export interface ElectronAPI {
     cardPrompt?: string;
     programSummary?: string;
     keywords?: string[];
+    projectDir?: string;
   }) => Promise<AICard>;
   regenerateCoverPrompt: (args: {
     entries: SrtEntry[];
     settings: AISettings;
     globalPrompt?: string;
     currentPrompt?: string;
+    projectDir?: string;
   }) => Promise<string[]>;
   generateCoverImages: (args: {
     prompts: string[];
@@ -239,6 +248,38 @@ export interface ElectronAPI {
     settingsBackupPath: string;
     agentBackupPath?: string;
   }>;
+
+  // 提示词配置
+  listPrompts: (args?: { projectDir?: string }) => Promise<
+    Array<{
+      kind: PromptKind;
+      effectiveScope: PromptScope;
+      hasGlobal: boolean;
+      hasProject: boolean;
+      meta: PromptKindMeta;
+    }>
+  >;
+  listPromptKinds: () => Promise<Array<{ kind: PromptKind; meta: PromptKindMeta }>>;
+  readPrompt: (args: {
+    kind: PromptKind;
+    scope: PromptScope;
+    projectDir?: string;
+  }) => Promise<{ kind: PromptKind; scope: PromptScope; content: string | null }>;
+  readEffectivePrompt: (args: { kind: PromptKind; projectDir?: string }) => Promise<
+    EffectivePromptTemplate & { kind: PromptKind }
+  >;
+  writePrompt: (args: {
+    kind: PromptKind;
+    scope: 'global' | 'project';
+    content: string;
+    projectDir?: string;
+  }) => Promise<{ kind: PromptKind; scope: 'global' | 'project'; filePath: string }>;
+  deletePrompt: (args: {
+    kind: PromptKind;
+    scope: 'global' | 'project';
+    projectDir?: string;
+  }) => Promise<{ kind: PromptKind; scope: 'global' | 'project'; removed: boolean }>;
+  getDefaultPrompt: (args: { kind: PromptKind }) => Promise<{ kind: PromptKind; content: string }>;
 }
 
 declare global {
