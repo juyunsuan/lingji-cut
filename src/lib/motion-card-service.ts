@@ -1,4 +1,4 @@
-import type { AISettings } from '../types/ai';
+import type { AISettings, PromptBindingMap } from '../types/ai';
 import type {
   MotionCardResult,
   MotionCompileResult,
@@ -6,6 +6,7 @@ import type {
   MotionModifyParams,
 } from '../types/motion';
 import { generateText } from './llm';
+import { resolvePromptBinding } from './llm/binding-resolver';
 import { autoFixMotionSource } from './motion-auto-fix';
 import { compileMotionSource } from './motion-compiler';
 import {
@@ -33,6 +34,8 @@ export interface MotionCardService {
 
 interface MotionCardServiceOptions {
   settings: AISettings;
+  /** 项目级提示词绑定快照；无项目上下文时传 null。用于把每个 motion 调用解析到独立的 Provider/Model。 */
+  projectBindings: PromptBindingMap | null;
   generateTextImpl?: typeof generateText;
   compileImpl?: (sourceCode: string) => MotionCompileResult;
   autoFixImpl?: typeof autoFixMotionSource;
@@ -41,6 +44,7 @@ interface MotionCardServiceOptions {
 
 async function resolveMotionCard(
   settings: AISettings,
+  projectBindings: PromptBindingMap | null,
   rawText: string,
   options: {
     prompt: string;
@@ -66,6 +70,7 @@ async function resolveMotionCard(
   const autoFixImpl = options.autoFixImpl ?? autoFixMotionSource;
   return autoFixImpl({
     settings,
+    projectBindings,
     sourceCode,
     error: compileResult.error,
     stage: 'compile',
@@ -78,6 +83,7 @@ async function resolveMotionCard(
 export function createMotionCardService(options: MotionCardServiceOptions): MotionCardService {
   const {
     settings,
+    projectBindings,
     generateTextImpl = generateText,
     compileImpl = compileMotionSource,
     autoFixImpl = autoFixMotionSource,
@@ -86,13 +92,15 @@ export function createMotionCardService(options: MotionCardServiceOptions): Moti
 
   return {
     async generate(params) {
+      const binding = resolvePromptBinding('motion.generate', settings, projectBindings);
       const rawText = await generateTextImpl(
         settings,
         buildMotionSystemPrompt(templates?.system),
         buildMotionGenerateUserPrompt(params, templates?.generate),
+        binding,
       );
 
-      return resolveMotionCard(settings, rawText, {
+      return resolveMotionCard(settings, projectBindings, rawText, {
         prompt: params.prompt,
         generateTextImpl,
         compileImpl,
@@ -102,13 +110,15 @@ export function createMotionCardService(options: MotionCardServiceOptions): Moti
     },
 
     async modify(params) {
+      const binding = resolvePromptBinding('motion.modify', settings, projectBindings);
       const rawText = await generateTextImpl(
         settings,
         buildMotionSystemPrompt(templates?.system),
         buildMotionModifyUserPrompt(params, templates?.modify),
+        binding,
       );
 
-      return resolveMotionCard(settings, rawText, {
+      return resolveMotionCard(settings, projectBindings, rawText, {
         prompt: params.instruction,
         generateTextImpl,
         compileImpl,

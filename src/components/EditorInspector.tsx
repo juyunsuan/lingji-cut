@@ -80,7 +80,8 @@ export function EditorInspector({
           return;
         }
 
-        const service = createMotionCardService({ settings });
+        const projectBindings = useAIStore.getState().projectBindings;
+        const service = createMotionCardService({ settings, projectBindings });
         const currentMotionCard = currentCard.motionCard;
         let result;
 

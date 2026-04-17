@@ -1,12 +1,15 @@
 import { generateText } from './llm';
+import { resolvePromptBinding } from './llm/binding-resolver';
 import { compileMotionSource } from './motion-compiler';
 import { buildMotionAutoFixUserPrompt, buildMotionSystemPrompt, extractMotionCode } from './motion-prompt';
 import type { MotionCardResult, MotionCompileResult } from '../types/motion';
-import type { AISettings } from '../types/ai';
+import type { AISettings, PromptBindingMap } from '../types/ai';
 import type { MotionPromptTemplates } from './motion-card-service';
 
 export interface MotionAutoFixOptions {
   settings: AISettings;
+  /** 项目级提示词绑定快照；无项目上下文时传 null。 */
+  projectBindings: PromptBindingMap | null;
   sourceCode: string;
   error: string;
   stage?: 'compile' | 'runtime';
@@ -20,6 +23,7 @@ export interface MotionAutoFixOptions {
 export async function autoFixMotionSource(options: MotionAutoFixOptions): Promise<MotionCardResult> {
   const {
     settings,
+    projectBindings,
     sourceCode,
     error,
     stage = 'compile',
@@ -39,6 +43,7 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
     };
   }
 
+  const binding = resolvePromptBinding('motion.autofix', settings, projectBindings);
   const rawText = await generateTextImpl(
     settings,
     buildMotionSystemPrompt(templates?.system),
@@ -50,6 +55,7 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
       },
       templates?.autofix,
     ),
+    binding,
   );
   const nextSourceCode = extractMotionCode(rawText);
   const compileResult = compileImpl(nextSourceCode);
@@ -66,6 +72,7 @@ export async function autoFixMotionSource(options: MotionAutoFixOptions): Promis
 
   return autoFixMotionSource({
     settings,
+    projectBindings,
     sourceCode: nextSourceCode,
     error: compileResult.error,
     stage: 'compile',

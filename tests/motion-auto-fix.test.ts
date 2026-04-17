@@ -4,9 +4,18 @@ import type { AISettings } from '../src/types/ai';
 import type { MotionCompileResult } from '../src/types/motion';
 
 const BASE_SETTINGS: AISettings = {
-  llmProviders: [],
-  defaultProviderId: null,
-  defaultModel: null,
+  llmProviders: [
+    {
+      id: 'test-provider',
+      name: 'Test Provider',
+      type: 'openai_compatible',
+      baseUrl: 'https://example.com/v1',
+      apiKey: 'test-key',
+      models: ['test-model'],
+    },
+  ],
+  defaultProviderId: 'test-provider',
+  defaultModel: 'test-model',
   llmBaseUrl: 'https://example.com/v1',
   llmApiKey: 'test-key',
   llmModel: 'test-model',
@@ -15,6 +24,10 @@ const BASE_SETTINGS: AISettings = {
   minimaxApiKey: '',
   minimaxVoiceId: '',
   minimaxSpeed: 1,
+  imageProviders: [],
+  defaultImageProviderId: null,
+  defaultImageModel: null,
+  promptBindings: {},
 };
 
 describe('autoFixMotionSource', () => {
@@ -32,6 +45,7 @@ describe('autoFixMotionSource', () => {
 
     const result = await autoFixMotionSource({
       settings: BASE_SETTINGS,
+      projectBindings: null,
       sourceCode: 'const MotionComponent = () => broken(',
       error: '首次编译失败',
       generateTextImpl,
@@ -56,6 +70,7 @@ describe('autoFixMotionSource', () => {
 
     const result = await autoFixMotionSource({
       settings: BASE_SETTINGS,
+      projectBindings: null,
       sourceCode: 'const MotionComponent = () => broken(',
       error: '首次编译失败',
       maxRetries: 2,

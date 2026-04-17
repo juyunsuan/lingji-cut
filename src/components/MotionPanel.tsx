@@ -250,7 +250,8 @@ export function MotionPanel({ onOpenCardInspector, onOpenSettings }: MotionPanel
       setMotionErrorState(null);
 
       try {
-        const service = createMotionCardService({ settings });
+        const projectBindings = useAIStore.getState().projectBindings;
+        const service = createMotionCardService({ settings, projectBindings });
         const result = await service.generate({
           prompt: trimmed,
           durationMs,
@@ -378,7 +379,8 @@ export function MotionPanel({ onOpenCardInspector, onOpenSettings }: MotionPanel
       }
 
       setGeneratingState(true);
-      const service = createMotionCardService({ settings });
+      const projectBindings = useAIStore.getState().projectBindings;
+      const service = createMotionCardService({ settings, projectBindings });
 
       for (const { card, prompt: promptText } of drafts) {
         try {
