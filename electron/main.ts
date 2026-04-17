@@ -68,6 +68,10 @@ import {
   loadEffectivePromptTemplate,
 } from './prompts-io';
 import {
+  readPromptBindings,
+  writePromptBindings,
+} from './prompt-bindings-io';
+import {
   DEFAULT_PROMPT_YAML,
   PROMPT_KIND_META,
   PROMPT_KINDS,
@@ -867,6 +871,37 @@ ipcMain.handle('prompts:default', async (_event, args: { kind: string }) => {
   const kind = assertPromptKind(args.kind);
   return { kind, content: DEFAULT_PROMPT_YAML[kind] };
 });
+
+ipcMain.handle(
+  'prompts:readBindings',
+  async (_event, args: { scope: 'project'; projectDir: string }) => {
+    if (args.scope !== 'project') throw new Error('readBindings: 仅支持 project scope');
+    if (!args.projectDir || !path.isAbsolute(args.projectDir)) {
+      throw new Error('readBindings: 需要绝对路径 projectDir');
+    }
+    return readPromptBindings({ projectDir: args.projectDir });
+  },
+);
+
+ipcMain.handle(
+  'prompts:writeBindings',
+  async (
+    _event,
+    args: { scope: 'project'; bindings: unknown; projectDir: string },
+  ) => {
+    if (args.scope !== 'project') throw new Error('writeBindings: 仅支持 project scope');
+    if (!args.projectDir || !path.isAbsolute(args.projectDir)) {
+      throw new Error('writeBindings: 需要绝对路径 projectDir');
+    }
+    if (!args.bindings || typeof args.bindings !== 'object') {
+      throw new Error('writeBindings: bindings 必须是对象');
+    }
+    await writePromptBindings(
+      args.bindings as Parameters<typeof writePromptBindings>[0],
+      { projectDir: args.projectDir },
+    );
+  },
+);
 
 ipcMain.handle('save-timeline', async (_event, projectDir: string, data: string) => {
   await fs.mkdir(projectDir, { recursive: true });
