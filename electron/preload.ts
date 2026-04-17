@@ -64,6 +64,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('load-global-settings'),
   saveGlobalSettings: (data: string) =>
     ipcRenderer.invoke('save-global-settings', data),
+  exportConfigBackup: () =>
+    ipcRenderer.invoke('config-backup:export') as Promise<
+      { canceled: true } | { canceled: false; filePath: string }
+    >,
+  previewConfigBackup: () =>
+    ipcRenderer.invoke('config-backup:preview') as Promise<
+      | { canceled: true }
+      | {
+          canceled: false;
+          filePath: string;
+          schemaVersion: string;
+          exportedAt: string;
+          appVersion: string;
+          platform: string;
+        }
+    >,
+  importConfigBackup: (args: { filePath: string }) =>
+    ipcRenderer.invoke('config-backup:import', args) as Promise<{
+      appliedFrom: string;
+      settingsBackupPath: string;
+      agentBackupPath?: string;
+    }>,
   getProjectMetadata: (projectDir: string) =>
     ipcRenderer.invoke('get-project-metadata', projectDir) as Promise<ProjectMetadata>,
   selectProjectDirectory: () => ipcRenderer.invoke('select-project-directory'),
