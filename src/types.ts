@@ -162,6 +162,11 @@ export interface TimelineData {
   overlays: OverlayItem[];
   subtitle: SubtitleStyle;
   subtitleHighlights?: SubtitleHighlight[];
+
+  // ── 音频/字幕二次加工（P0：可选字段，旧项目兼容）──
+  audioClips?: AudioClip[];
+  ttsAssets?: TTSAsset[];
+  editedSubtitles?: SrtEntry[];
 }
 
 export type AssetType = 'video' | 'image' | 'audio' | 'srt' | 'text';
@@ -252,6 +257,72 @@ export function createDefaultSubtitleStyle(): SubtitleStyle {
     maxCharsPerEntry: 35,
     autoResegment: true,
   };
+}
+
+// =============================================================================
+// 音频 Clip / TTS 素材 / 音色预设（audio-subtitle-tts 二次加工）
+// =============================================================================
+
+/** MiniMax TTS 返回的字级时间戳 */
+export interface WordTimestamp {
+  text: string;
+  startMs: number;
+  endMs: number;
+}
+
+/** 音色生成参数（语速 / 音量 / 音高 / 情绪） */
+export interface VoiceParams {
+  speed: number;
+  vol?: number;
+  pitch?: number;
+  emotion?: string;
+}
+
+/** 音色预设（全局跨项目复用） */
+export interface VoicePreset {
+  id: string;
+  name: string;
+  provider: 'minimax';
+  voiceId: string;
+  params: VoiceParams;
+  voiceSource: 'system' | 'cloned';
+  createdAt: number;
+  updatedAt: number;
+}
+
+/** TTS 素材（持久化到 <projectDir>/tts/） */
+export interface TTSAsset {
+  id: string;
+  filePath: string;
+  text: string;
+  durationMs: number;
+  voicePresetId: string;
+  /** 生成时的预设完整快照，防止预设被删导致失效 */
+  voicePresetSnapshot: VoicePreset;
+  voiceOverrides?: Partial<VoiceParams>;
+  /** TTS 返回的字级时间戳（若 API 支持） */
+  wordTimestamps?: WordTimestamp[];
+  createdAt: number;
+  voiceSource?: 'system' | 'cloned';
+}
+
+/** 音频 Clip 的来源：原始音频片段 或 TTS 素材 */
+export type AudioClipSource =
+  | { kind: 'origin'; startMs: number; endMs: number }
+  | { kind: 'tts'; assetId: string };
+
+/** 音频 Clip —— 虚拟合成的基本单元 */
+export interface AudioClip {
+  id: string;
+  source: AudioClipSource;
+  /** 在时间线上的起点（毫秒） */
+  timelineStartMs: number;
+  /** Clip 在时间线上占用的时长（毫秒） */
+  durationMs: number;
+  /** 初始化时关联的字幕 index 列表 */
+  linkedSubtitleIndexes: number[];
+  /** 静音占位（P1 功能，P0 仅预留字段） */
+  muted?: boolean;
 }
 
 export function sortOverlaysByStart(overlays: OverlayItem[]): OverlayItem[] {
