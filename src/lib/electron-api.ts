@@ -220,6 +220,25 @@ export interface ElectronAPI {
   addRecentProject: (projectDir: string, projectName?: string) => Promise<RecentProjectEntry[]>;
   removeRecentProject: (projectDir: string) => Promise<RecentProjectEntry[]>;
   refreshRecentProjects: () => Promise<RecentProjectEntry[]>;
+  exportConfigBackup: () => Promise<
+    { canceled: true } | { canceled: false; filePath: string }
+  >;
+  previewConfigBackup: () => Promise<
+    | { canceled: true }
+    | {
+        canceled: false;
+        filePath: string;
+        schemaVersion: string;
+        exportedAt: string;
+        appVersion: string;
+        platform: string;
+      }
+  >;
+  importConfigBackup: (args: { filePath: string }) => Promise<{
+    appliedFrom: string;
+    settingsBackupPath: string;
+    agentBackupPath?: string;
+  }>;
 }
 
 declare global {
