@@ -18,11 +18,18 @@ import {
 } from '../types/ai';
 import type { MotionCardPayload } from '../types/motion';
 import { generateStructuredData } from './llm';
+import {
+  getBuiltinPromptTemplate,
+  renderTemplate,
+  type PromptTemplate,
+} from './prompts';
 
 interface AnalyzeSrtOptions {
   maxTokens?: number;
   generateStructuredData?: typeof generateStructuredData;
   globalPrompt?: string;
+  planningTemplate?: PromptTemplate;
+  cardTemplate?: PromptTemplate;
 }
 
 interface RegenerateCardOptions {
@@ -31,12 +38,14 @@ interface RegenerateCardOptions {
   cardPrompt?: string;
   programSummary?: string;
   keywords?: string[];
+  cardTemplate?: PromptTemplate;
 }
 
 interface RegenerateCoverPromptOptions {
   generateStructuredData?: typeof generateStructuredData;
   globalPrompt?: string;
   currentPrompt?: string;
+  coverTemplate?: PromptTemplate;
 }
 
 interface SegmentPlanningResult {
@@ -261,39 +270,6 @@ function normalizeCard(
   };
 }
 
-function buildUnifiedVisualPromptSection(): string {
-  return `统一视觉基线（首次生成与二次重生成都必须遵守）：
-- 必须按 1920x1080 的 16:9 画布设计，并默认铺满整个画面
-- 禁止只做居中的窄卡片、手机比例、小弹窗或大量留白布局
-- 不要把主要内容限制在很小的 max-width 容器里
-- 尽量做成信息层级清晰、视觉冲击力强的 16:9 卡片
-- 不要输出 markdown 代码块
-- 内容必须忠于字幕事实，不要编造
-- 禁止输出任何“数据来源”“来源：”“Source”"数据统计口径"之类的底部标注、免责声明、署名或角标文案
-- 请保留 card 的 title/content 作为结构化兜底文本
-
-颜色建议：
-- summary: #79c4ff
-- data: #4ed38a
-- insight: #ffb347
-- chapter: #9eb7ff
-- quote: #ff8f7a
-
-整体风格建议：
-- 偏 macOS desktop dark / Swift UI 的半透明磨砂层次
-- 高光和阴影要克制，避免霓虹紫、强饱和电商橙、网页营销页式渐变`;
-}
-
-function buildTimelinePromptSection(): string {
-  return `时间轴约束（非常重要）：
-- startMs 必须对应“观众真正听到该主题”的那句字幕开始时间
-- 不要把铺垫、转场、提问或上一话题的时间提前算进来
-- endMs 必须对应该主题核心表达完成的那句字幕结束时间
-- displayDurationMs 必须覆盖这张卡片对应的核心表达，不能在主题刚讲到时就结束
-- 如果一个主题在后半段才真正展开，宁可把 startMs 设晚，也不要让卡片提前出现
-- startMs、endMs、displayDurationMs 必须输出毫秒数字`;
-}
-
 function normalizeCoverPrompts(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return [];
@@ -349,46 +325,14 @@ export function buildSrtText(entries: SrtEntry[]): string {
     .join('\n');
 }
 
-export function buildSegmentPlanningPrompt(globalPrompt?: string): string {
-  const promptLine = globalPrompt?.trim()
-    ? `\n额外创作要求：${globalPrompt.trim()}\n`
-    : '\n';
-
-  return `你是一个播客内容分析助手。请先完整理解整篇字幕，再把节目拆成有明确语义边界的段落，并输出严格 JSON。${promptLine}
-
-输出结构必须包含：
-- segments: 2-8 个段落
-- coverPrompts: 1 组封面提示词，数组中只能有 1 条
-- summary: 一句话总结
-- keywords: 关键词数组
-- globalPrompt: 沿用输入的整期创作提示词，没有则返回空字符串
-
-segments 中每一项必须包含：
-- id
-- title
-- summary
-- startMs
-- endMs
-- transcriptExcerpt
-- semanticType: data / explanation / chapter-transition / quote / narration
-- complexityLevel: low / medium / high
-- visualizationScore: 0-100
-- pacingNeed: steady / accent / transition
-- keywords: 该段关键词数组
-- entities: 该段关键实体数组
-
-段落拆分要求：
-- 必须按真实话题边界拆分，而不是按 token 长度硬切
-- startMs / endMs 必须对应该段真正开始与结束的字幕时间
-- 如果前面只是铺垫，不要把时间提前算进该段
-- transcriptExcerpt 保留该段最关键的原始字幕摘录，便于后续逐段生成卡片
-
-coverPrompts 要求：
-- 必须使用简体中文
-- 适合直接用于 16:9 播客封面生成
-- 除品牌名、专有名词或必要缩写外，不要使用英文
-
-请只返回 JSON，不要附加解释。`;
+export function buildSegmentPlanningPrompt(
+  globalPrompt?: string,
+  template?: PromptTemplate,
+): string {
+  const tpl = template ?? getBuiltinPromptTemplate('planning.segment');
+  const trimmed = globalPrompt?.trim();
+  const globalPromptLine = trimmed ? `额外创作要求：${trimmed}` : '';
+  return renderTemplate(tpl.user, { globalPromptLine });
 }
 
 export function buildCoverPromptRegenerationPrompt(
@@ -396,40 +340,29 @@ export function buildCoverPromptRegenerationPrompt(
     globalPrompt?: string;
     currentPrompt?: string;
   } = {},
+  template?: PromptTemplate,
 ): string {
+  const tpl = template ?? getBuiltinPromptTemplate('cover.regeneration');
   const globalPrompt = options.globalPrompt?.trim();
   const currentPrompt = options.currentPrompt?.trim();
-
-  return `你是一个播客封面创意助手。请结合字幕内容，为这一期播客输出严格 JSON，且只返回 1 条封面提示词。
-
-已有整期创作提示词：
-${globalPrompt || '无'}
-
-当前封面提示词（仅用于参考，可改写）：
-${currentPrompt || '无'}
-
-输出结构必须包含：
-- coverPrompts: 数组，但只能包含 1 条字符串
-
-要求：
-- 必须使用简体中文
-- 适合直接用于 AI 生成 16:9 播客封面
-- 画面感强，信息聚焦，避免空泛形容词堆砌
-- 尽量体现节目核心主题、关键人物或冲突感
-- 除品牌名、专有名词或必要缩写外，不要使用英文
-
-请只返回 JSON，不要附加解释。`;
+  return renderTemplate(tpl.user, {
+    globalPrompt: globalPrompt || '无',
+    currentPrompt: currentPrompt || '无',
+  });
 }
 
-export function buildSegmentCardPrompt(params: {
-  fullTranscript: string;
-  segment: AISegment;
-  globalPrompt?: string;
-  cardPrompt?: string;
-  currentCard?: AICard;
-  programSummary?: string;
-  keywords?: string[];
-}): string {
+export function buildSegmentCardPrompt(
+  params: {
+    fullTranscript: string;
+    segment: AISegment;
+    globalPrompt?: string;
+    cardPrompt?: string;
+    currentCard?: AICard;
+    programSummary?: string;
+    keywords?: string[];
+  },
+  template?: PromptTemplate,
+): string {
   const {
     fullTranscript,
     segment,
@@ -439,75 +372,41 @@ export function buildSegmentCardPrompt(params: {
     programSummary,
     keywords = [],
   } = params;
+  const tpl = template ?? getBuiltinPromptTemplate('cards.segment');
 
   const currentCardSection = currentCard
-    ? `当前卡片线索（仅用于延续已有风格和信息结构，不要机械照抄）：
-- id: ${currentCard.id}
-- type: ${currentCard.type}
-- title: ${currentCard.title}
-- content: ${typeof currentCard.content === 'string' ? currentCard.content : JSON.stringify(currentCard.content, null, 2)}
-- displayMode: ${currentCard.displayMode}
-- template: ${currentCard.template}
-- style.primaryColor: ${currentCard.style.primaryColor}
-- style.backgroundColor: ${currentCard.style.backgroundColor}
-- style.fontSize: ${currentCard.style.fontSize}
-`
-    : '当前卡片线索：无\n';
+    ? [
+        '当前卡片线索（仅用于延续已有风格和信息结构，不要机械照抄）：',
+        `- id: ${currentCard.id}`,
+        `- type: ${currentCard.type}`,
+        `- title: ${currentCard.title}`,
+        `- content: ${
+          typeof currentCard.content === 'string'
+            ? currentCard.content
+            : JSON.stringify(currentCard.content, null, 2)
+        }`,
+        `- displayMode: ${currentCard.displayMode}`,
+        `- template: ${currentCard.template}`,
+        `- style.primaryColor: ${currentCard.style.primaryColor}`,
+        `- style.backgroundColor: ${currentCard.style.backgroundColor}`,
+        `- style.fontSize: ${currentCard.style.fontSize}`,
+      ].join('\n')
+    : '当前卡片线索：无';
 
-  return `你是一个播客内容分析助手，同时也是一个网页信息卡设计师。现在要围绕单个内容段落生成一张网页信息卡，请输出严格 JSON，且只返回单张卡片对象。
-
-整期创作提示词：
-${globalPrompt?.trim() || '无'}
-
-节目级总结：
-${programSummary?.trim() || '无'}
-
-节目关键词：
-${keywords.length > 0 ? keywords.join('、') : '无'}
-
-当前 segment 信息：
-- id: ${segment.id}
-- title: ${segment.title}
-- summary: ${segment.summary}
-- startMs: ${segment.startMs}
-- endMs: ${segment.endMs}
-- transcriptExcerpt: ${segment.transcriptExcerpt || '无'}
-
-单卡追加提示词：
-${cardPrompt?.trim() || '无'}
-
-${currentCardSection}
-输出字段必须包含：
-- id
-- segmentId
-- type
-- title
-- content
-- startMs
-- endMs
-- displayDurationMs
-- displayMode
-- template
-- enabled
-- style
-- renderMode
-- cardPrompt
-- webCard
-
-其中：
-- renderMode 默认输出 "web-card"
-- webCard.srcDoc 必须是完整 HTML 文档
-- 允许 HTML/CSS/JS 和外部资源
-${buildTimelinePromptSection()}
-${buildUnifiedVisualPromptSection()}
-- 必须围绕当前 segment 生成，不要偏离整期主线
-- 可以参考“当前卡片线索”延续排版与视觉方向，但不要照抄旧内容
-- 请基于整篇全文理解这段内容在整期中的作用，再决定卡片信息结构
-
-完整字幕全文如下：
-${fullTranscript}
-
-请只返回 JSON 对象，不要附加解释。`;
+  return renderTemplate(tpl.user, {
+    globalPrompt: globalPrompt?.trim() || '无',
+    programSummary: programSummary?.trim() || '无',
+    keywords: keywords.length > 0 ? keywords.join('、') : '无',
+    segmentId: segment.id,
+    segmentTitle: segment.title,
+    segmentSummary: segment.summary,
+    segmentStartMs: segment.startMs,
+    segmentEndMs: segment.endMs,
+    segmentTranscriptExcerpt: segment.transcriptExcerpt || '无',
+    cardPrompt: cardPrompt?.trim() || '无',
+    currentCardSection,
+    fullTranscript,
+  });
 }
 
 export async function planTranscriptSegments(
@@ -518,6 +417,7 @@ export async function planTranscriptSegments(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
+    planningTemplate,
   } = options;
 
   if (entries.length === 0) {
@@ -526,7 +426,7 @@ export async function planTranscriptSegments(
 
   const payload = await requestStructuredData(
     settings,
-    buildSegmentPlanningPrompt(globalPrompt),
+    buildSegmentPlanningPrompt(globalPrompt, planningTemplate),
     buildSrtText(entries),
   );
   const parsed = parseSegmentPlanningResult(payload);
@@ -550,6 +450,7 @@ export async function generateCardForSegment(
     globalPrompt?: string;
     cardPrompt?: string;
     currentCard?: AICard;
+    cardTemplate?: PromptTemplate;
   } = {},
 ): Promise<AICard> {
   const {
@@ -557,6 +458,7 @@ export async function generateCardForSegment(
     globalPrompt,
     cardPrompt,
     currentCard,
+    cardTemplate,
   } = options;
 
   if (entries.length === 0) {
@@ -566,15 +468,18 @@ export async function generateCardForSegment(
   const fullTranscript = buildSrtText(entries);
   const payload = await requestStructuredData(
     settings,
-    buildSegmentCardPrompt({
-      fullTranscript,
-      segment,
-      globalPrompt: globalPrompt?.trim() || planning.globalPrompt,
-      cardPrompt,
-      currentCard,
-      programSummary: planning.summary,
-      keywords: planning.keywords,
-    }),
+    buildSegmentCardPrompt(
+      {
+        fullTranscript,
+        segment,
+        globalPrompt: globalPrompt?.trim() || planning.globalPrompt,
+        cardPrompt,
+        currentCard,
+        programSummary: planning.summary,
+        keywords: planning.keywords,
+      },
+      cardTemplate,
+    ),
     fullTranscript,
   );
   const parsed = normalizeCard(payload, 0, segment.id, cardPrompt);
@@ -597,11 +502,14 @@ export async function analyzeSrt(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
+    planningTemplate,
+    cardTemplate,
   } = options;
 
   const planning = await planTranscriptSegments(entries, settings, {
     generateStructuredData: requestStructuredData,
     globalPrompt,
+    planningTemplate,
   });
 
   const cards: AICard[] = [];
@@ -610,6 +518,7 @@ export async function analyzeSrt(
       await generateCardForSegment(entries, planning, segment, settings, {
         generateStructuredData: requestStructuredData,
         globalPrompt: planning.globalPrompt,
+        cardTemplate,
       }),
     );
   }
@@ -637,6 +546,7 @@ export async function regenerateAICard(
     cardPrompt = card.cardPrompt,
     programSummary,
     keywords = [],
+    cardTemplate,
   } = options;
 
   if (!segment) {
@@ -657,6 +567,7 @@ export async function regenerateAICard(
       globalPrompt,
       cardPrompt,
       currentCard: card,
+      cardTemplate,
     },
   );
 
@@ -679,6 +590,7 @@ export async function regenerateCoverPrompt(
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
     currentPrompt,
+    coverTemplate,
   } = options;
 
   if (entries.length === 0) {
@@ -687,10 +599,13 @@ export async function regenerateCoverPrompt(
 
   const payload = await requestStructuredData(
     settings,
-    buildCoverPromptRegenerationPrompt({
-      globalPrompt,
-      currentPrompt,
-    }),
+    buildCoverPromptRegenerationPrompt(
+      {
+        globalPrompt,
+        currentPrompt,
+      },
+      coverTemplate,
+    ),
     buildSrtText(entries),
   );
   const prompts = parseCoverPromptResult(payload);

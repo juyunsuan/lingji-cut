@@ -15,6 +15,14 @@ import {
   extractMotionCode,
 } from './motion-prompt';
 import { MOTION_SANDBOX_REFERENCE } from './motion-runtime';
+import type { PromptTemplate } from './prompts';
+
+export interface MotionPromptTemplates {
+  system?: PromptTemplate;
+  generate?: PromptTemplate;
+  modify?: PromptTemplate;
+  autofix?: PromptTemplate;
+}
 
 export interface MotionCardService {
   generate(params: MotionGenerateParams): Promise<MotionCardResult>;
@@ -28,6 +36,7 @@ interface MotionCardServiceOptions {
   generateTextImpl?: typeof generateText;
   compileImpl?: (sourceCode: string) => MotionCompileResult;
   autoFixImpl?: typeof autoFixMotionSource;
+  templates?: MotionPromptTemplates;
 }
 
 async function resolveMotionCard(
@@ -38,6 +47,7 @@ async function resolveMotionCard(
     generateTextImpl?: typeof generateText;
     compileImpl?: (sourceCode: string) => MotionCompileResult;
     autoFixImpl?: typeof autoFixMotionSource;
+    templates?: MotionPromptTemplates;
   },
 ): Promise<MotionCardResult> {
   const sourceCode = extractMotionCode(rawText);
@@ -61,6 +71,7 @@ async function resolveMotionCard(
     stage: 'compile',
     generateTextImpl: options.generateTextImpl,
     compileImpl,
+    templates: options.templates,
   });
 }
 
@@ -70,14 +81,15 @@ export function createMotionCardService(options: MotionCardServiceOptions): Moti
     generateTextImpl = generateText,
     compileImpl = compileMotionSource,
     autoFixImpl = autoFixMotionSource,
+    templates,
   } = options;
 
   return {
     async generate(params) {
       const rawText = await generateTextImpl(
         settings,
-        buildMotionSystemPrompt(),
-        buildMotionGenerateUserPrompt(params),
+        buildMotionSystemPrompt(templates?.system),
+        buildMotionGenerateUserPrompt(params, templates?.generate),
       );
 
       return resolveMotionCard(settings, rawText, {
@@ -85,14 +97,15 @@ export function createMotionCardService(options: MotionCardServiceOptions): Moti
         generateTextImpl,
         compileImpl,
         autoFixImpl,
+        templates,
       });
     },
 
     async modify(params) {
       const rawText = await generateTextImpl(
         settings,
-        buildMotionSystemPrompt(),
-        buildMotionModifyUserPrompt(params),
+        buildMotionSystemPrompt(templates?.system),
+        buildMotionModifyUserPrompt(params, templates?.modify),
       );
 
       return resolveMotionCard(settings, rawText, {
@@ -100,6 +113,7 @@ export function createMotionCardService(options: MotionCardServiceOptions): Moti
         generateTextImpl,
         compileImpl,
         autoFixImpl,
+        templates,
       });
     },
 
