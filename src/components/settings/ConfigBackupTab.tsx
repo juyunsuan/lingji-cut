@@ -1,7 +1,19 @@
 // src/components/settings/ConfigBackupTab.tsx
 import { useState } from 'react';
-import { Download, Upload, AlertTriangle, Info } from 'lucide-react';
-import { Button, ConfirmDialog, SettingsPageHeader, useToast } from '../../ui';
+import { Download, Upload } from 'lucide-react';
+import {
+  Alert,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+  ConfirmDialog,
+  SettingsPageHeader,
+  useToast,
+} from '../../ui';
 import {
   applyImport,
   exportConfig,
@@ -85,20 +97,20 @@ export function ConfigBackupTab() {
       />
 
       <div className={styles.container}>
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>导出配置</h3>
-          <p className={styles.cardDescription}>
-            将 LLM Provider、TTS、口播模板、审查规范、自定义角色、Claude Code Agent 配置等完整打包为一个 JSON 文件。
-          </p>
-
-          <div className={styles.warning}>
-            <AlertTriangle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>
-              导出的文件包含所有 API Key 明文，请妥善保管（建议放入加密的云盘或密码管理器）。
-            </span>
-          </div>
-
-          <div className={styles.actions}>
+        <Card>
+          <CardHeader>
+            <CardTitle>导出配置</CardTitle>
+            <CardDescription>
+              将 LLM Provider、TTS、口播模板、审查规范、自定义角色、Claude Code Agent 配置等完整打包为一个 JSON 文件。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert
+              variant="warning"
+              description="导出的文件包含所有 API Key 明文，请妥善保管（建议放入加密的云盘或密码管理器）。"
+            />
+          </CardContent>
+          <CardFooter>
             <Button
               variant="primary"
               onClick={handleExport}
@@ -107,23 +119,22 @@ export function ConfigBackupTab() {
               <Download size={16} />
               导出到文件…
             </Button>
-          </div>
-        </section>
+          </CardFooter>
+        </Card>
 
-        <section className={styles.card}>
-          <h3 className={styles.cardTitle}>从备份文件恢复</h3>
-          <p className={styles.cardDescription}>
-            选择一个 <code>.lingji-backup.json</code> 文件，将**覆盖**当前所有配置。
-          </p>
-
-          <div className={styles.info}>
-            <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>
+        <Card>
+          <CardHeader>
+            <CardTitle>从备份文件恢复</CardTitle>
+            <CardDescription>
+              选择一个 <code>.lingji-backup.json</code> 文件，将<strong>覆盖</strong>当前所有配置。
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Alert variant="info">
               导入前会自动备份当前配置到应用数据目录的 <code>backups/</code> 文件夹，可随时手动还原。
-            </span>
-          </div>
-
-          <div className={styles.actions}>
+            </Alert>
+          </CardContent>
+          <CardFooter>
             <Button
               variant="secondary"
               onClick={handleSelectImport}
@@ -132,8 +143,8 @@ export function ConfigBackupTab() {
               <Upload size={16} />
               选择文件导入…
             </Button>
-          </div>
-        </section>
+          </CardFooter>
+        </Card>
       </div>
 
       <ConfirmDialog
@@ -145,7 +156,7 @@ export function ConfigBackupTab() {
         description={
           preview ? (
             <div>
-              <p style={{ marginBottom: 12 }}>
+              <p className={styles.previewIntro}>
                 导入后将 <strong>覆盖当前所有配置</strong>，此操作不可撤销（但会自动备份当前值）。
               </p>
               <div className={styles.previewItem}>
