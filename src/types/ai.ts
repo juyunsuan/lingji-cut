@@ -257,14 +257,38 @@ export function buildAICardOverlayData(card: AICard): AICardOverlayData {
   };
 }
 
+/** 受支持的图像生成 Provider 类型 */
+export type ImageProviderType =
+  | 'jimeng'
+  | 'openai_image'
+  | 'minimax'
+  | 'doubao'
+  | 'imagen'
+  | 'wanx'
+  | 'custom';
+
+/** 图像宽高比公共集 */
+export type ImageAspectRatio = '1:1' | '16:9' | '9:16' | '4:3' | '3:4';
+
+/** Provider 能力描述（由 adapter 在 image-gen 注册表内注入，types 仅做类型契约） */
+export interface ImageProviderCapabilities {
+  aspectRatios: ImageAspectRatio[];
+  maxN: number;
+  supportsImageToImage: boolean;
+  isAsync: boolean;
+  defaultModels: string[];
+}
+
 /** 单个 Image Provider 配置（文生图） */
 export interface ImageProvider {
   id: string;
   name: string;
-  type: 'jimeng' | 'openai_image' | 'custom';
+  type: ImageProviderType;
   baseUrl: string;
   apiKey: string;          // 即梦下：实际承载 sessionId（client 层适配）
   models: string[];
+  /** provider-specific 额外配置：imagen.projectId、wanx.region 等 */
+  extras?: Record<string, unknown>;
 }
 
 /** 单个提示词的 AI 绑定（null 表示继承） */

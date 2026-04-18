@@ -15,10 +15,9 @@ const provider: ImageProvider = {
   models: ['jimeng-5.0'],
 };
 
-describe('buildJimengImageRequest', () => {
+describe('buildJimengImageRequest (legacy compat)', () => {
   it('builds a Jimeng generation request with the expected defaults', () => {
     const request = buildJimengImageRequest('一张科技感播客封面', provider, 'jimeng-5.0');
-
     expect(request.url).toBe('https://jimeng.example.com/v1/images/generations');
     expect(request.headers.Authorization).toBe('Bearer session-test');
     expect(request.body.model).toBe('jimeng-5.0');

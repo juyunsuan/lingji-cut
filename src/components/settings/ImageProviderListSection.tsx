@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { ImageProvider } from '../../types/ai';
+import type { ImageProvider, ImageProviderType } from '../../types/ai';
 import {
   Badge,
   Button,
@@ -20,6 +20,7 @@ import {
   normalizeImageProviderDraft,
   validateImageProviderDraft,
 } from './ai-config-utils';
+import { useTaskProgressStore } from '../../store/task-progress';
 import styles from './ImageProviderListSection.module.css';
 
 /** 生成唯一 ID */
@@ -27,11 +28,93 @@ function genId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+// ─── Capabilities 摘要（硬编码，避免拉入主进程依赖）───────────────────────
+
+interface CapabilitiesSummary {
+  ratios: string;
+  maxN: number;
+  isAsync: boolean;
+  defaultModels: string[];
+  defaultBaseUrl: string;
+}
+
+const CAPABILITIES_SUMMARY: Record<ImageProviderType, CapabilitiesSummary> = {
+  jimeng: {
+    ratios: '1:1 / 16:9 / 9:16 / 4:3 / 3:4',
+    maxN: 4,
+    isAsync: false,
+    defaultModels: ['jimeng-5.0'],
+    defaultBaseUrl: 'https://jimeng.jianying.com',
+  },
+  openai_image: {
+    ratios: '1:1 / 16:9 / 9:16',
+    maxN: 10,
+    isAsync: false,
+    defaultModels: ['gpt-image-1', 'dall-e-3'],
+    defaultBaseUrl: 'https://api.openai.com',
+  },
+  minimax: {
+    ratios: '1:1 / 16:9 / 9:16 / 4:3 / 3:4',
+    maxN: 8,
+    isAsync: false,
+    defaultModels: ['image-01'],
+    defaultBaseUrl: 'https://api.minimax.chat',
+  },
+  doubao: {
+    ratios: '1:1 / 16:9 / 9:16',
+    maxN: 1,
+    isAsync: true,
+    defaultModels: ['doubao-seedream-3.0'],
+    defaultBaseUrl: 'https://ark.cn-beijing.volces.com',
+  },
+  imagen: {
+    ratios: '1:1 / 16:9 / 9:16 / 4:3 / 3:4',
+    maxN: 4,
+    isAsync: false,
+    defaultModels: ['imagen-3.0-generate-002', 'imagen-4'],
+    defaultBaseUrl: 'https://generativelanguage.googleapis.com',
+  },
+  wanx: {
+    ratios: '1:1 / 16:9 / 9:16',
+    maxN: 4,
+    isAsync: true,
+    defaultModels: ['wanx2.1-t2i-turbo', 'wanx-v1'],
+    defaultBaseUrl: 'https://dashscope.aliyuncs.com',
+  },
+  custom: {
+    ratios: '取决于端点',
+    maxN: 1,
+    isAsync: false,
+    defaultModels: [],
+    defaultBaseUrl: '',
+  },
+};
+
+// ─── Provider Type 选项 ───────────────────────────────────────────────────
+
 const IMAGE_PROVIDER_TYPE_OPTIONS: SelectOption[] = [
   { value: 'jimeng', label: '即梦' },
-  { value: 'openai_image', label: 'OpenAI Images（暂未实现）' },
-  { value: 'custom', label: '自定义' },
+  { value: 'openai_image', label: 'OpenAI Images' },
+  { value: 'minimax', label: 'MiniMax' },
+  { value: 'doubao', label: '字节豆包' },
+  { value: 'imagen', label: 'Google Imagen' },
+  { value: 'wanx', label: '阿里通义万相' },
+  { value: 'custom', label: '自定义（OpenAI 兼容）' },
 ];
+
+const TYPE_LABELS: Record<ImageProviderType, string> = {
+  jimeng: '即梦',
+  openai_image: 'OpenAI Images',
+  minimax: 'MiniMax',
+  doubao: '字节豆包',
+  imagen: 'Google Imagen',
+  wanx: '阿里通义万相',
+  custom: '自定义（OpenAI 兼容）',
+};
+
+function getTypeLabel(type: ImageProviderType): string {
+  return TYPE_LABELS[type] ?? type;
+}
 
 /** 空白 ImageProvider 表单 */
 function emptyImageProvider(): ImageProvider {
@@ -45,13 +128,33 @@ function emptyImageProvider(): ImageProvider {
   };
 }
 
-function getApiKeyLabel(type: ImageProvider['type']): string {
-  return type === 'jimeng' ? '即梦 Session ID' : 'API Key';
+function getApiKeyLabel(type: ImageProviderType): string {
+  return type === 'jimeng' ? 'Session ID' : 'API Key';
 }
 
-function getApiKeyPlaceholder(type: ImageProvider['type']): string {
+function getApiKeyPlaceholder(type: ImageProviderType): string {
   return type === 'jimeng' ? '即梦 session 凭证' : 'sk-...';
 }
+
+function getBaseUrlPlaceholder(type: ImageProviderType): string {
+  return CAPABILITIES_SUMMARY[type].defaultBaseUrl || 'https://example.com/api';
+}
+
+function buildCapabilitiesSummaryText(type: ImageProviderType): string {
+  const cap = CAPABILITIES_SUMMARY[type];
+  const parts: string[] = [`支持 ${cap.ratios}`, `最大批量 ${cap.maxN}`];
+  if (cap.isAsync) parts.push('异步任务');
+  return parts.join('；');
+}
+
+// ─── 测试状态 ─────────────────────────────────────────────────────────────
+
+type TestStatus =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'success'; thumbnailUrl: string }
+  | { kind: 'error'; message: string }
+  | { kind: 'unavailable' };
 
 // ─── 子组件：ImageProvider 编辑弹窗 ───────────────────────────────────────
 
@@ -86,6 +189,17 @@ function ImageProviderDialog({ initial, isDefault, onSave, onCancel }: DialogPro
     if (errorKey) {
       clearFieldError(errorKey);
     }
+  };
+
+  // type 切换时自动填 models（仅当 models 为空）
+  const handleTypeChange = (nextType: ImageProviderType) => {
+    setForm((f) => {
+      const cap = CAPABILITIES_SUMMARY[nextType];
+      const nextModels = f.models.length === 0 ? [...cap.defaultModels] : f.models;
+      return { ...f, type: nextType, models: nextModels };
+    });
+    clearFieldError('baseUrl');
+    clearFieldError('apiKey');
   };
 
   const addModel = () => {
@@ -148,20 +262,18 @@ function ImageProviderDialog({ initial, isDefault, onSave, onCancel }: DialogPro
             <Select
               value={form.type}
               options={IMAGE_PROVIDER_TYPE_OPTIONS}
-              onChange={(e) => {
-                const nextType = e.target.value as ImageProvider['type'];
-                setForm((f) => ({ ...f, type: nextType }));
-                clearFieldError('baseUrl');
-                clearFieldError('apiKey');
-              }}
+              onChange={(e) => handleTypeChange(e.target.value as ImageProviderType)}
             />
+            <p className={styles.capsSummaryText}>
+              {buildCapabilitiesSummaryText(form.type)}
+            </p>
           </Field>
 
           <Field label="Base URL" required error={errors.baseUrl}>
             <Input
               value={form.baseUrl}
               onChange={(e) => set('baseUrl', e.target.value, 'baseUrl')}
-              placeholder="https://example.com/api"
+              placeholder={getBaseUrlPlaceholder(form.type)}
               size="sm"
               aria-invalid={Boolean(errors.baseUrl)}
             />
@@ -246,6 +358,87 @@ function ImageProviderDialog({ initial, isDefault, onSave, onCancel }: DialogPro
   );
 }
 
+// ─── 子组件：测试按钮 ─────────────────────────────────────────────────────
+
+interface TestButtonProps {
+  provider: ImageProvider;
+}
+
+function TestButton({ provider }: TestButtonProps) {
+  const [status, setStatus] = useState<TestStatus>({ kind: 'idle' });
+
+  const handleTest = async () => {
+    // 检查 IPC 是否可用
+    const api = window.electronAPI as (typeof window.electronAPI & {
+      testImageProvider?: (args: { provider: ImageProvider; model: string }) => Promise<{ url?: string }>;
+    });
+
+    if (!api?.testImageProvider) {
+      setStatus({ kind: 'unavailable' });
+      return;
+    }
+
+    const model = provider.models[0] ?? '';
+    const taskId = `test-image-provider-${provider.id}-${Date.now()}`;
+    const store = useTaskProgressStore.getState();
+
+    store.startTask({
+      id: taskId,
+      category: 'cover',
+      label: `测试 ${provider.name || getTypeLabel(provider.type)}`,
+      mode: 'indeterminate',
+      progress: 0,
+      phase: '连接中',
+      level: 0,
+      canCancel: false,
+    });
+
+    setStatus({ kind: 'running' });
+
+    try {
+      const result = await api.testImageProvider({ provider, model });
+      store.completeTask(taskId);
+      setStatus({ kind: 'success', thumbnailUrl: result.url ?? '' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '未知错误';
+      store.failTask(taskId, message);
+      setStatus({ kind: 'error', message });
+    }
+  };
+
+  return (
+    <div className={styles.testButtonWrapper}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        onClick={() => { void handleTest(); }}
+        disabled={status.kind === 'running'}
+        className={styles.testButton}
+      >
+        {status.kind === 'running' ? '测试中…' : '测试'}
+      </Button>
+
+      {status.kind === 'unavailable' && (
+        <span className={styles.testTip}>测试功能即将上线</span>
+      )}
+      {status.kind === 'success' && status.thumbnailUrl && (
+        <img
+          src={status.thumbnailUrl}
+          alt="测试结果"
+          className={styles.testThumbnail}
+        />
+      )}
+      {status.kind === 'success' && !status.thumbnailUrl && (
+        <span className={styles.testSuccess}>✓ 连接成功</span>
+      )}
+      {status.kind === 'error' && (
+        <span className={styles.testError}>✗ {status.message}</span>
+      )}
+    </div>
+  );
+}
+
 // ─── 主组件 ───────────────────────────────────────────────────────────────
 
 interface Props {
@@ -323,8 +516,12 @@ export function ImageProviderListSection({
                         默认
                       </Badge>
                     ) : null}
+                    <span className={styles.providerTypeLabel}>
+                      {getTypeLabel(p.type)}
+                    </span>
                   </div>
                   <div className={styles.providerActions}>
+                    <TestButton provider={p} />
                     <Button type="button" variant="ghost" size="sm" onClick={() => openEdit(p)}>
                       编辑
                     </Button>
@@ -338,6 +535,10 @@ export function ImageProviderListSection({
                     </Button>
                   </div>
                 </div>
+
+                <span className={styles.providerCapsSummary}>
+                  {buildCapabilitiesSummaryText(p.type)}
+                </span>
 
                 {p.baseUrl ? <span className={styles.providerBaseUrl}>{p.baseUrl}</span> : null}
 

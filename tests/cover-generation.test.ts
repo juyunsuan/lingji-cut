@@ -1,47 +1,57 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { ImageProvider } from '../src/types/ai';
 
-vi.mock('../src/lib/jimeng-client', () => ({
-  generateImage: vi.fn(async () => 'http://x/y.png'),
-}));
+beforeEach(() => {
+  vi.restoreAllMocks();
+});
 
 import { generateCoverImage } from '../src/lib/cover-generation';
 
 describe('generateCoverImage dispatcher', () => {
-  it('jimeng 类型走 jimeng-client', async () => {
+  it('jimeng 类型走 jimeng provider', async () => {
     const provider: ImageProvider = {
       id: 'i',
       name: 'j',
       type: 'jimeng',
-      baseUrl: 'u',
+      baseUrl: 'http://jimeng.test',
       apiKey: 'k',
       models: ['m'],
     };
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ url: 'http://x/y.png' }] }), { status: 200 }),
+    );
     const url = await generateCoverImage('prompt', provider, 'm');
     expect(url).toBe('http://x/y.png');
   });
 
-  it('openai_image 暂未实现：抛错', async () => {
-    const provider: ImageProvider = {
+  it('未知 provider type 抛 ImageGenerationError', async () => {
+    const provider = {
       id: 'i',
       name: 'd',
-      type: 'openai_image',
+      type: 'nonexistent_provider' as never,
       baseUrl: 'u',
       apiKey: 'k',
       models: ['m'],
-    };
-    await expect(generateCoverImage('p', provider, 'm')).rejects.toThrow(/未实现/);
+    } as ImageProvider;
+    await expect(generateCoverImage('p', provider, 'm')).rejects.toThrow(/未注册/);
   });
 
-  it('custom 暂未实现：抛错', async () => {
+  it('custom 类型回退到 openai_image adapter（已注册时命中）', async () => {
     const provider: ImageProvider = {
       id: 'i',
       name: 'c',
       type: 'custom',
-      baseUrl: 'u',
+      baseUrl: 'http://my.openai',
       apiKey: 'k',
-      models: ['m'],
+      models: ['gpt-image-1'],
     };
-    await expect(generateCoverImage('p', provider, 'm')).rejects.toThrow(/未实现/);
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({ data: [{ url: 'http://x/c.png' }] }),
+        { status: 200 },
+      ),
+    );
+    const url = await generateCoverImage('p', provider, 'gpt-image-1');
+    expect(url).toBe('http://x/c.png');
   });
 });

@@ -13,7 +13,7 @@ import type { MenuContext, MenuEvent, ProjectMetadata } from '../src/lib/electro
 import { addAppLog, configureAppLogger, getAppLogFilePath, getAppLogs } from './app-logger';
 import { analyzeSrt, regenerateAICard, regenerateCoverPrompt } from '../src/lib/ai-analysis';
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
-import { generateCoverCandidates } from '../src/lib/jimeng-client';
+import { generateCoverCandidates } from '../src/lib/cover-generation';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
 import { planStoryboardFromTranscript } from '../src/lib/storyboard-planner';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';

@@ -1,24 +1,134 @@
-import type { ImageProvider } from '../types/ai';
-import { generateImage as jimengGenerateImage } from './jimeng-client';
+import { v4 as uuid } from 'uuid';
+import type { CoverCandidate, ImageProvider } from '../types/ai';
+import { ImageGenerationError } from './image-gen/errors';
+import { createNoopContext, toDataUrl } from './image-gen/progress';
+import { getImageProvider } from './image-gen/registry';
+import type { ImageGenerationContext } from './image-gen/types';
 
 /**
  * 按 ImageProvider.type 分派到具体的文生图实现。
- * 当前仅实现 jimeng；openai_image / custom 预留接口，后续切片补齐。
+ * 三参签名为兼容旧调用方保留；新代码请显式传 ctx 以接入统一进度条。
  */
 export async function generateCoverImage(
   prompt: string,
   provider: ImageProvider,
   model: string,
+  ctx?: ImageGenerationContext,
 ): Promise<string> {
-  switch (provider.type) {
-    case 'jimeng':
-      return jimengGenerateImage(prompt, provider, model);
-    case 'openai_image':
-    case 'custom':
-      throw new Error(`ImageProvider.type=${provider.type} 暂未实现`);
-    default: {
-      const _exhaustive: never = provider.type;
-      throw new Error(`未知 ImageProvider.type=${String(_exhaustive)}`);
+  const adapter = getImageProvider(provider.type);
+  const result = await adapter.generate(
+    { prompt, model, aspectRatio: '16:9', n: 1 },
+    { baseUrl: provider.baseUrl, apiKey: provider.apiKey, extras: provider.extras },
+    ctx ?? createNoopContext(),
+  );
+  const first = result.images[0];
+  if (!first) {
+    throw new ImageGenerationError(
+      'server',
+      provider.type,
+      `${provider.name} 未返回图片`,
+    );
+  }
+  return first.url ?? toDataUrl(first);
+}
+
+/**
+ * 批量生成封面候选。每个 prompt 一次调用，结果落盘到 coversDir。
+ * 容错：单个 prompt 失败不阻断其他，失败项以 error 字段记录。
+ */
+export async function generateCoverCandidates(
+  prompts: string[],
+  provider: ImageProvider,
+  model: string,
+  coversDir: string,
+  ctx?: ImageGenerationContext,
+): Promise<CoverCandidate[]> {
+  const path = await import('node:path');
+  const adapter = getImageProvider(provider.type);
+  const config = {
+    baseUrl: provider.baseUrl,
+    apiKey: provider.apiKey,
+    extras: provider.extras,
+  };
+  const candidates: CoverCandidate[] = [];
+  const total = prompts.length;
+  const effectiveCtx = ctx ?? createNoopContext();
+
+  for (let i = 0; i < total; i++) {
+    const prompt = prompts[i];
+    const baseProgress = total > 0 ? Math.floor((i / total) * 100) : 0;
+    effectiveCtx.onProgress({
+      percent: baseProgress,
+      phase: 'rendering',
+      message: `生成第 ${i + 1}/${total} 张封面…`,
+    });
+
+    try {
+      const result = await adapter.generate(
+        { prompt, model, aspectRatio: '16:9', n: 4 },
+        config,
+        effectiveCtx,
+      );
+      for (const image of result.images) {
+        const id = uuid();
+        const outputPath = path.join(coversDir, `cover-${id}.png`);
+        const remoteUrl = image.url ?? toDataUrl(image);
+        if (!remoteUrl) {
+          candidates.push({ id, prompt, imageUrl: '', selected: false, error: '未获取到图片地址' });
+          continue;
+        }
+        try {
+          if (remoteUrl.startsWith('data:')) {
+            await writeDataUrl(remoteUrl, outputPath);
+          } else {
+            await downloadToFile(remoteUrl, outputPath);
+          }
+          candidates.push({ id, prompt, imageUrl: outputPath, selected: false });
+        } catch (dlError) {
+          candidates.push({
+            id,
+            prompt,
+            imageUrl: '',
+            selected: false,
+            error: dlError instanceof Error ? dlError.message : '下载封面失败',
+          });
+        }
+      }
+    } catch (error) {
+      candidates.push({
+        id: uuid(),
+        prompt,
+        imageUrl: '',
+        selected: false,
+        error: error instanceof Error ? error.message : '封面生成失败',
+      });
     }
   }
+
+  // 第一个成功下载的候选设为默认选中
+  const firstSuccess = candidates.find((c) => c.imageUrl);
+  if (firstSuccess) firstSuccess.selected = true;
+
+  effectiveCtx.onProgress({ percent: 100, phase: 'rendering', message: '全部封面生成完毕' });
+  return candidates;
+}
+
+async function downloadToFile(imageUrl: string, outputPath: string): Promise<void> {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const response = await fetch(imageUrl);
+  if (!response.ok) throw new Error(`下载图片失败: ${response.status}`);
+  const buffer = Buffer.from(await response.arrayBuffer());
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, buffer);
+}
+
+async function writeDataUrl(dataUrl: string, outputPath: string): Promise<void> {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl);
+  if (!match) throw new Error('无法解析 data URL');
+  const buffer = Buffer.from(match[2], 'base64');
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, buffer);
 }
