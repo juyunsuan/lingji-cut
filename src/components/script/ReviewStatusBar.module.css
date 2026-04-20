@@ -59,7 +59,45 @@
 .actions {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
   gap: 1px;
+  padding-right: var(--space-2);
+  border-right: 1px solid var(--color-separator);
+  margin-right: var(--space-1);
+}
+
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+
+.iconBtn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-text-primary) 10%, transparent);
+  color: var(--color-text-primary);
+}
+
+.iconBtn:active:not(:disabled) {
+  opacity: 0.65;
+}
+
+.iconBtn:disabled {
+  color: var(--color-border-strong);
+  cursor: not-allowed;
 }
 
 .resolvedHint {

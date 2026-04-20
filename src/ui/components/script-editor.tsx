@@ -23,7 +23,13 @@ import {
   setAnnotationsEffect,
   type AnnotationClickInfo,
 } from './script-editor-annotations';
-import { virtualCursorExtension } from '../../lib/virtual-cursor';
+import {
+  clearVirtualCursor,
+  setReviewHighlightLine,
+  setVirtualCursor,
+  setVirtualCursorMode,
+  virtualCursorExtension,
+} from '../../lib/virtual-cursor';
 import { createReadOnlyGuard } from '../../lib/editor-readonly-guard';
 
 // --- Severity display config ---
@@ -208,6 +214,12 @@ interface ScriptEditorProps {
   streamingActive?: boolean;
   editorViewRef?: React.MutableRefObject<EditorView | null>;
   mcpChangeHighlightLines?: number[];
+  /** 外部请求聚焦到某条批注：滚动 + 行高亮 + 弹出建议（若 pending） */
+  focusedAnnotationId?: string | null;
+  /** 批注聚焦变化回调：外部点击编辑器批注或 popover 关闭时通知父组件 */
+  onFocusedAnnotationChange?: (id: string | null) => void;
+  /** 请求 token：即使 id 相同也能触发重新聚焦（用于"再次点击同一条"） */
+  focusRequestToken?: number;
 }
 
 export function ScriptEditor({
@@ -221,6 +233,9 @@ export function ScriptEditor({
   streamingActive,
   editorViewRef,
   mcpChangeHighlightLines,
+  focusedAnnotationId,
+  onFocusedAnnotationChange,
+  focusRequestToken,
 }: ScriptEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -228,6 +243,11 @@ export function ScriptEditor({
   onChangeRef.current = onChange;
   const placeholderCompartment = useRef(new Compartment());
   const readOnlyGuard = useRef(createReadOnlyGuard());
+  // 用 ref 引用最新批注，避免 focus effect 在每次 annotations 变化时重跑
+  const annotationsRef = useRef<Annotation[]>(annotations);
+  annotationsRef.current = annotations;
+  const onFocusedChangeRef = useRef(onFocusedAnnotationChange);
+  onFocusedChangeRef.current = onFocusedAnnotationChange;
 
   const [clickInfo, setClickInfo] = useState<AnnotationClickInfo | null>(null);
 
@@ -248,7 +268,10 @@ export function ScriptEditor({
           placeholderCompartment.current.of(cmPlaceholder(placeholder ?? '')),
           annotationField,
           annotationHoverTooltip,
-          createAnnotationClickHandler(setClickInfo),
+          createAnnotationClickHandler((info) => {
+            setClickInfo(info);
+            onFocusedChangeRef.current?.(info?.id ?? null);
+          }),
           highlightLineField,
           ...virtualCursorExtension,
           readOnlyGuard.current.extension,
@@ -342,7 +365,65 @@ export function ScriptEditor({
     }
   }, [annotations, clickInfo]);
 
-  const handleClosePopover = useCallback(() => setClickInfo(null), []);
+  // 外部聚焦请求：滚动到批注位置，显示虚拟光标 + 行高亮 + popover（若 pending）
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+
+    if (!focusedAnnotationId) {
+      view.dispatch({
+        effects: [
+          clearVirtualCursor.of(null),
+          setReviewHighlightLine.of(null),
+        ],
+      });
+      setClickInfo(null);
+      return;
+    }
+
+    const ann = annotationsRef.current.find((a) => a.id === focusedAnnotationId);
+    if (!ann) return;
+
+    const docLen = view.state.doc.length;
+    const startOffset = Math.min(Math.max(ann.startOffset, 0), docLen);
+    const lineNum = view.state.doc.lineAt(startOffset).number;
+
+    view.dispatch({
+      effects: [
+        setVirtualCursorMode.of('review'),
+        setVirtualCursor.of(startOffset),
+        setReviewHighlightLine.of(lineNum),
+      ],
+      selection: { anchor: startOffset, head: startOffset },
+      scrollIntoView: true,
+    });
+    view.focus();
+
+    if (ann.status === 'pending') {
+      // 等待下一帧，确保 scrollIntoView 完成后再读取坐标
+      const raf = requestAnimationFrame(() => {
+        const currentView = viewRef.current;
+        if (!currentView) return;
+        const coords = currentView.coordsAtPos(startOffset);
+        if (coords) {
+          setClickInfo({
+            id: ann.id,
+            annotation: ann,
+            x: coords.left,
+            y: coords.bottom,
+          });
+        }
+      });
+      return () => cancelAnimationFrame(raf);
+    }
+
+    setClickInfo(null);
+  }, [focusedAnnotationId, focusRequestToken]);
+
+  const handleClosePopover = useCallback(() => {
+    setClickInfo(null);
+    onFocusedChangeRef.current?.(null);
+  }, []);
 
   return (
     <div

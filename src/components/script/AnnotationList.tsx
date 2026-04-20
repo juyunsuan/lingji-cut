@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Check, X } from 'lucide-react';
 import type { Annotation } from '../../store/script';
 import styles from './AnnotationList.module.css';
@@ -5,13 +6,19 @@ import styles from './AnnotationList.module.css';
 function AnnotationCard({
   annotation,
   index,
+  selected,
   onAccept,
   onDismiss,
+  onSelect,
+  registerRef,
 }: {
   annotation: Annotation;
   index: number;
+  selected: boolean;
   onAccept: () => void;
   onDismiss: () => void;
+  onSelect?: () => void;
+  registerRef?: (el: HTMLDivElement | null) => void;
 }) {
   const accepted = annotation.status === 'accepted';
   const dismissed = annotation.status === 'dismissed';
@@ -22,6 +29,8 @@ function AnnotationCard({
   const cardClass = [
     styles.card,
     !pending ? styles.cardResolved : '',
+    selected ? styles.cardActive : '',
+    onSelect ? styles.cardClickable : '',
   ].filter(Boolean).join(' ');
 
   const stripeClass = [
@@ -31,7 +40,24 @@ function AnnotationCard({
   ].filter(Boolean).join(' ');
 
   return (
-    <div className={cardClass}>
+    <div
+      ref={registerRef}
+      className={cardClass}
+      data-annotation-id={annotation.id}
+      onClick={onSelect}
+      role={onSelect ? 'button' : undefined}
+      tabIndex={onSelect ? 0 : undefined}
+      onKeyDown={
+        onSelect
+          ? (e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onSelect();
+              }
+            }
+          : undefined
+      }
+    >
       <div
         className={stripeClass}
         data-severity={annotation.severity}
@@ -76,7 +102,10 @@ function AnnotationCard({
             <button
               type="button"
               className={`${styles.actionBtn} ${styles.btnDismiss}`}
-              onClick={onDismiss}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDismiss();
+              }}
             >
               <X size={11} strokeWidth={2} />
               忽略
@@ -85,7 +114,10 @@ function AnnotationCard({
               <button
                 type="button"
                 className={`${styles.actionBtn} ${styles.btnAccept}`}
-                onClick={onAccept}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAccept();
+                }}
               >
                 <Check size={11} strokeWidth={2.5} />
                 采纳
@@ -100,13 +132,28 @@ function AnnotationCard({
 
 export function AnnotationList({
   annotations,
+  selectedId,
   onAccept,
   onDismiss,
+  onSelect,
 }: {
   annotations: Annotation[];
+  selectedId?: string | null;
   onAccept: (id: string) => void;
   onDismiss: (id: string) => void;
+  onSelect?: (id: string) => void;
 }) {
+  const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // 选中卡片变化时自动滚动到视野内
+  useEffect(() => {
+    if (!selectedId) return;
+    const el = cardRefs.current.get(selectedId);
+    if (el) {
+      el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedId]);
+
   if (!annotations.length) {
     return (
       <div className={styles.empty}>
@@ -122,8 +169,14 @@ export function AnnotationList({
           key={annotation.id}
           annotation={annotation}
           index={index}
+          selected={selectedId === annotation.id}
           onAccept={() => onAccept(annotation.id)}
           onDismiss={() => onDismiss(annotation.id)}
+          onSelect={onSelect ? () => onSelect(annotation.id) : undefined}
+          registerRef={(el) => {
+            if (el) cardRefs.current.set(annotation.id, el);
+            else cardRefs.current.delete(annotation.id);
+          }}
         />
       ))}
     </div>

@@ -156,6 +156,14 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
   const [douyinImportOpen, setDouyinImportOpen] = useState(false);
   const [douyinImportBusy, setDouyinImportBusy] = useState(false);
   const [douyinImportError, setDouyinImportError] = useState<string | null>(null);
+  /** 审查结论面板是否折叠 */
+  const [annotationPanelCollapsed, setAnnotationPanelCollapsed] = useState(false);
+  /** 用户手动切换过折叠状态后，不再自动折叠（否则展开 → 自动再收起会很烦） */
+  const annotationPanelUserToggledRef = useRef(false);
+  /** 当前聚焦的批注 ID（点击卡片或上下导航时设置） */
+  const [focusedAnnotationId, setFocusedAnnotationId] = useState<string | null>(null);
+  /** 聚焦请求令牌：同 ID 再次点击也能触发重新滚动/高亮 */
+  const [focusRequestToken, setFocusRequestToken] = useState(0);
 
   const editorViewRef = useRef<EditorView | null>(null);
   const liveStreamingRef = useRef<LiveStreamingEditor | null>(null);
@@ -466,6 +474,74 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     if (!dir) return;
     await hydrateProjectDirectory(dir);
   }, [hydrateProjectDirectory]);
+
+  /** 按文档顺序排序的批注列表，供导航使用 */
+  const orderedAnnotations = useMemo(
+    () => [...annotations].sort((a, b) => a.startOffset - b.startOffset),
+    [annotations],
+  );
+
+  /** 聚焦到某条批注：更新状态、重置折叠、bump token 强制重新触发 effect */
+  const focusAnnotation = useCallback((id: string | null) => {
+    setFocusedAnnotationId(id);
+    setFocusRequestToken((t) => t + 1);
+  }, []);
+
+  const handlePrevAnnotation = useCallback(() => {
+    if (orderedAnnotations.length === 0) return;
+    const currentIndex = focusedAnnotationId
+      ? orderedAnnotations.findIndex((a) => a.id === focusedAnnotationId)
+      : -1;
+    const nextIndex =
+      currentIndex <= 0 ? orderedAnnotations.length - 1 : currentIndex - 1;
+    focusAnnotation(orderedAnnotations[nextIndex]!.id);
+  }, [focusedAnnotationId, focusAnnotation, orderedAnnotations]);
+
+  const handleNextAnnotation = useCallback(() => {
+    if (orderedAnnotations.length === 0) return;
+    const currentIndex = focusedAnnotationId
+      ? orderedAnnotations.findIndex((a) => a.id === focusedAnnotationId)
+      : -1;
+    const nextIndex =
+      currentIndex < 0 || currentIndex === orderedAnnotations.length - 1
+        ? 0
+        : currentIndex + 1;
+    focusAnnotation(orderedAnnotations[nextIndex]!.id);
+  }, [focusedAnnotationId, focusAnnotation, orderedAnnotations]);
+
+  const handleToggleAnnotationPanel = useCallback(() => {
+    annotationPanelUserToggledRef.current = true;
+    setAnnotationPanelCollapsed((c) => !c);
+  }, []);
+
+  /** 统计 pending 数：用于自动折叠与按钮禁用 */
+  const pendingAnnotationCount = useMemo(
+    () => annotations.filter((a) => a.status === 'pending').length,
+    [annotations],
+  );
+
+  /** 批注为空时重置相关状态 */
+  useEffect(() => {
+    if (annotations.length === 0) {
+      setAnnotationPanelCollapsed(false);
+      annotationPanelUserToggledRef.current = false;
+      if (focusedAnnotationId !== null) setFocusedAnnotationId(null);
+    }
+  }, [annotations.length, focusedAnnotationId]);
+
+  /** 所有批注处理完成后自动折叠（仅用户未手动切换过时） */
+  const prevPendingRef = useRef(pendingAnnotationCount);
+  useEffect(() => {
+    if (
+      prevPendingRef.current > 0 &&
+      pendingAnnotationCount === 0 &&
+      annotations.length > 0 &&
+      !annotationPanelUserToggledRef.current
+    ) {
+      setAnnotationPanelCollapsed(true);
+    }
+    prevPendingRef.current = pendingAnnotationCount;
+  }, [pendingAnnotationCount, annotations.length]);
 
   // 打开文件树中的任意文件
   const handleOpenFile = useCallback(
@@ -1800,6 +1876,13 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                           }
                           streamingActive={editorAgent.streamingActive}
                           mcpChangeHighlightLines={mcpChangeHighlightLines}
+                          focusedAnnotationId={
+                            activeFile === 'script.md' ? focusedAnnotationId : null
+                          }
+                          onFocusedAnnotationChange={
+                            activeFile === 'script.md' ? setFocusedAnnotationId : undefined
+                          }
+                          focusRequestToken={focusRequestToken}
                         />
                         {activeFile === 'script.md' &&
                           activeStream.filePath === activeFile &&
@@ -1841,21 +1924,30 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
                       annotations={annotations}
                       onAcceptAll={handleAcceptAllAndSave}
                       onDismissAll={dismissAllAnnotations}
+                      collapsed={annotationPanelCollapsed}
+                      onToggleCollapse={handleToggleAnnotationPanel}
+                      onPrev={handlePrevAnnotation}
+                      onNext={handleNextAnnotation}
+                      navDisabled={annotations.length < 2}
                     />
                   )}
 
-                  {/* 审查结果面板：仅在查看 script.md 且有批注时显示 */}
-                  {activeFile === 'script.md' && annotations.length > 0 && (
-                    <div className={styles.annotationPanel}>
-                      <div className={styles.annotationPanelBody}>
-                        <AnnotationList
-                          annotations={annotations}
-                          onAccept={acceptAnnotation}
-                          onDismiss={dismissAnnotation}
-                        />
+                  {/* 审查结果面板：仅在查看 script.md 且有批注 且未折叠时显示 */}
+                  {activeFile === 'script.md' &&
+                    annotations.length > 0 &&
+                    !annotationPanelCollapsed && (
+                      <div className={styles.annotationPanel}>
+                        <div className={styles.annotationPanelBody}>
+                          <AnnotationList
+                            annotations={annotations}
+                            selectedId={focusedAnnotationId}
+                            onAccept={acceptAnnotation}
+                            onDismiss={dismissAnnotation}
+                            onSelect={focusAnnotation}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
                 </>
               ) : (
                 <EmptyGuide
@@ -1893,8 +1985,10 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
               ) : (
                 <AnnotationList
                   annotations={annotations}
+                  selectedId={focusedAnnotationId}
                   onAccept={acceptAnnotation}
                   onDismiss={dismissAnnotation}
+                  onSelect={focusAnnotation}
                 />
               )}
             </SideDrawer>
