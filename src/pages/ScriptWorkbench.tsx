@@ -295,6 +295,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
             scriptDocVersion: persisted.lastReviewedDocVersion,
             manualStageOverride: persisted.manualStageOverride ?? null,
             workspaceFiles: { hasOriginalFile: hasOriginal, hasScriptFile: hasScript },
+            fileTreeView: persisted.fileTreeView ?? 'all',
           });
           setFileEntries(entries);
           if (!openedFile) {
@@ -1216,6 +1217,7 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
           manualStageOverride: useScriptStore.getState().manualStageOverride,
           selectedProviderId: useScriptStore.getState().selectedProviderId,
           selectedModel: useScriptStore.getState().selectedModel,
+          fileTreeView: useScriptStore.getState().fileTreeView,
         },
       ),
     );

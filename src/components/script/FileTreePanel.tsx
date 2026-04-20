@@ -11,7 +11,10 @@ import {
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 import type { FileEntry } from '../../lib/electron-api';
 import { isVideoImportPreviewFile } from '../../lib/video-import-preview';
+import { useScriptStore } from '../../store/script';
 import { Button, EmptyState, PanelHeader } from '../../ui';
+import { FileTreeTabs } from './FileTreeTabs';
+import { ScriptResourceView } from './ScriptResourceView';
 import styles from './FileTreePanel.module.css';
 
 interface FileTreePanelProps {
@@ -288,6 +291,8 @@ export function FileTreePanel({
   onOpenFile,
 }: FileTreePanelProps) {
   const treeRef = useRef<HTMLDivElement | null>(null);
+  const fileTreeView = useScriptStore((s) => s.fileTreeView);
+  const setFileTreeView = useScriptStore((s) => s.setFileTreeView);
   const [expandedDirectories, setExpandedDirectories] = useState<Record<string, boolean>>(() =>
     reconcileExpandedDirectories(fileEntries, {}),
   );
@@ -343,15 +348,31 @@ export function FileTreePanel({
             <span className={styles.rootName}>{getProjectName(projectDir)}</span>
           </div>
 
-          <FileTree
-            fileEntries={fileEntries}
-            expandedDirectories={expandedDirectories}
-            openedFile={openedFile}
-            fileDirtyMap={fileDirtyMap}
-            fileConflictMap={fileConflictMap}
-            onToggleDirectory={handleToggleDirectory}
-            onOpenFile={onOpenFile}
-            treeRef={treeRef}
+          <FileTreeTabs
+            value={fileTreeView}
+            onValueChange={setFileTreeView}
+            allSlot={
+              <FileTree
+                fileEntries={fileEntries}
+                expandedDirectories={expandedDirectories}
+                openedFile={openedFile}
+                fileDirtyMap={fileDirtyMap}
+                fileConflictMap={fileConflictMap}
+                onToggleDirectory={handleToggleDirectory}
+                onOpenFile={onOpenFile}
+                treeRef={treeRef}
+              />
+            }
+            resourcesSlot={
+              <ScriptResourceView
+                projectDir={projectDir}
+                fileEntries={fileEntries}
+                openedFile={openedFile}
+                fileDirtyMap={fileDirtyMap}
+                fileConflictMap={fileConflictMap}
+                onOpenFile={onOpenFile}
+              />
+            }
           />
         </>
       ) : (
