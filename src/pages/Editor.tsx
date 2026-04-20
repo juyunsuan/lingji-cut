@@ -72,13 +72,14 @@ interface EditorProps {
 }
 
 const TIMELINE_PANEL_HEIGHT_KEY = 'podcast-editor-timeline-panel-height';
-const SIDEBAR_WIDTH_KEY = 'podcast-editor-sidebar-width';
+const SIDEBAR_WIDTH_KEY = 'podcast-editor-sidebar-width-v4';
 const INSPECTOR_WIDTH_KEY = 'podcast-editor-inspector-width';
 const RESIZE_HANDLE_THICKNESS = 6;
-const SIDEBAR_DEFAULT_WIDTH = 224;
+// 3 列 96px 素材卡 + 2×6px gap + 16px 内边距 + 10px 滚动条槽位 = 326，取 340 留余量
+const SIDEBAR_DEFAULT_WIDTH = 340;
 const INSPECTOR_DEFAULT_WIDTH = 260;
-const SIDEBAR_MIN_WIDTH = 180;
-const SIDEBAR_MAX_WIDTH = 420;
+const SIDEBAR_MIN_WIDTH = 220;
+const SIDEBAR_MAX_WIDTH = 480;
 const INSPECTOR_MIN_WIDTH = 220;
 const INSPECTOR_MAX_WIDTH = 480;
 const PREVIEW_MIN_WIDTH = 360;
@@ -804,7 +805,7 @@ export function Editor({
               className={styles.sidebarShell}
               data-editor-region="sidebar-shell"
               data-editor-sidebar-style="flat-panel"
-              data-editor-sidebar-width="224"
+              data-editor-sidebar-width="340"
             >
               <Tabs
                 value={activePanel}

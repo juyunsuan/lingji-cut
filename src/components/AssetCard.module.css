@@ -1,9 +1,9 @@
-/* 方形网格卡片 — design.pen */
+/* 方形网格卡片 — 与 AI 封面候选保持同规格 (96×96) */
 .root {
   position: relative;
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-md);
+  width: 96px;
+  height: 96px;
+  border-radius: var(--radius-lg);
   background: var(--color-panel-elevated);
   border: 1px solid var(--color-control-bg);
   overflow: hidden;
@@ -40,13 +40,13 @@
 
 /* compact 模式下保持方形大小不变 */
 .compact {
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
 }
 
 .regular {
-  width: 64px;
-  height: 64px;
+  width: 96px;
+  height: 96px;
 }
 
 /* 移除素材按钮 — hover 可见,右上角 */

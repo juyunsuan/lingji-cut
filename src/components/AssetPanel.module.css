@@ -186,12 +186,14 @@
   padding: 10px 8px 8px;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 始终为滚动条预留槽位，避免出现/消失导致网格列数抖动 */
+  scrollbar-gutter: stable;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, 64px);
-  gap: 4px;
+  grid-template-columns: repeat(auto-fill, 96px);
+  gap: 6px;
   align-content: start;
   justify-content: start;
 }
@@ -203,7 +205,7 @@
 }
 
 .assetAction {
-  width: 64px;
+  width: 96px;
   min-height: 18px;
   border: 1px solid color-mix(in srgb, var(--color-selection-blue) 28%, transparent);
   border-radius: var(--radius-sm);
