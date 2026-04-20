@@ -45,8 +45,8 @@
   grid-template-columns: 20px 1fr auto;
   align-items: center;
   gap: 6px;
-  padding: 4px 12px;
-  height: 26px;
+  padding: 6px 12px;
+  min-height: 36px;
   background: transparent;
   border: 0;
   color: var(--color-text-primary);
