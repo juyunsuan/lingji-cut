@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
 import { fitPreviewStage } from '../lib/preview';
 import { formatTime, getEffectiveTimelineDurationMs, msToFrame } from '../lib/utils';
@@ -14,6 +14,7 @@ interface PreviewPanelProps {
   playerRef: RefObject<PlayerRef | null>;
   isPlaying: boolean;
   onTogglePlay: () => void;
+  onSeek?: (ms: number) => void;
   onExport: () => void;
   currentTimeMs: number;
   durationMs: number;
@@ -27,6 +28,7 @@ function PreviewPanelComponent({
   playerRef,
   isPlaying,
   onTogglePlay,
+  onSeek,
   currentTimeMs,
   durationMs,
   compact,
@@ -63,12 +65,186 @@ function PreviewPanelComponent({
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
   }, []);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [volume, setVolume] = useState(1);
+  const [muted, setMuted] = useState(false);
+  const [progressHover, setProgressHover] = useState<{ timeMs: number; x: number } | null>(null);
+  const progressTrackRef = useRef<HTMLDivElement>(null);
+  const isSeekingRef = useRef(false);
+  const volumeTrackRef = useRef<HTMLDivElement>(null);
+  const isAdjustingVolumeRef = useRef(false);
 
   useEffect(() => {
     const handleChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', handleChange);
     return () => document.removeEventListener('fullscreenchange', handleChange);
   }, []);
+
+  // 同步音量到 Player（onMount 时 playerRef 可能还未就绪，用 requestAnimationFrame 兜底）
+  useEffect(() => {
+    const apply = () => {
+      const player = playerRef.current;
+      if (!player) return;
+      player.setVolume(volume);
+      if (muted) {
+        player.mute();
+      } else {
+        player.unmute();
+      }
+    };
+    apply();
+    const raf = requestAnimationFrame(apply);
+    return () => cancelAnimationFrame(raf);
+  }, [playerRef, volume, muted]);
+
+  const handleToggleMute = useCallback(() => {
+    setMuted((prev) => {
+      const next = !prev;
+      // 从完全静音恢复时给一个最小可听值，避免用户误以为没反应
+      if (!next && volume === 0) {
+        setVolume(0.5);
+      }
+      return next;
+    });
+  }, [volume]);
+
+  const handleVolumeChange = useCallback((next: number) => {
+    const clamped = Math.max(0, Math.min(1, next));
+    setVolume(clamped);
+    if (clamped > 0 && muted) {
+      setMuted(false);
+    }
+  }, [muted]);
+
+  const computeSeekMsFromEvent = useCallback(
+    (clientX: number) => {
+      const track = progressTrackRef.current;
+      if (!track || durationMs <= 0) return null;
+      const rect = track.getBoundingClientRect();
+      if (rect.width <= 0) return null;
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return ratio * durationMs;
+    },
+    [durationMs],
+  );
+
+  const updateProgressHoverFromEvent = useCallback(
+    (clientX: number) => {
+      const track = progressTrackRef.current;
+      if (!track || durationMs <= 0) {
+        setProgressHover(null);
+        return;
+      }
+      const rect = track.getBoundingClientRect();
+      if (rect.width <= 0) {
+        setProgressHover(null);
+        return;
+      }
+      const offsetX = Math.max(0, Math.min(rect.width, clientX - rect.left));
+      const ratio = offsetX / rect.width;
+      setProgressHover({ timeMs: ratio * durationMs, x: offsetX });
+    },
+    [durationMs],
+  );
+
+  const handleProgressPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!onSeek || durationMs <= 0) return;
+      event.preventDefault();
+      const target = event.currentTarget;
+      target.setPointerCapture(event.pointerId);
+      isSeekingRef.current = true;
+
+      const seekFrom = computeSeekMsFromEvent(event.clientX);
+      if (seekFrom !== null) onSeek(seekFrom);
+      updateProgressHoverFromEvent(event.clientX);
+    },
+    [computeSeekMsFromEvent, durationMs, onSeek, updateProgressHoverFromEvent],
+  );
+
+  const handleProgressPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      updateProgressHoverFromEvent(event.clientX);
+      if (!isSeekingRef.current || !onSeek) return;
+      const next = computeSeekMsFromEvent(event.clientX);
+      if (next !== null) onSeek(next);
+    },
+    [computeSeekMsFromEvent, onSeek, updateProgressHoverFromEvent],
+  );
+
+  const handleProgressPointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isSeekingRef.current) return;
+      isSeekingRef.current = false;
+      const target = event.currentTarget;
+      if (target.hasPointerCapture(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
+    },
+    [],
+  );
+
+  const handleProgressPointerEnter = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      updateProgressHoverFromEvent(event.clientX);
+    },
+    [updateProgressHoverFromEvent],
+  );
+
+  const handleProgressPointerLeave = useCallback(() => {
+    // 拖动中不清除，拖动结束 Pointer Capture 释放后浏览器会再发一次 leave
+    if (isSeekingRef.current) return;
+    setProgressHover(null);
+  }, []);
+
+  const computeVolumeFromEvent = useCallback((clientY: number) => {
+    const track = volumeTrackRef.current;
+    if (!track) return null;
+    const rect = track.getBoundingClientRect();
+    if (rect.height <= 0) return null;
+    // 轨道顶部 = 音量最大，底部 = 0
+    return 1 - Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+  }, []);
+
+  const handleVolumePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const target = event.currentTarget;
+      target.setPointerCapture(event.pointerId);
+      isAdjustingVolumeRef.current = true;
+      const next = computeVolumeFromEvent(event.clientY);
+      if (next !== null) handleVolumeChange(next);
+    },
+    [computeVolumeFromEvent, handleVolumeChange],
+  );
+
+  const handleVolumePointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isAdjustingVolumeRef.current) return;
+      const next = computeVolumeFromEvent(event.clientY);
+      if (next !== null) handleVolumeChange(next);
+    },
+    [computeVolumeFromEvent, handleVolumeChange],
+  );
+
+  const handleVolumePointerUp = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (!isAdjustingVolumeRef.current) return;
+      isAdjustingVolumeRef.current = false;
+      const target = event.currentTarget;
+      if (target.hasPointerCapture(event.pointerId)) {
+        target.releasePointerCapture(event.pointerId);
+      }
+    },
+    [],
+  );
+
+  const progressPercent = durationMs > 0 ? Math.max(0, Math.min(100, (currentTimeMs / durationMs) * 100)) : 0;
+  const volumePercent = (muted ? 0 : volume) * 100;
+  const volumeIconName = muted || volume === 0
+    ? 'volume-x'
+    : volume < 0.5
+      ? 'volume-1'
+      : 'volume-2';
 
   const handleToggleFullscreen = useCallback(() => {
     const el = cardRef.current;
@@ -179,13 +355,87 @@ function PreviewPanelComponent({
 
       {/* Footer 播放控件 */}
       <div className={styles.footer}>
-        {/* 左段 — 时间组 */}
-        <div className={styles.footerLeft}>
-          <AppIcon name="volume-2" size={14} className={styles.volumeIcon} />
-          <span className={styles.timeCurrentLabel}>{formatTime(currentTimeMs)}</span>
-          <span className={styles.timeSeparator}>/</span>
-          <span className={styles.timeTotalLabel}>{formatTime(durationMs)}</span>
+        {/* 进度条 */}
+        <div
+          ref={progressTrackRef}
+          className={styles.progressTrack}
+          role="slider"
+          aria-label="播放进度"
+          aria-valuemin={0}
+          aria-valuemax={Math.max(0, Math.round(durationMs))}
+          aria-valuenow={Math.round(currentTimeMs)}
+          onPointerDown={handleProgressPointerDown}
+          onPointerMove={handleProgressPointerMove}
+          onPointerUp={handleProgressPointerUp}
+          onPointerCancel={handleProgressPointerUp}
+          onPointerEnter={handleProgressPointerEnter}
+          onPointerLeave={handleProgressPointerLeave}
+        >
+          <div className={styles.progressFilled} style={{ width: `${progressPercent}%` }} />
+          <div className={styles.progressThumb} style={{ left: `${progressPercent}%` }} />
+          {progressHover && durationMs > 0 ? (
+            <div
+              className={styles.progressHoverTooltip}
+              style={{ left: `${progressHover.x}px` }}
+              aria-hidden="true"
+            >
+              {formatTime(progressHover.timeMs)}
+            </div>
+          ) : null}
         </div>
+
+        <div className={styles.footerRow}>
+          {/* 左段 — 音量 + 时间 */}
+          <div className={styles.footerLeft}>
+            <div className={styles.volumePopoverWrap}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className={styles.volumeButton}
+                aria-label={muted ? '取消静音' : '静音'}
+                onClick={handleToggleMute}
+              >
+                <AppIcon name={volumeIconName} size={14} className={styles.volumeIcon} />
+              </Button>
+              <div
+                className={styles.volumePopover}
+                role="group"
+                aria-label="音量控制"
+              >
+                <div className={styles.volumePopoverCard}>
+                  <span className={styles.volumePopoverValue}>
+                    {Math.round(volumePercent)}
+                  </span>
+                  <div
+                    ref={volumeTrackRef}
+                    className={styles.volumeSlider}
+                    role="slider"
+                    aria-label="音量"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(volumePercent)}
+                    onPointerDown={handleVolumePointerDown}
+                    onPointerMove={handleVolumePointerMove}
+                    onPointerUp={handleVolumePointerUp}
+                    onPointerCancel={handleVolumePointerUp}
+                  >
+                    <div className={styles.volumeSliderTrack} />
+                    <div
+                      className={styles.volumeSliderFilled}
+                      style={{ height: `${volumePercent}%` }}
+                    />
+                    <div
+                      className={styles.volumeSliderThumb}
+                      style={{ bottom: `${volumePercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <span className={styles.timeCurrentLabel}>{formatTime(currentTimeMs)}</span>
+            <span className={styles.timeSeparator}>/</span>
+            <span className={styles.timeTotalLabel}>{formatTime(durationMs)}</span>
+          </div>
 
         {/* 中段 — 播放控件 */}
         <div className={styles.footerCenter}>
@@ -251,6 +501,7 @@ function PreviewPanelComponent({
             </TooltipTrigger>
             <TooltipContent side="top">{isFullscreen ? '退出全屏' : '全屏'}</TooltipContent>
           </Tooltip>
+        </div>
         </div>
       </div>
     </Card>

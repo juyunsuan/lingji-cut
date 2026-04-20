@@ -52,7 +52,9 @@ import {
   Underline,
   Undo2,
   Upload,
+  Volume1,
   Volume2,
+  VolumeX,
   X,
   ZoomIn,
   ZoomOut,
@@ -110,7 +112,9 @@ export type AppIconName =
   | 'underline'
   | 'undo-2'
   | 'upload'
+  | 'volume-1'
   | 'volume-2'
+  | 'volume-x'
   | 'x'
   | 'zoom-in'
   | 'zoom-out';
@@ -172,7 +176,9 @@ const lucideIconMap: Partial<Record<AppIconName, LucideIcon>> = {
   underline: Underline,
   'undo-2': Undo2,
   upload: Upload,
+  'volume-1': Volume1,
   'volume-2': Volume2,
+  'volume-x': VolumeX,
   x: X,
   'zoom-in': ZoomIn,
   'zoom-out': ZoomOut,

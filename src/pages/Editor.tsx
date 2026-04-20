@@ -28,6 +28,7 @@ import type { AIAnalysisResult } from '../types/ai';
 import { useAIVideoWorkflow } from '../hooks/useAIVideoWorkflow';
 import { useViewportSize } from '../hooks/useViewportSize';
 import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
+import { isTextEditingTarget } from '../lib/native-shortcuts';
 import { shouldUpdatePlaybackTime } from '../lib/playback';
 import {
   frameToMs,
@@ -406,6 +407,28 @@ export function Editor({
     player.play();
   }, []);
 
+  // 空格键快捷键：在视频编辑器激活期间切换播放/暂停；文本输入框内不劫持
+  useEffect(() => {
+    if (!isActive) {
+      return;
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.code !== 'Space' && event.key !== ' ') {
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) {
+        return;
+      }
+      if (isTextEditingTarget(event.target)) {
+        return;
+      }
+      event.preventDefault();
+      handleTogglePlay();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleTogglePlay, isActive]);
+
   const handleSeek = useCallback(
     (targetMs: number) => {
       const player = playerRef.current;
@@ -748,6 +771,7 @@ export function Editor({
                 playerRef={playerRef}
                 isPlaying={isPlaying}
                 onTogglePlay={handleTogglePlay}
+                onSeek={handleSeek}
                 onExport={handleExport}
                 currentTimeMs={currentTimeMs}
                 durationMs={effectiveDurationMs}
@@ -868,6 +892,7 @@ export function Editor({
                 playerRef={playerRef}
                 isPlaying={isPlaying}
                 onTogglePlay={handleTogglePlay}
+                onSeek={handleSeek}
                 onExport={handleExport}
                 currentTimeMs={currentTimeMs}
                 durationMs={effectiveDurationMs}
