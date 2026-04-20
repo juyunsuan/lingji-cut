@@ -55,7 +55,7 @@ export function AssetImportCard({ onClick }: { onClick: () => void }) {
       onClick={onClick}
       aria-label="导入素材"
     >
-      <AppIcon name="plus" size={18} color="var(--color-text-muted)" />
+      <AppIcon name="plus" size={24} color="var(--color-text-muted)" />
       <span className={styles.ghostLabel}>导入</span>
     </Button>
   );
@@ -115,7 +115,7 @@ export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart
             )}
           </>
         ) : (
-          <AppIcon name={meta.icon} size={20} color={meta.iconColor} />
+          <AppIcon name={meta.icon} size={28} color={meta.iconColor} />
         )}
       </div>
 

@@ -110,11 +110,11 @@ describe('Editor', () => {
     const html = await renderEditor();
 
     expect(html).toContain('data-editor-sidebar-style="flat-panel"');
-    expect(html).toContain('data-editor-sidebar-width="224"');
+    expect(html).toContain('data-editor-sidebar-width="340"');
     expect(html).toContain('素材');
     expect(html).toContain('AI 助手');
     expect(html).toContain('data-editor-region="inspector-shell"');
-    expect(html).toContain('224px 6px minmax(0, 1fr) 6px 260px');
+    expect(html).toContain('340px 6px minmax(0, 1fr) 6px 260px');
     expect(html).toContain('aria-label="调整侧边栏宽度"');
     expect(html).toContain('aria-label="调整详情面板宽度"');
     expect(html).toContain('aria-label="调整时间线面板高度"');

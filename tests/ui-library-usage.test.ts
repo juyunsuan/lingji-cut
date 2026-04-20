@@ -30,7 +30,7 @@ describe('AI assistant business components use the shared UI library', () => {
     expect(editorSource).toContain('<AppIcon name="folder-open" size={14}');
     expect(editorSource).toContain('<AppIcon name="sparkles" size={14}');
     expect(assetCardCss).toMatch(
-      /\.root\s*{[^}]*width:\s*64px;[^}]*height:\s*64px;[^}]*border-radius:\s*6px;/s,
+      /\.root\s*{[^}]*width:\s*96px;[^}]*height:\s*96px;[^}]*border-radius:\s*var\(--radius-lg\);/s,
     );
     expect(assetPanelCss).toMatch(/\.filterPill\s*{[^}]*min-height:\s*22px\s*!important;/s);
   });
