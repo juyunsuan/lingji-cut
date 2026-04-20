@@ -2,8 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FileText, Film, Search } from 'lucide-react';
 import type { FileEntry } from '../../lib/electron-api';
-import { Badge, Input } from '../../ui';
-import { EmptyState } from '../../ui';
+import { Badge, EmptyState, Input } from '../../ui';
 import {
   collectScriptResources,
   filterResources,

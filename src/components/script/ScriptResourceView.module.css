@@ -108,7 +108,7 @@
 }
 
 .conflictMark {
-  font-size: 12px;
+  font-size: var(--font-size-md);
   color: var(--color-warning);
 }
 
