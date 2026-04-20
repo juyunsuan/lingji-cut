@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  createPersistedScriptState,
   isSavingFile,
   migratePersistedState,
   parsePersistedScriptState,
@@ -196,5 +197,34 @@ describe('v1 → v2 migration', () => {
     });
     expect(result.createdAt).toBe('2026-01-01T00:00:00.000Z');
     expect(result.updatedAt).toBe('2026-01-02T00:00:00.000Z');
+  });
+});
+
+describe('fileTreeView persistence', () => {
+  it('defaults to "all" when option not provided', () => {
+    const state = createPersistedScriptState('idle', 0, 'news-broadcast', []);
+    expect(state.fileTreeView).toBe('all');
+  });
+
+  it('persists explicit fileTreeView option', () => {
+    const state = createPersistedScriptState('idle', 0, 'news-broadcast', [], {
+      fileTreeView: 'resources',
+    });
+    expect(state.fileTreeView).toBe('resources');
+  });
+
+  it('parses and preserves fileTreeView from saved json', () => {
+    const saved = {
+      version: 2,
+      templateId: 'news-broadcast',
+      annotations: [],
+      reviewState: 'idle',
+      lastReviewedDocVersion: 0,
+      createdAt: '2026-04-20T00:00:00.000Z',
+      updatedAt: '2026-04-20T00:00:00.000Z',
+      fileTreeView: 'resources',
+    };
+    const parsed = parsePersistedScriptState(saved);
+    expect(parsed?.fileTreeView).toBe('resources');
   });
 });

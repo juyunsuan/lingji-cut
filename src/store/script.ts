@@ -142,6 +142,8 @@ interface ScriptState {
   selectedModel: string | null;
   /** 从欢迎页传入的待处理抖音链接，进入工作台后自动触发导入 */
   pendingDouyinUrl: string | null;
+  /** 文件树当前视图：'all' 显示全部文件，'resources' 显示稿件资源过滤视图 */
+  fileTreeView: 'all' | 'resources';
 }
 
 interface ScriptActions {
@@ -177,6 +179,7 @@ interface ScriptActions {
     reviewState?: ReviewState;
     scriptDocVersion?: number;
     manualStageOverride?: WorkbenchStage | null;
+    fileTreeView?: 'all' | 'resources';
   }) => void;
   reset: () => void;
   clearProjectSession: () => void;
@@ -212,6 +215,7 @@ interface ScriptActions {
   exitHistoryPreview: () => void;
   setSelectedProvider: (providerId: string | null, model: string | null) => void;
   setPendingDouyinUrl: (url: string | null) => void;
+  setFileTreeView: (view: 'all' | 'resources') => void;
 }
 
 const initialState: ScriptState = {
@@ -285,6 +289,7 @@ const initialState: ScriptState = {
   selectedProviderId: null,
   selectedModel: null,
   pendingDouyinUrl: null,
+  fileTreeView: 'all',
 };
 
 export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => ({
@@ -439,17 +444,18 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
       reviewState: params.reviewState ?? 'idle',
       scriptDocVersion: params.scriptDocVersion ?? 0,
       manualStageOverride: params.manualStageOverride ?? null,
+      ...(params.fileTreeView ? { fileTreeView: params.fileTreeView } : {}),
     }),
 
   reset: () => {
     const { projectDir, selectedRole } = get();
     // 重置脚本内容但保留工作目录（与 Editor 共享）
-    set({ ...initialState, projectDir, selectedRole });
+    set({ ...initialState, projectDir, selectedRole, fileTreeView: 'all' });
   },
 
   clearProjectSession: () => {
     const { selectedRole } = get();
-    set({ ...initialState, projectDir: null, selectedRole });
+    set({ ...initialState, projectDir: null, selectedRole, fileTreeView: 'all' });
   },
 
   // --- 新增 actions ---
@@ -574,6 +580,8 @@ export const useScriptStore = create<ScriptState & ScriptActions>((set, get) => 
     set({ selectedProviderId: providerId, selectedModel: model }),
 
   setPendingDouyinUrl: (url) => set({ pendingDouyinUrl: url }),
+
+  setFileTreeView: (view) => set({ fileTreeView: view }),
 }));
 
 // 自动保存：当 reviewState / scriptDocVersion / template / annotations 变化时，

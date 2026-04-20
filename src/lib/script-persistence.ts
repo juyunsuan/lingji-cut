@@ -14,6 +14,8 @@ export interface PersistedScriptState {
   createdAt: string;
   updatedAt: string;
   lastOperation?: string;
+  /** 文件树当前视图：'all' 显示完整文件树，'resources' 显示稿件资源过滤视图 */
+  fileTreeView?: 'all' | 'resources';
 }
 
 // --- v1 → v2 迁移 ---
@@ -57,6 +59,7 @@ export function createPersistedScriptState(
     manualStageOverride?: WorkbenchStage | null;
     selectedProviderId?: string | null;
     selectedModel?: string | null;
+    fileTreeView?: 'all' | 'resources';
   },
 ): PersistedScriptState {
   return {
@@ -70,6 +73,7 @@ export function createPersistedScriptState(
     selectedModel: options?.selectedModel ?? null,
     createdAt: options?.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    fileTreeView: options?.fileTreeView ?? 'all',
   };
 }
 
