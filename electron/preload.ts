@@ -59,6 +59,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     projectDir: string;
     projectBindings?: PromptBindingMap | null;
   }) => ipcRenderer.invoke('generate-cover-images', args),
+  saveCoverEdit: (args: import('../src/lib/cover-editor/contracts').SaveCoverEditArgs) =>
+    ipcRenderer.invoke('save-cover-edit', args),
   saveTimeline: (projectDir: string, data: string) =>
     ipcRenderer.invoke('save-timeline', projectDir, data),
   loadTimeline: (projectDir: string) => ipcRenderer.invoke('load-timeline', projectDir),
