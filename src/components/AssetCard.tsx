@@ -61,6 +61,21 @@ export function AssetImportCard({ onClick }: { onClick: () => void }) {
   );
 }
 
+/** Ghost 添加文字卡片 — 文字 tab 下使用，与导入卡片同规格 */
+export function AddTextCard({ onClick }: { onClick?: () => void }) {
+  return (
+    <Button
+      variant="ghost"
+      className={[styles.root, styles.ghost].join(' ')}
+      onClick={onClick}
+      aria-label="添加文字"
+    >
+      <AppIcon name="type" size={24} color="var(--color-text-muted)" />
+      <span className={styles.ghostLabel}>添加文字</span>
+    </Button>
+  );
+}
+
 export function AssetCard({ asset, compact, usageCount: _usageCount, onDragStart, onRemove, onClick }: AssetCardProps) {
   const meta = TYPE_META[asset.type];
   const isDraggable =
