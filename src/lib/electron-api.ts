@@ -163,6 +163,7 @@ export interface ElectronAPI {
   saveCoverEdit: (
     args: import('./cover-editor/contracts').SaveCoverEditArgs,
   ) => Promise<import('./cover-editor/contracts').SaveCoverEditResult>;
+  listSystemFonts: () => Promise<import('./cover-editor/contracts').ListSystemFontsResult>;
   saveTimeline: (projectDir: string, data: string) => Promise<string>;
   loadTimeline: (projectDir: string) => Promise<string | null>;
   saveAIAnalysis: (projectDir: string, data: string) => Promise<string>;
