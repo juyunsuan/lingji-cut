@@ -46,6 +46,8 @@ import { registerMcpIpc } from './mcp/ipc';
 import { registerScriptHistoryIpc } from './script-history/ipc';
 import { startMcpServer, stopMcpServer } from './mcp/server';
 import { loadProjectFile, saveProjectSection } from './project-file';
+import { saveCoverEdit } from './cover-editor-io';
+import { listSystemFonts } from './system-fonts';
 import {
   loadGlobalSettings,
   loadGlobalSettingsSync,
@@ -1940,6 +1942,14 @@ ipcMain.handle(
     }
   },
 );
+
+ipcMain.handle('save-cover-edit', async (_event, args) => {
+  return saveCoverEdit(args);
+});
+
+ipcMain.handle('list-system-fonts', async () => {
+  return listSystemFonts();
+});
 
 // 开发模式下让 Ctrl+C 能正常退出 Electron
 if (process.env.NODE_ENV_ELECTRON_VITE === 'development') {

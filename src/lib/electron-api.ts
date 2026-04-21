@@ -160,6 +160,9 @@ export interface ElectronAPI {
     projectDir: string;
     projectBindings?: PromptBindingMap | null;
   }) => Promise<CoverCandidate[]>;
+  saveCoverEdit: (
+    args: import('./cover-editor/contracts').SaveCoverEditArgs,
+  ) => Promise<import('./cover-editor/contracts').SaveCoverEditResult>;
   saveTimeline: (projectDir: string, data: string) => Promise<string>;
   loadTimeline: (projectDir: string) => Promise<string | null>;
   saveAIAnalysis: (projectDir: string, data: string) => Promise<string>;
