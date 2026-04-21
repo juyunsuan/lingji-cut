@@ -78,10 +78,12 @@ export interface CoverEditorCanvasHandle {
   ): void;
   /** 进入自由裁剪模式：显示可拖拽/缩放的裁剪矩形 */
   enterCropMode(): void;
-  /** 退出裁剪模式，不提交裁剪 */
+  /** 退出裁剪模式，不提交裁剪；自动恢复之前的 clipPath */
   exitCropMode(): void;
   /** 应用当前裁剪矩形为最终 clipPath */
   commitCrop(): void;
+  /** 在裁剪模式下锁定裁剪矩形的宽高比；传 null 表示自由裁剪 */
+  setCropAspectRatio(ratio: number | null): void;
   undo(): void;
   redo(): void;
   exportDataUrl(): string;

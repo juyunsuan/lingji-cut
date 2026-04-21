@@ -49,6 +49,10 @@ export const CoverEditorCanvas = forwardRef<CoverEditorCanvasHandle, CoverEditor
       initialEdits?.filters?.preset ?? 'none',
     );
     const cropRectRef = useRef<Rect | null>(null);
+    /** 进入裁剪模式时暂存的 clipPath，便于取消时恢复 */
+    const prevClipPathRef = useRef<Rect | undefined>(undefined);
+    /** 裁剪模式下的锁定宽高比；null = 自由 */
+    const cropAspectRef = useRef<number | null>(null);
     const onTextSelectionChangeRef = useRef(onTextSelectionChange);
     onTextSelectionChangeRef.current = onTextSelectionChange;
 
@@ -316,13 +320,16 @@ export const CoverEditorCanvas = forwardRef<CoverEditorCanvasHandle, CoverEditor
       enterCropMode() {
         const canvas = fabricRef.current;
         if (!canvas) return;
+        // 暂存当前 clipPath，便于取消时恢复
+        prevClipPathRef.current = canvas.clipPath as Rect | undefined;
         // 以当前 clipPath 为初始裁剪框；若无则用 80% 画布
-        const current = canvas.clipPath as Rect | undefined;
+        const current = prevClipPathRef.current;
         const defaultW = current?.width ?? CANVAS_WIDTH * 0.8;
         const defaultH = current?.height ?? CANVAS_HEIGHT * 0.8;
         const defaultL = current?.left ?? (CANVAS_WIDTH - defaultW) / 2;
         const defaultT = current?.top ?? (CANVAS_HEIGHT - defaultH) / 2;
         clearCropRect();
+        cropAspectRef.current = null;
         // 裁剪时先移除 clipPath 以便用户看到完整图预览
         canvas.clipPath = undefined;
         const rect = new Rect({
@@ -338,15 +345,39 @@ export const CoverEditorCanvas = forwardRef<CoverEditorCanvasHandle, CoverEditor
           cornerStyle: 'circle',
           transparentCorners: false,
           hasRotatingPoint: false,
+          lockRotation: true,
         });
+
+        // 比例锁：用户缩放裁剪框时如果锁定了比例，按比例约束最终 width/height
+        rect.on('scaling', () => {
+          const ratio = cropAspectRef.current;
+          if (!ratio) return;
+          const sx = rect.scaleX ?? 1;
+          const sy = rect.scaleY ?? 1;
+          const baseW = rect.width ?? 0;
+          const baseH = rect.height ?? 0;
+          const currentW = baseW * sx;
+          // 以宽度为主，根据比例算高度
+          const targetH = currentW / ratio;
+          const targetSy = baseH > 0 ? targetH / baseH : sy;
+          rect.set({ scaleY: targetSy });
+        });
+
         cropRectRef.current = rect;
         canvas.add(rect);
         canvas.setActiveObject(rect);
         canvas.requestRenderAll();
       },
       exitCropMode() {
+        const canvas = fabricRef.current;
         clearCropRect();
-        applyClipPath(ratioRef.current);
+        cropAspectRef.current = null;
+        // 恢复进入裁剪前的 clipPath
+        if (canvas) {
+          canvas.clipPath = prevClipPathRef.current;
+          canvas.requestRenderAll();
+        }
+        prevClipPathRef.current = undefined;
       },
       commitCrop() {
         const canvas = fabricRef.current;
@@ -361,10 +392,38 @@ export const CoverEditorCanvas = forwardRef<CoverEditorCanvasHandle, CoverEditor
         });
         canvas.clipPath = finalClip;
         clearCropRect();
+        cropAspectRef.current = null;
+        prevClipPathRef.current = undefined;
         ratioRef.current = null; // 自定义裁剪后脱离预设比例
         canvas.requestRenderAll();
         pushSnapshot();
         emitChange();
+      },
+      setCropAspectRatio(ratio) {
+        cropAspectRef.current = ratio;
+        const canvas = fabricRef.current;
+        const rect = cropRectRef.current;
+        if (!canvas || !rect) return;
+        if (ratio) {
+          // 按比例调整矩形：保持当前宽度，重算高度；若超出画布则按高度反推宽度
+          const curL = rect.left ?? 0;
+          const curT = rect.top ?? 0;
+          const curW = (rect.width ?? 0) * (rect.scaleX ?? 1);
+          let nextW = curW;
+          let nextH = nextW / ratio;
+          if (curT + nextH > CANVAS_HEIGHT) {
+            nextH = Math.max(40, CANVAS_HEIGHT - curT);
+            nextW = nextH * ratio;
+          }
+          if (curL + nextW > CANVAS_WIDTH) {
+            nextW = Math.max(40, CANVAS_WIDTH - curL);
+            nextH = nextW / ratio;
+          }
+          // 用绝对尺寸重设（scaleX/Y 归 1）
+          rect.set({ width: nextW, height: nextH, scaleX: 1, scaleY: 1 });
+          rect.setCoords();
+        }
+        canvas.requestRenderAll();
       },
       undo() {
         const snap = history.current.undo();
@@ -381,6 +440,18 @@ export const CoverEditorCanvas = forwardRef<CoverEditorCanvasHandle, CoverEditor
       exportDataUrl() {
         const canvas = fabricRef.current;
         if (!canvas) return '';
+        // 如果当前存在 clipPath（比例预设或自定义裁剪），导出时仅保留 clipPath 区域
+        const clip = canvas.clipPath as Rect | undefined;
+        if (clip && typeof clip.left === 'number' && typeof clip.top === 'number') {
+          return canvas.toDataURL({
+            format: 'png',
+            multiplier: 2,
+            left: clip.left,
+            top: clip.top,
+            width: (clip.width ?? 0) * (clip.scaleX ?? 1),
+            height: (clip.height ?? 0) * (clip.scaleY ?? 1),
+          });
+        }
         return canvas.toDataURL({ format: 'png', multiplier: 2 });
       },
       getEditState() {

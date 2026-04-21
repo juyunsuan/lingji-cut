@@ -8,6 +8,7 @@ import { ToolRail, type EditorTool } from './cover-editor/ToolRail';
 import { Inspector } from './cover-editor/Inspector';
 import { FilterPanel } from './cover-editor/FilterPanel';
 import { FontPicker } from './cover-editor/FontPicker';
+import { CropPanel } from './cover-editor/CropPanel';
 import {
   ASPECT_RATIO_PRESETS,
   resolveAspectRatio,
@@ -135,6 +136,11 @@ export function CoverEditorModal({
     setDirty(true);
   }
 
+  function handleCancelCrop() {
+    canvasRef.current?.exitCropMode();
+    setActiveTool('select');
+  }
+
   function handleSave(mode: CoverSaveMode) {
     if (mode === 'overwrite') {
       if (!window.confirm('将覆盖原图，且无法恢复，确定继续？')) return;
@@ -189,12 +195,17 @@ export function CoverEditorModal({
               controlClassName={styles.aspectSelect}
             />
             {activeTool === 'crop' && (
-              <Button variant="secondary" size="sm" onClick={handleCommitCrop}>
-                应用裁剪
-              </Button>
+              <>
+                <Button variant="ghost" size="sm" onClick={handleCancelCrop}>
+                  取消裁剪
+                </Button>
+                <Button variant="primary" size="sm" onClick={handleCommitCrop}>
+                  应用裁剪
+                </Button>
+              </>
             )}
             <Button variant="ghost" size="sm" onClick={handleCancel}>
-              取消
+              关闭
             </Button>
             <div className={styles.saveSplit}>
               <Button
@@ -260,7 +271,16 @@ export function CoverEditorModal({
             />
           </div>
 
-          {activeTool === 'filter' || activeTool === 'adjust' ? (
+          {activeTool === 'crop' ? (
+            <CropPanel
+              timelineSize={timelineSize}
+              onAspectChange={(ratio) =>
+                canvasRef.current?.setCropAspectRatio(ratio)
+              }
+              onApply={handleCommitCrop}
+              onCancel={handleCancelCrop}
+            />
+          ) : activeTool === 'filter' || activeTool === 'adjust' ? (
             <FilterPanel
               preset={filterPreset}
               adjustments={adjustments}
