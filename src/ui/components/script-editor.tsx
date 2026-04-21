@@ -1,6 +1,7 @@
 // src/ui/components/script-editor.tsx
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { computeFloatingPosition } from './floating';
 import { EditorState, Compartment, StateEffect, StateField } from '@codemirror/state';
 import {
   Decoration,
@@ -56,6 +57,7 @@ function AnnotationPopover({
   const ref = useRef<HTMLDivElement>(null);
   const { annotation } = info;
   const severity = SEVERITY_LABEL[annotation.severity] ?? SEVERITY_LABEL.info;
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -74,15 +76,43 @@ function AnnotationPopover({
     };
   }, [onClose]);
 
+  // 测量弹窗后做视口碰撞检测：右侧溢出时向左翻转，底部溢出时向上翻转，最后再钳制
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    // info.y 是点击文本的 coords.bottom；以估算行高反推 triggerRect.top，便于上方翻转
+    const estimatedLineHeight = 22;
+    const next = computeFloatingPosition({
+      triggerRect: {
+        top: info.y - estimatedLineHeight,
+        bottom: info.y,
+        left: info.x,
+        right: info.x,
+        width: 0,
+        height: estimatedLineHeight,
+      },
+      contentRect: { width: rect.width, height: rect.height },
+      viewportRect: { width: window.innerWidth, height: window.innerHeight },
+      side: 'bottom',
+      align: 'start',
+      sideOffset: 6,
+      viewportPadding: 8,
+    });
+    setCoords(next);
+  }, [info.x, info.y]);
+
   return createPortal(
     <div
       ref={ref}
       style={{
         position: 'fixed',
-        top: info.y + 6,
-        left: info.x,
+        top: coords?.top ?? info.y + 6,
+        left: coords?.left ?? info.x,
+        visibility: coords ? 'visible' : 'hidden',
         zIndex: 9999,
         width: 320,
+        maxWidth: 'calc(100vw - 16px)',
         padding: 14,
         borderRadius: 'var(--radius-xl)',
         backgroundColor: 'var(--color-panel-elevated)',
