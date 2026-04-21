@@ -15,6 +15,7 @@ interface AICoverPanelProps {
   onRegeneratePrompt: () => void;
   onSelectCover: (candidateId: string) => void;
   onAddToTimeline: (candidateId: string) => void;
+  onEditCover: (candidateId: string) => void;
 }
 
 export function AICoverPanel({
@@ -27,6 +28,7 @@ export function AICoverPanel({
   onRegeneratePrompt,
   onSelectCover,
   onAddToTimeline,
+  onEditCover,
 }: AICoverPanelProps) {
   const [editablePrompt, setEditablePrompt] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -167,11 +169,25 @@ export function AICoverPanel({
                     data-draggable={Boolean(candidate.imageUrl)}
                   >
                     {candidate.imageUrl ? (
-                      <img
-                        src={toFileSrc(candidate.imageUrl)}
-                        alt=""
-                        className={styles.candidateImage}
-                      />
+                      <>
+                        <img
+                          src={toFileSrc(candidate.imageUrl)}
+                          alt=""
+                          className={styles.candidateImage}
+                        />
+                        <Button.Icon
+                          variant="secondary"
+                          className={styles.editButton}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditCover(candidate.id);
+                          }}
+                          aria-label="编辑此封面"
+                          title="编辑此封面"
+                        >
+                          <AppIcon name="pencil-line" size={12} />
+                        </Button.Icon>
+                      </>
                     ) : (
                       <div className={styles.candidateFallback}>
                         <AppIcon name="alert-circle" size={16} />

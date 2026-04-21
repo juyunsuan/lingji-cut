@@ -27,6 +27,11 @@ import { createImportedHtmlWebCardPayload, extractHtmlTitle } from '../lib/web-c
 import { AICardList, type AICardPlacement } from './AICardList';
 import { AppIcon } from './AppIcon';
 import { AICoverPanel } from './AICoverPanel';
+import { CoverEditorModal } from './CoverEditorModal';
+import type {
+  CoverEditState,
+  CoverSaveMode,
+} from '../lib/cover-editor/contracts';
 import { MotionPanel } from './MotionPanel';
 import {
   ActionBar,
@@ -285,6 +290,64 @@ export function AIPanel({
       setGlobalBackground(candidate.imageUrl);
     },
     [coverCandidates, setGlobalBackground],
+  );
+
+  const [editingCoverId, setEditingCoverId] = useState<string | null>(null);
+  const editingCandidate =
+    coverCandidates.find((c) => c.id === editingCoverId) ?? null;
+
+  const handleOpenCoverEditor = useCallback((candidateId: string) => {
+    setEditingCoverId(candidateId);
+  }, []);
+
+  const handleCloseCoverEditor = useCallback(() => {
+    setEditingCoverId(null);
+  }, []);
+
+  const handleCoverEditSave = useCallback(
+    async ({
+      mode,
+      dataUrl,
+      edits,
+    }: {
+      mode: CoverSaveMode;
+      dataUrl: string;
+      edits: CoverEditState;
+    }) => {
+      if (!editingCandidate) return;
+      const projectDir = getProjectDir();
+      if (!projectDir) return;
+      const api = window.electronAPI;
+      if (!api?.saveCoverEdit) return;
+      const result = await api.saveCoverEdit({
+        projectDir,
+        sourceCandidateId: editingCandidate.id,
+        sourceImageUrl: editingCandidate.imageUrl,
+        sourcePrompt: editingCandidate.prompt,
+        dataUrl,
+        edits,
+        mode,
+      });
+      const store = useAIStore.getState();
+      if (mode === 'append') {
+        store.appendCoverCandidate({
+          id: result.candidateId,
+          prompt: editingCandidate.prompt,
+          imageUrl: result.imageUrl,
+          selected: false,
+          editedFrom: result.editedFrom,
+          edits,
+          createdAt: result.createdAt,
+        });
+      } else {
+        store.replaceCoverCandidate(editingCandidate.id, {
+          imageUrl: `${result.imageUrl}?v=${result.createdAt}`,
+          edits,
+        });
+      }
+      setEditingCoverId(null);
+    },
+    [editingCandidate],
   );
 
   const handleAnalyze = useCallback(async () => {
@@ -965,6 +1028,7 @@ export function AIPanel({
               onRegeneratePrompt={handleRegenerateCoverPrompt}
               onSelectCover={handleSelectCover}
               onAddToTimeline={handleAddCoverToTimeline}
+              onEditCover={handleOpenCoverEditor}
             />
           </TabsContent>
         </div>
@@ -984,6 +1048,19 @@ export function AIPanel({
             <span>上轨 {enabledCount}</span>
           </Button>
         </div>
+      ) : null}
+
+      {editingCandidate ? (
+        <CoverEditorModal
+          open
+          candidateId={editingCandidate.id}
+          imageUrl={editingCandidate.imageUrl}
+          prompt={editingCandidate.prompt}
+          initialEdits={editingCandidate.edits}
+          timelineSize={{ width: timeline.width, height: timeline.height }}
+          onClose={handleCloseCoverEditor}
+          onSaveRequested={handleCoverEditSave}
+        />
       ) : null}
     </aside>
   );
