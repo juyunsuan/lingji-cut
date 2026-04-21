@@ -15,6 +15,7 @@ import {
   type AIStoryboardPlan,
   type AISettings,
   type CoverCandidate,
+  type CoverEditState,
   type PromptBinding,
   type PromptBindingMap,
 } from '../types/ai';
@@ -127,6 +128,9 @@ export interface AIStore {
   toggleCardEnabled: (cardId: string) => void;
   updateCard: (cardId: string, updates: Partial<AICard>) => void;
   setCoverCandidates: (candidates: CoverCandidate[]) => void;
+  appendCoverCandidate: (candidate: CoverCandidate) => void;
+  replaceCoverCandidate: (candidateId: string, patch: Partial<CoverCandidate>) => void;
+  updateCoverEdits: (candidateId: string, edits: CoverEditState) => void;
   selectCover: (candidateId: string) => void;
   setGeneratingCovers: (generating: boolean) => void;
   setActiveTab: (tab: AITab) => void;
@@ -296,6 +300,20 @@ export const useAIStore = create<AIStore>((set, get) => ({
       analysisResult: updateCardInResult(state.analysisResult, cardId, updates),
     })),
   setCoverCandidates: (candidates) => set({ coverCandidates: candidates }),
+  appendCoverCandidate: (candidate) =>
+    set((state) => ({ coverCandidates: [...state.coverCandidates, candidate] })),
+  replaceCoverCandidate: (candidateId, patch) =>
+    set((state) => ({
+      coverCandidates: state.coverCandidates.map((c) =>
+        c.id === candidateId ? { ...c, ...patch } : c,
+      ),
+    })),
+  updateCoverEdits: (candidateId, edits) =>
+    set((state) => ({
+      coverCandidates: state.coverCandidates.map((c) =>
+        c.id === candidateId ? { ...c, edits } : c,
+      ),
+    })),
   selectCover: (candidateId) =>
     set((state) => ({
       coverCandidates: selectCoverCandidate(state.coverCandidates, candidateId),

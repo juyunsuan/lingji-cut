@@ -1,5 +1,6 @@
 import type { MotionCardPayload } from './motion';
 import type { PromptKind } from '../lib/prompts/types';
+import type { CoverEditState } from '../lib/cover-editor/contracts';
 export type { MotionCardPayload } from './motion';
 
 export type AICardType = 'summary' | 'data' | 'insight' | 'chapter' | 'quote' | 'motion';
@@ -122,7 +123,15 @@ export interface CoverCandidate {
   imageUrl: string;
   selected: boolean;
   error?: string;
+  /** 来源候选 id；AI 原图为 undefined */
+  editedFrom?: string;
+  /** 编辑状态快照，用于再编辑时恢复工具面板 */
+  edits?: CoverEditState;
+  /** 生成时间戳 */
+  createdAt?: number;
 }
+
+export type { CoverEditState, CoverTextOverlay } from '../lib/cover-editor/contracts';
 
 export interface AIAnalysisResult {
   segments: AISegment[];
