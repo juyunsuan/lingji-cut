@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  Select,
-  type SelectOption,
-} from '../ui';
+import { createPortal } from 'react-dom';
+import { Button, Select, type SelectOption } from '../ui';
 import { AppIcon } from './AppIcon';
 import { CoverEditorCanvas } from './cover-editor/CoverEditorCanvas';
 import type { CoverEditorCanvasHandle } from '../lib/cover-editor/fabric-bridge';
@@ -68,6 +63,11 @@ export function CoverEditorModal({
   const [saveMode, setSaveMode] = useState<CoverSaveMode>('append');
   const [saveMenuOpen, setSaveMenuOpen] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const initialRatio = useMemo(
     () => resolveAspectRatio(preset, timelineSize),
@@ -84,6 +84,14 @@ export function CoverEditorModal({
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
+      // 若当前焦点在 input/textarea/canvas 上，跳过模态快捷键拦截（让 Fabric / 表单自然处理）
+      const tag = (e.target as HTMLElement | null)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea') return;
+
+      if (e.key === 'Escape') {
+        handleCancel();
+        return;
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') {
         if (e.shiftKey) canvasRef.current?.redo();
         else canvasRef.current?.undo();
@@ -92,7 +100,7 @@ export function CoverEditorModal({
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, handleCancel]);
 
   function handleAspectChange(next: AspectRatioPreset) {
     setPreset(next);
@@ -107,7 +115,23 @@ export function CoverEditorModal({
       fontFamily: 'PingFang SC',
       color: '#ffffff',
     });
-    setActiveTool('text');
+    setDirty(true);
+  }
+
+  function handleSelectTool(tool: EditorTool) {
+    const prev = activeTool;
+    // 退出裁剪模式（若之前在裁剪）
+    if (prev === 'crop' && tool !== 'crop') {
+      canvasRef.current?.exitCropMode();
+    }
+    setActiveTool(tool);
+    if (tool === 'text') handleAddText();
+    if (tool === 'crop') canvasRef.current?.enterCropMode();
+  }
+
+  function handleCommitCrop() {
+    canvasRef.current?.commitCrop();
+    setActiveTool('select');
     setDirty(true);
   }
 
@@ -134,14 +158,23 @@ export function CoverEditorModal({
 
   const adjustments = getPresetAdjustments(filterPreset);
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) handleCancel();
+  if (!open || !mounted) return null;
+
+  const modalNode = (
+    <div
+      className={styles.backdrop}
+      onMouseDown={(e) => {
+        // 只在直接点击 backdrop 时才关闭；点击 modal 内部不触发
+        if (e.target === e.currentTarget) handleCancel();
       }}
+      role="presentation"
     >
-      <DialogContent size="full" className={styles.dialogContent}>
+      <div
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <header className={styles.header}>
           <div className={styles.title}>
             编辑封面 · {prompt.slice(0, 24) || '未命名'}
@@ -155,6 +188,11 @@ export function CoverEditorModal({
               }
               controlClassName={styles.aspectSelect}
             />
+            {activeTool === 'crop' && (
+              <Button variant="secondary" size="sm" onClick={handleCommitCrop}>
+                应用裁剪
+              </Button>
+            )}
             <Button variant="ghost" size="sm" onClick={handleCancel}>
               取消
             </Button>
@@ -202,10 +240,7 @@ export function CoverEditorModal({
         <div className={styles.body}>
           <ToolRail
             activeTool={activeTool}
-            onSelectTool={(t) => {
-              setActiveTool(t);
-              if (t === 'text') handleAddText();
-            }}
+            onSelectTool={handleSelectTool}
             onUndo={() => canvasRef.current?.undo()}
             onRedo={() => canvasRef.current?.redo()}
             canUndo
@@ -221,6 +256,7 @@ export function CoverEditorModal({
               }
               initialAspectRatio={initialRatio}
               onChange={() => setDirty(true)}
+              onTextSelectionChange={(t) => setSelectedText(t)}
             />
           </div>
 
@@ -236,12 +272,48 @@ export function CoverEditorModal({
                 canvasRef.current?.setFilterAdjustment(k, v)
               }
             />
+          ) : activeTool === 'transform' ? (
+            <aside className={styles.transformPanel}>
+              <div className={styles.sectionTitle}>变换</div>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => canvasRef.current?.rotate(-90)}
+                leftIcon={<AppIcon name="refresh-cw" size={12} />}
+              >
+                逆时针旋转 90°
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => canvasRef.current?.rotate(90)}
+                leftIcon={<AppIcon name="refresh-cw" size={12} />}
+              >
+                顺时针旋转 90°
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => canvasRef.current?.flipHorizontal()}
+              >
+                水平翻转
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => canvasRef.current?.flipVertical()}
+              >
+                垂直翻转
+              </Button>
+            </aside>
           ) : (
             <Inspector
               selectedText={selectedText}
               onUpdateText={(patch) => {
                 if (!selectedText) return;
-                setSelectedText({ ...selectedText, ...patch });
+                const nextState = { ...selectedText, ...patch };
+                setSelectedText(nextState);
+                canvasRef.current?.updateSelectedText(patch);
                 setDirty(true);
               }}
               onRemoveText={() => {
@@ -252,15 +324,18 @@ export function CoverEditorModal({
                 <FontPicker
                   value={selectedText?.fontFamily ?? 'PingFang SC'}
                   onChange={(family) => {
-                    if (selectedText)
-                      setSelectedText({ ...selectedText, fontFamily: family });
+                    if (!selectedText) return;
+                    setSelectedText({ ...selectedText, fontFamily: family });
+                    canvasRef.current?.updateSelectedText({ fontFamily: family });
                   }}
                 />
               }
             />
           )}
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
+
+  return createPortal(modalNode, document.body);
 }

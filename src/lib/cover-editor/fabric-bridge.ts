@@ -58,6 +58,15 @@ export function createHistoryStack<T>(capacity = 50): HistoryStack<T> {
 export interface CoverEditorCanvasHandle {
   setAspectRatio(ratio: number | null): void;
   addText(options: { text: string; fontFamily: string; color: string }): void;
+  updateSelectedText(patch: {
+    text?: string;
+    fontSize?: number;
+    fontFamily?: string;
+    color?: string;
+    strokeColor?: string;
+    strokeWidth?: number;
+    align?: 'left' | 'center' | 'right';
+  }): void;
   removeSelected(): void;
   flipHorizontal(): void;
   flipVertical(): void;
@@ -67,6 +76,12 @@ export interface CoverEditorCanvasHandle {
     key: 'brightness' | 'contrast' | 'saturation' | 'temperature',
     value: number,
   ): void;
+  /** 进入自由裁剪模式：显示可拖拽/缩放的裁剪矩形 */
+  enterCropMode(): void;
+  /** 退出裁剪模式，不提交裁剪 */
+  exitCropMode(): void;
+  /** 应用当前裁剪矩形为最终 clipPath */
+  commitCrop(): void;
   undo(): void;
   redo(): void;
   exportDataUrl(): string;
