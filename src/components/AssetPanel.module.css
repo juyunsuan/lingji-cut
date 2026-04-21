@@ -1,5 +1,6 @@
 /* 左侧素材面板 — design.pen */
 .root {
+  position: relative;
   width: 100%;
   min-width: 0;
   flex-shrink: 0;
@@ -9,6 +10,22 @@
   min-height: 0;
   max-height: 100%;
   overflow: hidden;
+  transition: background var(--motion-fast, 120ms);
+}
+
+/* 文件拖入时整个面板高亮 */
+.dropTarget {
+  background: color-mix(in srgb, var(--color-selection-blue) 8%, var(--color-panel-bg));
+}
+
+.dropTarget::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1.5px dashed color-mix(in srgb, var(--color-selection-blue) 60%, transparent);
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  z-index: 3;
 }
 
 /* compact（横向 rail）模式下取消固定宽度，跟随父容器 */
@@ -260,39 +277,3 @@
   padding: 8px;
 }
 
-/* ── 添加文字按钮 ── */
-.addTextButton {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 20px;
-  background: var(--color-surface-secondary);
-  border: 1px dashed color-mix(in srgb, var(--color-selection-blue) 56%, transparent);
-  border-radius: var(--radius-xl);
-  cursor: pointer;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-lg);
-  font-weight: 500;
-  transition:
-    background var(--motion-fast, 120ms),
-    border-color var(--motion-fast, 120ms),
-    transform 80ms ease,
-    box-shadow var(--motion-fast, 120ms);
-}
-
-.addTextButton:hover {
-  background: color-mix(in srgb, var(--color-selection-blue) 10%, transparent);
-  border-color: var(--color-selection-blue);
-  box-shadow: 0 0 16px color-mix(in srgb, var(--color-selection-blue) 12%, transparent);
-}
-
-.addTextButton:active {
-  transform: scale(0.98);
-}
-
-.addTextHint {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-muted);
-}

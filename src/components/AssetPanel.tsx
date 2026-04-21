@@ -1,7 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import type { DragEvent } from 'react';
 import { m } from 'framer-motion';
 import type { AssetItem, AssetType } from '../types';
 import { useTimelineStore } from '../store/timeline';
+import { readAudioDurationMs } from '../lib/utils';
 import { springs } from '../ui/lib/motion';
 import type { PillGroupItem } from '../ui';
 import {
@@ -12,8 +14,45 @@ import {
   SearchInput,
 } from '../ui';
 import { AppIcon } from './AppIcon';
-import { AssetCard, AssetImportCard } from './AssetCard';
+import { AddTextCard, AssetCard, AssetImportCard } from './AssetCard';
 import styles from './AssetPanel.module.css';
+
+const EXTENSION_TO_ASSET_TYPE: Record<string, Extract<AssetType, 'video' | 'image' | 'audio' | 'srt'>> = {
+  mp4: 'video',
+  mov: 'video',
+  webm: 'video',
+  m4v: 'video',
+  jpg: 'image',
+  jpeg: 'image',
+  png: 'image',
+  gif: 'image',
+  webp: 'image',
+  mp3: 'audio',
+  wav: 'audio',
+  aac: 'audio',
+  m4a: 'audio',
+  flac: 'audio',
+  ogg: 'audio',
+  opus: 'audio',
+  srt: 'srt',
+};
+
+function resolveDroppedAssetType(fileName: string): Extract<AssetType, 'video' | 'image' | 'audio' | 'srt'> | null {
+  const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+  return EXTENSION_TO_ASSET_TYPE[ext] ?? null;
+}
+
+function resolveDroppedFilePath(file: File): string {
+  const legacyPath = (file as File & { path?: string }).path;
+  if (legacyPath) {
+    return legacyPath;
+  }
+  try {
+    return window.electronAPI?.getPathForFile(file) ?? '';
+  } catch {
+    return '';
+  }
+}
 
 type AssetFilterKey = 'all' | AssetType;
 
@@ -197,6 +236,8 @@ export function AssetPanel({
   const [activeFilter, setActiveFilter] = useState<AssetFilterKey>('all');
   const [pendingRemovalPath, setPendingRemovalPath] = useState<string | null>(null);
   const [podcastExpanded, setPodcastExpanded] = useState(!compact);
+  const [isDropTarget, setIsDropTarget] = useState(false);
+  const dragDepthRef = useRef(0);
 
   const handleAddAsset = useCallback(async () => {
     if (onAddAsset) {
@@ -211,6 +252,72 @@ export function AssetPanel({
 
     addAsset(asset.path, asset.type, asset.durationMs);
   }, [addAsset, onAddAsset]);
+
+  const handleDragEnter = useCallback((event: DragEvent<HTMLElement>) => {
+    if (!Array.from(event.dataTransfer.types ?? []).includes('Files')) {
+      return;
+    }
+    event.preventDefault();
+    dragDepthRef.current += 1;
+    setIsDropTarget(true);
+  }, []);
+
+  const handleDragOver = useCallback((event: DragEvent<HTMLElement>) => {
+    if (!Array.from(event.dataTransfer.types ?? []).includes('Files')) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'copy';
+  }, []);
+
+  const handleDragLeave = useCallback((event: DragEvent<HTMLElement>) => {
+    if (!Array.from(event.dataTransfer.types ?? []).includes('Files')) {
+      return;
+    }
+    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+    if (dragDepthRef.current === 0) {
+      setIsDropTarget(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback(
+    async (event: DragEvent<HTMLElement>) => {
+      const files = Array.from(event.dataTransfer.files ?? []);
+      if (files.length === 0) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      dragDepthRef.current = 0;
+      setIsDropTarget(false);
+
+      for (const file of files) {
+        const assetType = resolveDroppedAssetType(file.name);
+        if (!assetType) {
+          continue;
+        }
+        const filePath = resolveDroppedFilePath(file);
+        if (!filePath) {
+          continue;
+        }
+
+        let durationMs = assetType === 'image' ? 5000 : 10000;
+        if (assetType === 'video' || assetType === 'audio') {
+          try {
+            const decoded = await readAudioDurationMs(filePath);
+            if (decoded > 0) {
+              durationMs = decoded;
+            }
+          } catch (error) {
+            console.warn('读取拖入媒体时长失败，使用默认时长:', error);
+          }
+        }
+
+        addAsset(filePath, assetType, durationMs);
+      }
+    },
+    [addAsset],
+  );
 
   const getAssetUsageCount = useCallback(
     (path: string) => timeline.overlays.filter((overlay) => overlay.assetPath === path).length,
@@ -237,7 +344,15 @@ export function AssetPanel({
 
   return (
     <aside
-      className={[styles.root, compact ? styles.compact : styles.regular].join(' ')}
+      className={[
+        styles.root,
+        compact ? styles.compact : styles.regular,
+        isDropTarget ? styles.dropTarget : '',
+      ].filter(Boolean).join(' ')}
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={(event) => void handleDrop(event)}
     >
       {showAIClip && onStartAIClip ? (
         <div className={styles.aiClipCard}>
@@ -307,17 +422,10 @@ export function AssetPanel({
         ].filter(Boolean).join(' ')}
       >
         {activeFilter === 'text' ? (
-          /* 文字 tab — 仅显示添加按钮 */
-          <Button
-            variant="ghost"
-            size="sm"
-            className={styles.addTextButton}
-            onClick={onAddTextOverlay}
-          >
-            <AppIcon name="type" size={20} color="#10b981" />
-            <span>添加文字</span>
-            <span className={styles.addTextHint}>在时间轴当前位置添加</span>
-          </Button>
+          /* 文字 tab — 只显示一个与导入卡片同规格的添加按钮 */
+          <div className={compact ? styles.gridCompact : styles.grid}>
+            <AddTextCard onClick={onAddTextOverlay} />
+          </div>
         ) : (
           <div className={compact ? styles.gridCompact : styles.grid}>
             {visibleAssets.map((asset) => {
