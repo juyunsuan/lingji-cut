@@ -171,7 +171,7 @@ export function AICoverPanel({
                     {candidate.imageUrl ? (
                       <>
                         <img
-                          src={toFileSrc(candidate.imageUrl)}
+                          src={buildCandidateImageSrc(candidate.imageUrl, candidate.createdAt)}
                           alt=""
                           className={styles.candidateImage}
                         />
@@ -219,4 +219,14 @@ export function AICoverPanel({
 
 function joinClassNames(...values: Array<string | undefined>): string {
   return values.filter(Boolean).join(' ');
+}
+
+/**
+ * 构造封面缩略图 src：toFileSrc 会编码路径里的 ?（避免用户文件名含 ? 时的路径错误），
+ * 这会把 cache-bust 查询串 ?v=... 破坏。因此把纯路径过 toFileSrc 后再拼查询串，
+ * 既能让浏览器忽略 query 正确定位 file://，又能通过 query 变化强制刷新 <img> 缓存。
+ */
+function buildCandidateImageSrc(imageUrl: string, createdAt?: number): string {
+  const base = toFileSrc(imageUrl);
+  return createdAt ? `${base}?v=${createdAt}` : base;
 }

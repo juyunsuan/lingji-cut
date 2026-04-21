@@ -340,9 +340,11 @@ export function AIPanel({
           createdAt: result.createdAt,
         });
       } else {
+        // 覆盖模式：imageUrl 保持纯路径；用 createdAt 驱动 React 重渲染 + `<img>` src 的缓存破坏查询串
         store.replaceCoverCandidate(editingCandidate.id, {
-          imageUrl: `${result.imageUrl}?v=${result.createdAt}`,
+          imageUrl: result.imageUrl,
           edits,
+          createdAt: result.createdAt,
         });
       }
       setEditingCoverId(null);
