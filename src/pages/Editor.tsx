@@ -680,7 +680,16 @@ export function Editor({
 
     // 自动打开 overlay 检查器
     setInspectorSelection({ type: 'overlay', overlayId });
-  }, []);
+
+    // 将播放头对齐到文字片段中间，避免入场动画未完成导致预览不可见
+    const insertedOverlay = useTimelineStore
+      .getState()
+      .timeline.overlays.find((o) => o.id === overlayId);
+    if (insertedOverlay) {
+      const midpointMs = insertedOverlay.startMs + Math.floor(insertedOverlay.durationMs / 2);
+      handleSeek(midpointMs);
+    }
+  }, [handleSeek]);
 
   const handleSelectOverlayOnCanvas = useCallback(
     (overlayId: string | null) => {

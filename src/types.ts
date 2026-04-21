@@ -249,7 +249,7 @@ export function createDefaultSubtitleStyle(): SubtitleStyle {
     position: 'bottom',
     highlightEnabled: false,
     highlightBackgroundColor: '#F8DC48',
-    highlightTextColor: '#111827',
+    highlightTextColor: '#FFFFFF',
     highlightPaddingX: 10,
     highlightPaddingY: 4,
     highlightRadius: 12,
