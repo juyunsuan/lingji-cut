@@ -18,6 +18,8 @@ import { Editor } from './pages/Editor';
 import { ScriptWorkbench } from './pages/ScriptWorkbench';
 import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
+import { ImportProjectDialog } from './components/ImportProjectDialog';
+import type { ImportProjectResult } from './lib/project-import-types';
 import { prefersReducedMotion } from './ui/lib/animation-config';
 import { WorkspaceTabs } from './components/WorkspaceTabs';
 import { getFileNameFromPath, readAudioDurationMs } from './lib/utils';
@@ -553,6 +555,22 @@ export default function App() {
     await openProject(projectDir);
   }, [openProject]);
 
+  // ── 导入项目（跨机器项目目录识别与路径修复）──
+  const [importProjectDialogOpen, setImportProjectDialogOpen] = useState(false);
+
+  const handleOpenImportProject = useCallback(() => {
+    setImportProjectDialogOpen(true);
+  }, []);
+
+  const handleImportProjectComplete = useCallback(
+    async (result: ImportProjectResult) => {
+      await window.electronAPI.addRecentProject(result.projectDir, result.projectName);
+      setImportProjectDialogOpen(false);
+      await openProject(result.projectDir);
+    },
+    [openProject],
+  );
+
   const handleOpenSettings = useCallback(() => {
     setPage('settings');
   }, [setPage]);
@@ -1009,6 +1027,7 @@ export default function App() {
                   onImportScript={handleImportScript}
                   onOpenSettings={() => setPage('settings')}
                   onDouyinImport={handleDouyinImport}
+                  onImportProject={handleOpenImportProject}
                 />
               ) : page === 'settings' ? (
                 <Settings onBack={() => setPage(previousPage)} />
@@ -1043,6 +1062,11 @@ export default function App() {
         </AnimatePresence>
       </div>
       <AppStatusBar />
+      <ImportProjectDialog
+        open={importProjectDialogOpen}
+        onOpenChange={setImportProjectDialogOpen}
+        onImported={handleImportProjectComplete}
+      />
     </div>
   );
 }

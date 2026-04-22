@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { m } from 'framer-motion';
-import { Plus, FileText, Music, Video, FolderOpen, FolderSearch, CheckCircle2, AlertCircle, Link, Loader2 } from 'lucide-react';
+import { Plus, FileText, Music, Video, FolderOpen, FolderSearch, FolderInput, CheckCircle2, AlertCircle, Link, Loader2 } from 'lucide-react';
 import { springs } from '../ui/lib/motion';
 import { getFileNameFromPath } from '../lib/utils';
 import type { RecentProjectEntry } from '../lib/electron-api';
@@ -36,6 +36,8 @@ interface SetupProps {
   onOpenSettings: () => void;
   /** 抖音导入完成回调：传入父目录、标题和原始链接，由 App 层创建项目并自动触发下载转录 */
   onDouyinImport: (parentDir: string, title: string, douyinUrl: string) => Promise<void>;
+  /** 导入项目回调：打开导入项目向导（处理跨机器项目目录识别与路径修复） */
+  onImportProject: () => void;
 }
 
 interface ScanResult {
@@ -55,6 +57,7 @@ export function Setup({
   onImportScript,
   onOpenSettings,
   onDouyinImport,
+  onImportProject,
 }: SetupProps) {
   // ── 音频导入弹窗状态 ──
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -250,6 +253,17 @@ export function Setup({
               <Video size={22} strokeWidth={1.5} />
             </div>
             <span className={styles.quickItemLabel}>抖音导入</span>
+          </button>
+          {/* 导入项目入口：识别跨机器复制过来的项目目录并修复素材路径 */}
+          <button
+            type="button"
+            className={styles.quickItem}
+            onClick={onImportProject}
+          >
+            <div className={styles.quickItemIcon}>
+              <FolderInput size={22} strokeWidth={1.5} />
+            </div>
+            <span className={styles.quickItemLabel}>导入项目</span>
           </button>
         </div>
 

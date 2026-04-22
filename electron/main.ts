@@ -46,6 +46,12 @@ import { registerMcpIpc } from './mcp/ipc';
 import { registerScriptHistoryIpc } from './script-history/ipc';
 import { startMcpServer, stopMcpServer } from './mcp/server';
 import { loadProjectFile, saveProjectSection } from './project-file';
+import {
+  scanProjectDirectory,
+  importProject,
+  ImportProjectError,
+} from './project-import';
+import type { ImportProjectArgs } from '../src/lib/project-import-types';
 import { saveCoverEdit } from './cover-editor-io';
 import { listSystemFonts } from './system-fonts';
 import {
@@ -715,6 +721,28 @@ ipcMain.handle(
     await saveProjectSection(projectDir, section as 'timeline' | 'aiAnalysis' | 'script', parsed);
   },
 );
+
+ipcMain.handle('scan-project-directory', async (_event, projectDir: string) => {
+  return scanProjectDirectory(projectDir);
+});
+
+ipcMain.handle('import-project', async (_event, args: ImportProjectArgs) => {
+  try {
+    const result = await importProject(args);
+    return { ok: true as const, result };
+  } catch (err) {
+    if (err instanceof ImportProjectError) {
+      return {
+        ok: false as const,
+        error: { code: err.code, message: err.message },
+      };
+    }
+    return {
+      ok: false as const,
+      error: { code: 'scan_failed' as const, message: (err as Error).message },
+    };
+  }
+});
 
 ipcMain.handle('load-global-settings', async () => {
   const userDataPath = app.getPath('userData');

@@ -170,6 +170,21 @@ export interface ElectronAPI {
   loadAIAnalysis: (projectDir: string) => Promise<string | null>;
   loadProject: (projectDir: string) => Promise<string>;
   saveProjectSection: (projectDir: string, section: string, data: string) => Promise<void>;
+  scanProjectDirectory: (
+    projectDir: string,
+  ) => Promise<import('./project-import-types').ImportProjectScanResult>;
+  importProject: (
+    args: import('./project-import-types').ImportProjectArgs,
+  ) => Promise<
+    | {
+        ok: true;
+        result: import('./project-import-types').ImportProjectResult;
+      }
+    | {
+        ok: false;
+        error: import('./project-import-types').ImportProjectErrorPayload;
+      }
+  >;
   getInitialGlobalSettings: () => string | null;
   loadGlobalSettings: () => Promise<string | null>;
   saveGlobalSettings: (data: string) => Promise<void>;

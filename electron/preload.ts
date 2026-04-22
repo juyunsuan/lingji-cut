@@ -75,6 +75,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('load-project', projectDir),
   saveProjectSection: (projectDir: string, section: string, data: string) =>
     ipcRenderer.invoke('save-project-section', projectDir, section, data),
+  scanProjectDirectory: (projectDir: string) =>
+    ipcRenderer.invoke('scan-project-directory', projectDir),
+  importProject: (args: { projectDir: string; acceptMissingAssets: boolean }) =>
+    ipcRenderer.invoke('import-project', args),
   getInitialGlobalSettings: () =>
     ipcRenderer.sendSync('load-global-settings-sync') as string | null,
   loadGlobalSettings: () =>
