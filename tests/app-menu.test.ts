@@ -182,6 +182,53 @@ describe('createApplicationMenuTemplate', () => {
     expect(exportLogsItem).toBeDefined();
   });
 
+  it('一键成稿运行中时禁用破坏性菜单项', () => {
+    const sendMenuAction = vi.fn();
+    const createMenu = createApplicationMenuTemplate as unknown as (
+      sendMenuAction: typeof sendMenuAction,
+      menuContext: {
+        activePage: 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings';
+        isDevelopment: boolean;
+        debugMode: boolean;
+        hasProject: boolean;
+        recentProjects: Array<{ path: string; name: string }>;
+        isAutoRunning: boolean;
+      },
+    ) => ReturnType<typeof createApplicationMenuTemplate>;
+    const template = createMenu(sendMenuAction, {
+      activePage: 'editor',
+      isDevelopment: false,
+      debugMode: false,
+      hasProject: true,
+      recentProjects: [{ path: '/tmp/demo-project', name: 'demo-project' }],
+      isAutoRunning: true,
+    });
+
+    const projectMenu = template.find((item) => item.label === '项目');
+    const mediaMenu = template.find((item) => item.label === '媒体');
+    const projectSubmenu = Array.isArray(projectMenu?.submenu) ? projectMenu.submenu : [];
+    const mediaSubmenu = Array.isArray(mediaMenu?.submenu) ? mediaMenu.submenu : [];
+
+    const newProjectItem = projectSubmenu.find(
+      (item) => 'label' in item && item.label === '新建项目',
+    );
+    const recentMenu = projectSubmenu.find(
+      (item) => 'label' in item && item.label === '最近项目',
+    );
+    const recentSubmenu = Array.isArray(recentMenu?.submenu) ? recentMenu.submenu : [];
+    const recentEntry = recentSubmenu.find(
+      (item) => 'label' in item && item.label === 'demo-project',
+    );
+    const exportItem = mediaSubmenu.find(
+      (item) => 'label' in item && item.label === '导出 MP4',
+    );
+
+    expect(newProjectItem).toMatchObject({ label: '新建项目', enabled: false });
+    expect(recentMenu).toMatchObject({ label: '最近项目', enabled: false });
+    expect(recentEntry).toMatchObject({ label: 'demo-project', enabled: false });
+    expect(exportItem).toMatchObject({ label: '导出 MP4', enabled: false });
+  });
+
   it('帮助菜单点击时走主进程处理器', () => {
     const { template, handlers } = createTemplate({
       activePage: 'welcome',
