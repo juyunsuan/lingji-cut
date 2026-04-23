@@ -151,6 +151,7 @@ describe('AI settings store helpers', () => {
       stepLabel: '',
       error: null,
       canCancel: false,
+      failedStep: null,
     });
   });
 

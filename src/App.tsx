@@ -18,6 +18,7 @@ import { Editor } from './pages/Editor';
 import { ScriptWorkbench } from './pages/ScriptWorkbench';
 import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
+import { AutoRunController } from './components/AutoRunController';
 import { ImportProjectDialog } from './components/ImportProjectDialog';
 import type { ImportProjectResult } from './lib/project-import-types';
 import { prefersReducedMotion } from './ui/lib/animation-config';
@@ -1063,17 +1064,7 @@ export default function App() {
               ) : page === 'settings' ? (
                 <Settings onBack={() => setPage(previousPage)} />
               ) : page === 'auto-run' ? (
-                // 占位：Task 9-10 将替换为 AutoRunOverlay/Controller
-                <div
-                  style={{
-                    display: 'grid',
-                    placeItems: 'center',
-                    height: '100%',
-                    color: 'var(--color-text-secondary)',
-                  }}
-                >
-                  Auto-run loading...
-                </div>
+                <AutoRunController setPage={setPage} />
               ) : (
                 <>
                   {/* 写稿工作台和编辑器保持同时挂载，用 display 切换，避免重新挂载引起的布局振荡 */}

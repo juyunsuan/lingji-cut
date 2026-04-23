@@ -304,6 +304,20 @@ export function useAIVideoWorkflow() {
       const settings = await loadAISettings();
       const llmSettingsIssue = getAISettingsIssue(settings);
 
+      // phaseKey → WorkflowStep（用于 retryStep / failedStep）
+      const phaseToStep = (phaseKey: PhaseKey): WorkflowStep =>
+        phaseKey === 'script'
+          ? 'script_generating'
+          : phaseKey === 'tts'
+            ? 'tts_generating'
+            : phaseKey === 'analyze'
+              ? 'ai_analyzing'
+              : phaseKey === 'highlights'
+                ? 'ai_analyzing'
+                : phaseKey === 'cover'
+                  ? 'cover_generating'
+                  : 'arranging';
+
       // 统一的阶段级取消回调：停 TTS + 打标记 + 立即让面板里的任务进入错误态
       const buildPhaseOnCancel = (phaseKey: PhaseKey) => () => {
         if (workflowSession.cancelled) return;
@@ -312,25 +326,16 @@ export function useAIVideoWorkflow() {
           void window.electronAPI.cancelTTS(currentRequestId);
         }
         cancelWorkflowTask(workflowTaskId, '任务已取消');
+        const failedStep = phaseToStep(phaseKey);
         setWorkflow({
           step: 'error',
           progress: 0,
           stepLabel: '',
           error: '任务已取消',
           canCancel: false,
+          failedStep,
         });
-        workflowSession.retryStep =
-          phaseKey === 'script'
-            ? 'script_generating'
-            : phaseKey === 'tts'
-              ? 'tts_generating'
-              : phaseKey === 'analyze'
-                ? 'ai_analyzing'
-                : phaseKey === 'highlights'
-                  ? 'ai_analyzing'
-                  : phaseKey === 'cover'
-                    ? 'cover_generating'
-                    : 'arranging';
+        workflowSession.retryStep = failedStep;
       };
 
       if (!projectDir) {
@@ -338,6 +343,7 @@ export function useAIVideoWorkflow() {
           ...DEFAULT_WORKFLOW,
           step: 'error',
           error: '请先选择工程目录后再生成视频',
+          failedStep: fromStep,
         });
         return;
       }
@@ -347,6 +353,7 @@ export function useAIVideoWorkflow() {
           ...DEFAULT_WORKFLOW,
           step: 'error',
           error: '未找到可用于生成视频的文稿内容',
+          failedStep: fromStep,
         });
         return;
       }
@@ -356,6 +363,7 @@ export function useAIVideoWorkflow() {
           ...DEFAULT_WORKFLOW,
           step: 'error',
           error: '请先完成 AI 配置后再生成视频',
+          failedStep: fromStep,
         });
         return;
       }
@@ -368,6 +376,7 @@ export function useAIVideoWorkflow() {
           ...DEFAULT_WORKFLOW,
           step: 'error',
           error: '请先在设置 → TTS 配置中填写 MiniMax API Key',
+          failedStep: fromStep,
         });
         return;
       }
@@ -383,6 +392,7 @@ export function useAIVideoWorkflow() {
           ...DEFAULT_WORKFLOW,
           step: 'error',
           error: llmSettingsIssue,
+          failedStep: fromStep,
         });
         workflowSession.retryStep = 'ai_analyzing';
         return;
@@ -399,6 +409,7 @@ export function useAIVideoWorkflow() {
             ...DEFAULT_WORKFLOW,
             step: 'error',
             error: '自动模式缺少原始素材或参数',
+            failedStep: 'script_generating',
           });
           return;
         }
@@ -446,6 +457,7 @@ export function useAIVideoWorkflow() {
             stepLabel: '',
             error: msg,
             canCancel: false,
+            failedStep: 'script_generating',
           });
           useTaskProgressStore.getState().failTask(workflowTaskId, msg);
           workflowSession.retryStep = 'script_generating';
@@ -577,6 +589,7 @@ export function useAIVideoWorkflow() {
             stepLabel: '',
             error: ttsErrorMsg,
             canCancel: false,
+            failedStep: 'tts_generating',
           });
           useTaskProgressStore.getState().failTask(workflowTaskId, ttsErrorMsg);
           workflowSession.retryStep = 'tts_generating';
@@ -608,6 +621,7 @@ export function useAIVideoWorkflow() {
             stepLabel: '',
             error: reuseErrorMsg,
             canCancel: false,
+            failedStep: 'tts_generating',
           });
           useTaskProgressStore.getState().failTask(workflowTaskId, reuseErrorMsg);
           workflowSession.retryStep = 'tts_generating';
@@ -758,6 +772,7 @@ export function useAIVideoWorkflow() {
             stepLabel: '',
             error: analyzeErrorMsg,
             canCancel: false,
+            failedStep: 'ai_analyzing',
           });
           useTaskProgressStore.getState().failTask(workflowTaskId, analyzeErrorMsg);
           workflowSession.retryStep = 'ai_analyzing';
@@ -927,6 +942,7 @@ export function useAIVideoWorkflow() {
             stepLabel: '',
             error: arrangingErrorMsg,
             canCancel: false,
+            failedStep: 'arranging',
           });
           useTaskProgressStore.getState().failTask(workflowTaskId, arrangingErrorMsg);
           workflowSession.retryStep = 'arranging';

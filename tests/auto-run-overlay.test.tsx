@@ -143,3 +143,66 @@ describe('AutoRunOverlay', () => {
     expect(filled).toBe(6);
   });
 });
+
+/**
+ * AutoRunController 源码契约校验
+ *
+ * 说明：完整渲染 AutoRunController 需要 mock 多个 store / IPC（pendingAutoParams、
+ * pendingDouyinUrl、videoImportProgress、useAIVideoWorkflow.start、loadScriptFile 等），
+ * 投入产出比低，端到端行为放在 Task 14 手动 E2E 回归覆盖。
+ * 这里只做源码契约 smoke：确认胶水的关键调用都连上了。
+ */
+describe('AutoRunController wiring (source contract)', () => {
+  // 使用 readFileSync 的同步读以避免顶层 await，与 auto-workflow.test.ts 风格一致
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const fs = require('node:fs') as typeof import('node:fs');
+  const source = fs.readFileSync(
+    new URL('../src/components/AutoRunController.tsx', import.meta.url),
+    'utf8',
+  );
+
+  it('imports AutoRunOverlay, useAIVideoWorkflow, both stores and getProjectDir', () => {
+    expect(source).toContain("from './AutoRunOverlay'");
+    expect(source).toContain("from '../hooks/useAIVideoWorkflow'");
+    expect(source).toContain("from '../store/ai'");
+    expect(source).toContain("from '../store/script'");
+    expect(source).toContain("from '../store/timeline'");
+    expect(source).toMatch(/getProjectDir\b/);
+  });
+
+  it('reads pendingAutoParams + pendingDouyinUrl and exposes setPage prop', () => {
+    expect(source).toMatch(/pendingAutoParams/);
+    expect(source).toMatch(/pendingDouyinUrl/);
+    expect(source).toMatch(/setPage:\s*\(next:\s*AppPage\)\s*=>\s*void/);
+  });
+
+  it('uses startedRef guard so workflow.start fires only once', () => {
+    expect(source).toMatch(/startedRef\s*=\s*useRef\(false\)/);
+    expect(source).toContain('startedRef.current = true');
+    // 至少一处显式重置（取消 / 跳页时）
+    expect(source).toContain('startedRef.current = false');
+  });
+
+  it('text branch reads original.md and starts workflow with autoMode/autoParams', () => {
+    expect(source).toContain("loadScriptFile(projectDir, 'original.md')");
+    expect(source).toMatch(/autoMode:\s*true/);
+    expect(source).toMatch(/autoParams:\s*pendingAutoParams/);
+    expect(source).toMatch(/startFromStep:\s*'script_generating'/);
+  });
+
+  it('douyin branch waits for douyinImportStatus === "done" before starting', () => {
+    expect(source).toContain("source === 'douyin'");
+    expect(source).toContain("douyinImportStatus === 'done'");
+  });
+
+  it('navigates to editor on done and to script-workbench on cancel', () => {
+    expect(source).toContain("workflow.step === 'done'");
+    expect(source).toContain("setPage('editor')");
+    expect(source).toContain("workflow.error === '任务已取消'");
+    expect(source).toContain("setPage('script-workbench')");
+  });
+
+  it('passes failedStep ?? "arranging" fallback to overlay error prop', () => {
+    expect(source).toMatch(/failedStep:\s*workflow\.failedStep\s*\?\?\s*'arranging'/);
+  });
+});

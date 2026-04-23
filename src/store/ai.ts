@@ -52,6 +52,8 @@ export interface WorkflowState {
   stepLabel: string;
   error: string | null;
   canCancel: boolean;
+  /** 进入 error 态时由阶段回调写入，AutoRunOverlay 用于决定跳转目标。 */
+  failedStep: WorkflowStep | null;
 }
 
 export const DEFAULT_WORKFLOW: WorkflowState = {
@@ -60,6 +62,7 @@ export const DEFAULT_WORKFLOW: WorkflowState = {
   stepLabel: '',
   error: null,
   canCancel: false,
+  failedStep: null,
 };
 
 const AI_SETTINGS_LEGACY_KEY = 'podcast-editor-ai-settings';
