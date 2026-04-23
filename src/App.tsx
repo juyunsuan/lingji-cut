@@ -609,9 +609,9 @@ export default function App() {
       setSetupError(null);
 
       if (autoMode) {
-        useAIStore.getState().setPendingAutoParams(autoParams);
-        // 把原稿先落盘，AutoRunOverlay 起跑时直接读 originalText
+        // 先把原稿落盘——失败时直接抛出，pendingAutoParams 不会被污染
         await window.electronAPI.saveScriptFile(projectDir, 'original.md', content);
+        useAIStore.getState().setPendingAutoParams(autoParams);
         // 同时清掉 pending，否则进 ScriptWorkbench 时会被原写稿流程消费
         useScriptStore.getState().setPendingImportedScript(null);
         setPage('auto-run');
@@ -653,6 +653,8 @@ export default function App() {
 
     if (autoMode) {
       useAIStore.getState().setPendingAutoParams(autoParams);
+      // 注意：pendingDouyinUrl 不在这里清理，由 AutoRunController（Task 10/11）
+      // 在抖音下载启动后自行清掉，避免 ScriptWorkbench 后续误消费
       setPage('auto-run');
       return;
     }
