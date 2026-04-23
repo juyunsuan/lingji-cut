@@ -29,6 +29,13 @@ const SCRIPT_WORKBENCH_FAIL_STEPS: WorkflowStep[] = [
   'tts_generating',
 ];
 
+// 把辅助步骤映射到 STEP_ORDER 中的对应桶，用于进度指示器：
+// 'tts_done' 归入 'tts_generating' 段；'done' 全部填满；
+// 'idle' / 'error' 不填任何段。
+const STEP_ALIAS: Partial<Record<WorkflowStep, WorkflowStep>> = {
+  tts_done: 'tts_generating',
+};
+
 export interface AutoRunOverlayProps {
   step: WorkflowStep;
   stepLabel: string;
@@ -51,6 +58,9 @@ export function AutoRunOverlay({
   const isError = step === 'error' && error !== null;
   const failedStep = error?.failedStep;
   const earlyFailure = failedStep && SCRIPT_WORKBENCH_FAIL_STEPS.includes(failedStep);
+  const normalizedStep = STEP_ALIAS[step] ?? step;
+  const currentIdx = STEP_ORDER.indexOf(normalizedStep as WorkflowStep);
+  const allReached = step === 'done';
 
   return (
     <div
@@ -89,7 +99,7 @@ export function AutoRunOverlay({
           style={{ display: 'flex', gap: 'var(--space-2)' }}
         >
           {STEP_ORDER.map((s) => {
-            const reached = STEP_ORDER.indexOf(s) <= STEP_ORDER.indexOf(step as WorkflowStep);
+            const reached = allReached || (currentIdx >= 0 && STEP_ORDER.indexOf(s) <= currentIdx);
             return (
               <span
                 key={s}

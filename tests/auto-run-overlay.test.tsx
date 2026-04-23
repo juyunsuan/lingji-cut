@@ -124,4 +124,22 @@ describe('AutoRunOverlay', () => {
     onClick();
     expect(onJumpToEditor).toHaveBeenCalledTimes(1);
   });
+
+  it('fills first 3 segments at tts_done', () => {
+    const html = renderToStaticMarkup(
+      <AutoRunOverlay {...makeBaseProps({ step: 'tts_done', stepLabel: '', progress: 33 })} />,
+    );
+    // tts_done 应归一化为 tts_generating，前 3 段（douyin/script/tts）填蓝，其余 3 段灰色
+    const filled = (html.match(/--color-system-blue/g) ?? []).length;
+    expect(filled).toBe(3);
+  });
+
+  it('fills all 6 segments at done', () => {
+    const html = renderToStaticMarkup(
+      <AutoRunOverlay {...makeBaseProps({ step: 'done', stepLabel: '', progress: 100 })} />,
+    );
+    // done 状态下所有 6 段都应填满
+    const filled = (html.match(/--color-system-blue/g) ?? []).length;
+    expect(filled).toBe(6);
+  });
 });
