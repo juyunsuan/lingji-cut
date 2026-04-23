@@ -24,7 +24,10 @@ describe('AI video workflow regressions', () => {
     );
 
     expect(workflowSource).toContain('startFromStep?:');
-    expect(workflowSource).toContain("const initialStep = options?.startFromStep ?? 'tts_generating'");
+    // initialStep 现在同时考虑 autoMode：autoMode=true 时默认从 script_generating 开始
+    expect(workflowSource).toContain(
+      "options?.startFromStep ?? (options?.autoMode ? 'script_generating' : 'tts_generating')",
+    );
     expect(workflowSource).toContain('void runFromStep(initialStep, text, workflowSession.projectDir);');
     expect(editorSource).toContain('readStoredExistingMediaDecision');
     expect(editorSource).toContain('writeStoredExistingMediaDecision');

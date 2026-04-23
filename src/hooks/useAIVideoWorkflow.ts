@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { runScriptGenerating } from '../lib/auto-workflow';
 import { createPersistedAIState, selectCoverCandidate } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
 import { serializeSrtEntries } from '../lib/srt-parser';
@@ -9,6 +10,7 @@ import {
   type WorkflowStep,
   useAIStore,
 } from '../store/ai';
+import type { AutoWorkflowParams } from '../store/ai';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
 import { useTaskProgressStore } from '../store/task-progress';
 import {
@@ -25,7 +27,16 @@ interface WorkflowStartOptions {
    * 用于"从文稿重新生成口播"的场景。
    */
   ttsOnly?: boolean;
-  startFromStep?: Extract<WorkflowStep, 'tts_generating' | 'ai_analyzing'>;
+  startFromStep?: Extract<
+    WorkflowStep,
+    'tts_generating' | 'ai_analyzing' | 'script_generating'
+  >;
+  /** autoMode：从 script_generating 开始的一键全流程 */
+  autoMode?: boolean;
+  /** autoMode 必传：模板/角色/音色 */
+  autoParams?: AutoWorkflowParams;
+  /** autoMode=true 时必传：用作 script_generating 的输入 */
+  originalText?: string;
 }
 
 interface WorkflowSessionState {
@@ -37,6 +48,9 @@ interface WorkflowSessionState {
   ttsOnly: boolean;
   cancelled: boolean;
   taskId: string;
+  autoMode: boolean;
+  autoParams: AutoWorkflowParams | null;
+  originalText: string;
 }
 
 function sleep(ms: number): Promise<void> {
@@ -54,6 +68,9 @@ const workflowSession: WorkflowSessionState = {
   ttsOnly: false,
   cancelled: false,
   taskId: '',
+  autoMode: false,
+  autoParams: null,
+  originalText: '',
 };
 
 function resetWorkflowSession(): void {
@@ -65,6 +82,9 @@ function resetWorkflowSession(): void {
   workflowSession.ttsOnly = false;
   workflowSession.cancelled = false;
   workflowSession.taskId = '';
+  workflowSession.autoMode = false;
+  workflowSession.autoParams = null;
+  workflowSession.originalText = '';
 }
 
 function buildWorkflowError(prefix: string, error: unknown): string {
@@ -75,8 +95,9 @@ function buildWorkflowError(prefix: string, error: unknown): string {
   return prefix;
 }
 
-// 整个 workflow 的步骤定义：每个阶段各占 20%，全局进度 = baseStart + (子进度 * span)
-type PhaseKey = 'tts' | 'analyze' | 'highlights' | 'cover' | 'arrange';
+// 整个 workflow 的步骤定义：6 个阶段平分全局进度，全局进度 = baseStart + (子进度 * span)
+// script 阶段仅 autoMode 启用；非 autoMode 的传统流程从 tts 起步，其余阶段进度区间一致。
+type PhaseKey = 'script' | 'tts' | 'analyze' | 'highlights' | 'cover' | 'arrange';
 
 interface PhaseSpec {
   key: PhaseKey;
@@ -84,35 +105,43 @@ interface PhaseSpec {
   label: string;
   baseStart: number;
   span: number;
-  category: 'tts' | 'ai-analyze' | 'cover';
+  category: 'tts' | 'ai-analyze' | 'cover' | 'ai-write';
 }
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 const PHASES: Record<PhaseKey, PhaseSpec> = {
-  tts: { key: 'tts', index: 1, label: '语音合成', baseStart: 0, span: 20, category: 'tts' },
+  script: {
+    key: 'script',
+    index: 1,
+    label: '撰写口播稿',
+    baseStart: 0,
+    span: 16,
+    category: 'ai-write',
+  },
+  tts: { key: 'tts', index: 2, label: '语音合成', baseStart: 16, span: 17, category: 'tts' },
   analyze: {
     key: 'analyze',
-    index: 2,
+    index: 3,
     label: '内容分析',
-    baseStart: 20,
-    span: 20,
+    baseStart: 33,
+    span: 17,
     category: 'ai-analyze',
   },
   highlights: {
     key: 'highlights',
-    index: 3,
+    index: 4,
     label: '字幕高亮',
-    baseStart: 40,
-    span: 20,
+    baseStart: 50,
+    span: 17,
     category: 'ai-analyze',
   },
-  cover: { key: 'cover', index: 4, label: '封面生成', baseStart: 60, span: 20, category: 'cover' },
+  cover: { key: 'cover', index: 5, label: '封面生成', baseStart: 67, span: 17, category: 'cover' },
   arrange: {
     key: 'arrange',
-    index: 5,
+    index: 6,
     label: '时间轴排布',
-    baseStart: 80,
-    span: 20,
+    baseStart: 84,
+    span: 16,
     category: 'ai-analyze',
   },
 };
@@ -291,15 +320,17 @@ export function useAIVideoWorkflow() {
           canCancel: false,
         });
         workflowSession.retryStep =
-          phaseKey === 'tts'
-            ? 'tts_generating'
-            : phaseKey === 'analyze'
-              ? 'ai_analyzing'
-              : phaseKey === 'highlights'
+          phaseKey === 'script'
+            ? 'script_generating'
+            : phaseKey === 'tts'
+              ? 'tts_generating'
+              : phaseKey === 'analyze'
                 ? 'ai_analyzing'
-                : phaseKey === 'cover'
-                  ? 'cover_generating'
-                  : 'arranging';
+                : phaseKey === 'highlights'
+                  ? 'ai_analyzing'
+                  : phaseKey === 'cover'
+                    ? 'cover_generating'
+                    : 'arranging';
       };
 
       if (!projectDir) {
@@ -354,6 +385,75 @@ export function useAIVideoWorkflow() {
         return;
       }
 
+      // ===== 阶段 0: 写口播稿（仅 autoMode） =====
+      if (fromStep === 'script_generating') {
+        const phase = PHASES.script;
+        const originalForScript = workflowSession.originalText;
+        const params = workflowSession.autoParams;
+
+        if (!originalForScript.trim() || !params) {
+          setWorkflow({
+            ...DEFAULT_WORKFLOW,
+            step: 'error',
+            error: '自动模式缺少原始素材或参数',
+          });
+          return;
+        }
+
+        setWorkflow({
+          step: 'script_generating',
+          progress: mapSubProgressToGlobal(phase, 0),
+          stepLabel: buildStepLabel(phase, '准备中'),
+          error: null,
+          canCancel: true,
+        });
+        ensureWorkflowTask(workflowTaskId, phase, {
+          subPercent: 0,
+          subMessage: '准备中',
+          canCancel: true,
+          onCancel: buildPhaseOnCancel('script'),
+        });
+
+        try {
+          const generated = await runScriptGenerating({
+            originalText: originalForScript,
+            projectDir,
+            params,
+          });
+          workflowSession.scriptText = generated;
+          scriptText = generated;
+
+          if (isStaleRun()) return;
+
+          setWorkflow({
+            step: 'tts_generating',
+            progress: mapSubProgressToGlobal(phase, 100),
+            stepLabel: buildStepLabel(phase, '完成'),
+            error: null,
+            canCancel: true,
+          });
+          workflowSession.retryStep = 'tts_generating';
+          fromStep = 'tts_generating';
+        } catch (error) {
+          if (isStaleRun()) return;
+          const msg = buildWorkflowError('写稿失败', error);
+          setWorkflow({
+            step: 'error',
+            progress: 0,
+            stepLabel: '',
+            error: msg,
+            canCancel: false,
+          });
+          useTaskProgressStore.getState().failTask(workflowTaskId, msg);
+          workflowSession.retryStep = 'script_generating';
+          return;
+        }
+      }
+
+      if (isStaleRun()) {
+        return;
+      }
+
       // ===== 阶段 1: TTS =====
       if (fromStep === 'tts_generating') {
         const phase = PHASES.tts;
@@ -386,7 +486,7 @@ export function useAIVideoWorkflow() {
           const ttsResult = await window.electronAPI.generateTTS({
             requestId: currentRequestId,
             text: scriptText,
-            voiceId: settings.minimaxVoiceId || 'male-qn-qingse',
+            voiceId: workflowSession.autoParams?.voiceId || settings.minimaxVoiceId || 'male-qn-qingse',
             speed: settings.minimaxSpeed ?? 1,
             vol: settings.minimaxVol ?? 1,
             pitch: settings.minimaxPitch ?? 0,
@@ -845,15 +945,20 @@ export function useAIVideoWorkflow() {
       resetWorkflowSession();
       workflowSession.requestId = crypto.randomUUID();
       workflowSession.taskId = `ai-workflow-${Date.now()}`;
-      const initialStep = options?.startFromStep ?? 'tts_generating';
+      const initialStep =
+        options?.startFromStep ?? (options?.autoMode ? 'script_generating' : 'tts_generating');
       workflowSession.retryStep = initialStep;
       workflowSession.projectDir = getProjectDir() ?? '';
       workflowSession.pauseAfterTts = options?.pauseAfterTts ?? false;
       workflowSession.ttsOnly = options?.ttsOnly ?? false;
+      workflowSession.autoMode = options?.autoMode ?? false;
+      workflowSession.autoParams = options?.autoParams ?? null;
+      workflowSession.originalText = options?.originalText ?? '';
 
-      // 优先使用传入文本，否则从磁盘读取 script.md
+      // 优先使用传入文本，否则从磁盘读取 script.md；
+      // autoMode（initialStep === 'script_generating'）阶段会自己写稿，无需读 script.md
       let text = scriptText;
-      if (!text.trim() && workflowSession.projectDir) {
+      if (!text.trim() && workflowSession.projectDir && initialStep !== 'script_generating') {
         const diskText = await window.electronAPI.loadScriptFile(
           workflowSession.projectDir,
           'script.md',
