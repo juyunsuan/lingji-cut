@@ -342,7 +342,7 @@ export function useAIVideoWorkflow() {
         return;
       }
 
-      if (!scriptText.trim()) {
+      if (fromStep !== 'script_generating' && !scriptText.trim()) {
         setWorkflow({
           ...DEFAULT_WORKFLOW,
           step: 'error',
@@ -360,7 +360,10 @@ export function useAIVideoWorkflow() {
         return;
       }
 
-      if (fromStep === 'tts_generating' && !settings.minimaxApiKey.trim()) {
+      if (
+        (fromStep === 'tts_generating' || fromStep === 'script_generating') &&
+        !settings.minimaxApiKey.trim()
+      ) {
         setWorkflow({
           ...DEFAULT_WORKFLOW,
           step: 'error',

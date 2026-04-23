@@ -173,3 +173,23 @@ describe('useAIVideoWorkflow autoMode (runtime smoke)', () => {
     expect(saveScriptFile).toHaveBeenCalledWith('/tmp/proj', 'script.md', '稿件内容');
   });
 });
+
+describe('useAIVideoWorkflow autoMode guard fixes', () => {
+  it('skips empty-scriptText guard for script_generating', async () => {
+    const fs = await import('node:fs/promises');
+    const source = await fs.readFile(
+      new URL('../src/hooks/useAIVideoWorkflow.ts', import.meta.url),
+      'utf-8',
+    );
+    expect(source).toContain("fromStep !== 'script_generating' && !scriptText.trim()");
+  });
+
+  it('extends MiniMax key pre-check to script_generating', async () => {
+    const fs = await import('node:fs/promises');
+    const source = await fs.readFile(
+      new URL('../src/hooks/useAIVideoWorkflow.ts', import.meta.url),
+      'utf-8',
+    );
+    expect(source).toContain("fromStep === 'tts_generating' || fromStep === 'script_generating'");
+  });
+});
