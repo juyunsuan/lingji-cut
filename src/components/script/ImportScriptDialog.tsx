@@ -24,6 +24,8 @@ import {
   Textarea,
 } from '../../ui';
 import { getFileNameFromPath } from '../../lib/utils';
+import { AutoModeSection, type AutoModeOption } from './AutoModeSection';
+import type { AutoWorkflowParams } from '../../store/ai';
 import styles from './ImportScriptDialog.module.css';
 
 const ALLOWED_EXTENSIONS = ['.md', '.txt'] as const;
@@ -45,8 +47,21 @@ export interface ImportScriptDialogProps {
   busy: boolean;
   errorMessage: string | null;
   onOpenChange: (open: boolean) => void;
-  /** 确认导入：传入父目录、项目名、原稿内容；由父组件创建项目并跳转工作台 */
-  onConfirm: (parentDir: string, projectName: string, content: string) => Promise<void> | void;
+  /** 确认导入：传入父目录、项目名、原稿内容、是否一键成稿、自动模式参数 */
+  onConfirm: (
+    parentDir: string,
+    projectName: string,
+    content: string,
+    autoMode: boolean,
+    autoParams: AutoWorkflowParams,
+  ) => Promise<void> | void;
+  /** 一键成稿下拉选项与默认值（由父组件提供） */
+  autoModeOptions: {
+    templates: AutoModeOption[];
+    roles: AutoModeOption[];
+    voices: AutoModeOption[];
+    defaults: AutoWorkflowParams;
+  };
 }
 
 export function ImportScriptDialog({
@@ -55,6 +70,7 @@ export function ImportScriptDialog({
   errorMessage,
   onOpenChange,
   onConfirm,
+  autoModeOptions,
 }: ImportScriptDialogProps) {
   const [content, setContent] = useState('');
   const [projectName, setProjectName] = useState('');
@@ -63,6 +79,8 @@ export function ImportScriptDialog({
   const [isDragging, setIsDragging] = useState(false);
   const [readingFile, setReadingFile] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [autoMode, setAutoMode] = useState(false);
+  const [autoParams, setAutoParams] = useState<AutoWorkflowParams>(autoModeOptions.defaults);
   const dragDepthRef = useRef(0);
 
   // 弹窗关闭时重置状态
@@ -75,9 +93,11 @@ export function ImportScriptDialog({
       setIsDragging(false);
       setReadingFile(false);
       setLocalError(null);
+      setAutoMode(false);
+      setAutoParams(autoModeOptions.defaults);
       dragDepthRef.current = 0;
     }
-  }, [open]);
+  }, [open, autoModeOptions.defaults]);
 
   const trimmedName = projectName.trim();
   const canConfirm = useMemo(
@@ -167,8 +187,8 @@ export function ImportScriptDialog({
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm || !parentDir) return;
-    void onConfirm(parentDir, trimmedName, content);
-  }, [canConfirm, parentDir, trimmedName, content, onConfirm]);
+    void onConfirm(parentDir, trimmedName, content, autoMode, autoParams);
+  }, [canConfirm, parentDir, trimmedName, content, autoMode, autoParams, onConfirm]);
 
   const previewPath = parentDir && trimmedName ? `${parentDir}/${trimmedName}` : null;
   const displayedError = errorMessage ?? localError;
@@ -280,6 +300,19 @@ export function ImportScriptDialog({
               <span>项目将创建在：{previewPath}</span>
             </div>
           )}
+
+          {/* 一键成稿（自动写稿、TTS、卡片、封面，跳过审稿） */}
+          <div style={{ marginTop: 'var(--space-6)' }}>
+            <AutoModeSection
+              enabled={autoMode}
+              onToggle={setAutoMode}
+              params={autoParams}
+              onChangeParams={setAutoParams}
+              templateOptions={autoModeOptions.templates}
+              roleOptions={autoModeOptions.roles}
+              voiceOptions={autoModeOptions.voices}
+            />
+          </div>
 
           {/* 错误提示 */}
           {displayedError && (

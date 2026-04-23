@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { m } from 'framer-motion';
 import { Plus, FileText, Music, Video, FolderOpen, FolderSearch, FolderInput, CheckCircle2, AlertCircle, Link, Loader2 } from 'lucide-react';
 import { springs } from '../ui/lib/motion';
@@ -20,6 +20,12 @@ import {
 } from '../ui';
 import { ProjectList } from '../components/ProjectList';
 import { ImportScriptDialog } from '../components/script/ImportScriptDialog';
+import { AutoModeSection } from '../components/script/AutoModeSection';
+import { useScriptStore } from '../store/script';
+import { loadAISettings, type AutoWorkflowParams } from '../store/ai';
+import { MINIMAX_SYSTEM_VOICES } from '../lib/minimax-voices';
+import { SCRIPT_TEMPLATE_SEEDS } from '../lib/prompts/script-template-defaults';
+import { getAllRoles } from '../lib/script-templates';
 import heroBg from '../assets/hero-bg.png';
 import styles from './Setup.module.css';
 
@@ -31,11 +37,23 @@ interface SetupProps {
   onComplete: (audioPath: string, srtPath: string) => Promise<void>;
   onOpenRecentProject: (projectDir: string) => Promise<void>;
   onRemoveRecentProject?: (projectDir: string) => Promise<void> | void;
-  /** 文稿导入完成回调：传入父目录、项目名和原稿内容，由 App 层创建项目并自动写入 + 起飞 AI 写稿 */
-  onImportScript: (parentDir: string, projectName: string, content: string) => Promise<void>;
+  /** 文稿导入完成回调：传入父目录、项目名、原稿内容、是否一键成稿与自动模式参数 */
+  onImportScript: (
+    parentDir: string,
+    projectName: string,
+    content: string,
+    autoMode: boolean,
+    autoParams: AutoWorkflowParams,
+  ) => Promise<void>;
   onOpenSettings: () => void;
-  /** 抖音导入完成回调：传入父目录、标题和原始链接，由 App 层创建项目并自动触发下载转录 */
-  onDouyinImport: (parentDir: string, title: string, douyinUrl: string) => Promise<void>;
+  /** 抖音导入完成回调：传入父目录、标题、原始链接、是否一键成稿与自动模式参数 */
+  onDouyinImport: (
+    parentDir: string,
+    title: string,
+    douyinUrl: string,
+    autoMode: boolean,
+    autoParams: AutoWorkflowParams,
+  ) => Promise<void>;
   /** 导入项目回调：打开导入项目向导（处理跨机器项目目录识别与路径修复） */
   onImportProject: () => void;
 }
@@ -80,6 +98,43 @@ export function Setup({
   const [douyinError, setDouyinError] = useState<string | null>(null);
   const [douyinCreating, setDouyinCreating] = useState(false);
 
+  // ── 一键成稿 (AutoModeSection) 下拉选项与默认值 ──
+  // selectedTemplate / selectedRole 来自 script store；voice 默认值需异步从磁盘读取 AISettings
+  const selectedTemplate = useScriptStore((s) => s.selectedTemplate);
+  const selectedRole = useScriptStore((s) => s.selectedRole);
+  const [voiceIdDefault, setVoiceIdDefault] = useState('male-qn-qingse');
+  useEffect(() => {
+    void (async () => {
+      const settings = await loadAISettings();
+      if (settings?.minimaxVoiceId) setVoiceIdDefault(settings.minimaxVoiceId);
+    })();
+  }, []);
+
+  const autoModeOptions = useMemo(
+    () => ({
+      templates: SCRIPT_TEMPLATE_SEEDS.map((t) => ({ value: t.id, label: t.name })),
+      // getAllRoles() 已经在头部包含 NONE_ROLE（id='none'），这里直接映射即可
+      roles: getAllRoles().map((r) => ({ value: r.id, label: r.name })),
+      voices: MINIMAX_SYSTEM_VOICES.map((v) => ({ value: v.voiceId, label: v.name })),
+      defaults: {
+        templateId: selectedTemplate || 'news-broadcast',
+        roleId: selectedRole || 'none',
+        voiceId: voiceIdDefault,
+      } satisfies AutoWorkflowParams,
+    }),
+    [selectedTemplate, selectedRole, voiceIdDefault],
+  );
+
+  // ── 抖音弹窗的一键成稿状态 ──
+  const [douyinAutoMode, setDouyinAutoMode] = useState(false);
+  const [douyinAutoParams, setDouyinAutoParams] = useState<AutoWorkflowParams>(autoModeOptions.defaults);
+  useEffect(() => {
+    if (!douyinDialogOpen) {
+      setDouyinAutoMode(false);
+      setDouyinAutoParams(autoModeOptions.defaults);
+    }
+  }, [douyinDialogOpen, autoModeOptions.defaults]);
+
   const canImport = useMemo(
     () => Boolean(selectedAudio && selectedSrt && !busy),
     [selectedAudio, selectedSrt, busy],
@@ -100,11 +155,17 @@ export function Setup({
   }, []);
 
   const handleConfirmImportScript = useCallback(
-    async (parentDir: string, projectNameInput: string, content: string) => {
+    async (
+      parentDir: string,
+      projectNameInput: string,
+      content: string,
+      autoMode: boolean,
+      autoParams: AutoWorkflowParams,
+    ) => {
       setImportScriptCreating(true);
       setImportScriptError(null);
       try {
-        await onImportScript(parentDir, projectNameInput, content);
+        await onImportScript(parentDir, projectNameInput, content, autoMode, autoParams);
         setImportScriptOpen(false);
       } catch (err) {
         setImportScriptError(err instanceof Error ? err.message : '创建项目失败');
@@ -156,14 +217,20 @@ export function Setup({
     setDouyinError(null);
 
     try {
-      await onDouyinImport(douyinParentDir, douyinTitle, douyinUrl.trim());
+      await onDouyinImport(
+        douyinParentDir,
+        douyinTitle,
+        douyinUrl.trim(),
+        douyinAutoMode,
+        douyinAutoParams,
+      );
       setDouyinDialogOpen(false);
     } catch (err) {
       setDouyinError(err instanceof Error ? err.message : '创建项目失败');
     } finally {
       setDouyinCreating(false);
     }
-  }, [douyinTitle, douyinParentDir, douyinUrl, onDouyinImport]);
+  }, [douyinTitle, douyinParentDir, douyinUrl, douyinAutoMode, douyinAutoParams, onDouyinImport]);
 
   const canCreateDouyinProject = Boolean(douyinTitle && douyinParentDir && !douyinCreating);
 
@@ -416,6 +483,7 @@ export function Setup({
         errorMessage={importScriptError}
         onOpenChange={setImportScriptOpen}
         onConfirm={handleConfirmImportScript}
+        autoModeOptions={autoModeOptions}
       />
 
       {/* ── 抖音导入弹窗：解析链接 → 选择目录 → 创建项目 ── */}
@@ -494,6 +562,21 @@ export function Setup({
               <div className={styles.douyinProjectPath}>
                 <FolderOpen size={14} strokeWidth={1.5} />
                 <span>项目将创建在：{douyinParentDir}/{douyinTitle}</span>
+              </div>
+            )}
+
+            {/* 一键成稿（自动写稿、TTS、卡片、封面，跳过审稿） */}
+            {douyinTitle && (
+              <div style={{ marginTop: 'var(--space-6)' }}>
+                <AutoModeSection
+                  enabled={douyinAutoMode}
+                  onToggle={setDouyinAutoMode}
+                  params={douyinAutoParams}
+                  onChangeParams={setDouyinAutoParams}
+                  templateOptions={autoModeOptions.templates}
+                  roleOptions={autoModeOptions.roles}
+                  voiceOptions={autoModeOptions.voices}
+                />
               </div>
             )}
 

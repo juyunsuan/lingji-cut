@@ -25,7 +25,7 @@ import { WorkspaceTabs } from './components/WorkspaceTabs';
 import { getFileNameFromPath, readAudioDurationMs } from './lib/utils';
 import { createDefaultTimeline } from './types';
 import type { AICard, AIAnalysisResult } from './types/ai';
-import { getCurrentAISaveStatus, loadAISettings, subscribeToAISaveStatus, useAIStore } from './store/ai';
+import { getCurrentAISaveStatus, loadAISettings, subscribeToAISaveStatus, useAIStore, type AutoWorkflowParams } from './store/ai';
 import type { ProjectData } from './lib/project-persistence';
 import { useScriptStore } from './store/script';
 import { getRoleById } from './lib/script-templates';
@@ -581,7 +581,14 @@ export default function App() {
    * 导航到脚本工作台后自动写入 original.md 并触发 AI 写稿。
    */
   const handleImportScript = useCallback(
-    async (parentDir: string, projectName: string, content: string) => {
+    async (
+      parentDir: string,
+      projectName: string,
+      content: string,
+      // Task 7 仅同步签名以保证类型可编译，autoMode/autoParams 的实际行为由 Task 8 实现
+      _autoMode: boolean,
+      _autoParams: AutoWorkflowParams,
+    ) => {
       const trimmedName = projectName.trim();
       if (!parentDir || !trimmedName) {
         throw new Error('父目录和项目名不能为空');
@@ -611,7 +618,14 @@ export default function App() {
    * 初始化空白脚本项目状态，保存抖音链接到 store，
    * 导航到脚本工作台后自动触发完整的视频下载+转录流程。
    */
-  const handleDouyinImport = useCallback(async (parentDir: string, title: string, douyinUrl: string) => {
+  const handleDouyinImport = useCallback(async (
+    parentDir: string,
+    title: string,
+    douyinUrl: string,
+    // Task 7 仅同步签名以保证类型可编译，autoMode/autoParams 的实际行为由 Task 8 实现
+    _autoMode: boolean,
+    _autoParams: AutoWorkflowParams,
+  ) => {
     const projectDir = `${parentDir}/${title}`;
 
     clearCurrentProject();
