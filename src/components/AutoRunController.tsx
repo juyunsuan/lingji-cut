@@ -99,7 +99,7 @@ export function AutoRunController({ setPage }: AutoRunControllerProps) {
       useTaskProgressStore.getState().startTask({
         id: douyinTaskIdRef.current,
         category: 'import',
-        label: '步骤 1/7 · 导入抖音视频',
+        label: '步骤 1/6 · 导入抖音视频',
         mode: 'determinate',
         progress: 0,
         phase: '准备',
@@ -189,9 +189,9 @@ export function AutoRunController({ setPage }: AutoRunControllerProps) {
   const effectiveStep: WorkflowStep = douyinPhase ? 'douyin_importing' : workflow.step;
   const effectiveProgress = douyinPhase && douyinTask
     ? Math.round((douyinTask.progress ?? 0) / 6)
-    : workflow.progress;
+    : (workflow.progress ?? 0);
   const effectiveLabel = douyinPhase && douyinTask
-    ? `步骤 1/7 · 导入抖音视频${douyinTask.phase ? ` · ${douyinTask.phase}` : ''}`
+    ? `步骤 1/6 · 导入抖音视频${douyinTask.phase ? ` · ${douyinTask.phase}` : ''}`
     : workflow.stepLabel;
 
   return (
