@@ -21,7 +21,6 @@ import {
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/cover-generation';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
-import { planStoryboardFromTranscript } from '../src/lib/storyboard-planner';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';
 import {
   buildMinimaxTtsRequestBody,
@@ -660,52 +659,6 @@ ipcMain.handle(
         'error',
         'ai-analysis',
         '字幕分析失败',
-        error instanceof Error ? error.stack ?? error.message : String(error),
-      );
-      throw error;
-    }
-  },
-);
-
-ipcMain.handle(
-  'plan-storyboard',
-  async (
-    _event,
-    args: {
-      entries?: SrtEntry[];
-      srtContent?: string;
-      settings: AISettings;
-      globalPrompt?: string;
-      projectBindings?: PromptBindingMap | null;
-    },
-  ) => {
-    writeAppLog(
-      'info',
-      'ai-analysis',
-      '收到视觉编排分析请求',
-      `entries=${args.entries?.length ?? 0}, hasSrtContent=${Boolean(args.srtContent)}`,
-    );
-    const entries = Array.isArray(args.entries) && args.entries.length > 0
-      ? args.entries
-      : parseSrt(args.srtContent ?? '');
-
-    try {
-      const plan = await planStoryboardFromTranscript(entries, args.settings, {
-        globalPrompt: args.globalPrompt,
-        projectBindings: args.projectBindings ?? null,
-      });
-      writeAppLog(
-        'info',
-        'ai-analysis',
-        '视觉编排分析完成',
-        `suggestions=${plan.suggestions.length}, segments=${plan.segments.length}`,
-      );
-      return plan;
-    } catch (error) {
-      writeAppLog(
-        'error',
-        'ai-analysis',
-        '视觉编排分析失败',
         error instanceof Error ? error.stack ?? error.message : String(error),
       );
       throw error;

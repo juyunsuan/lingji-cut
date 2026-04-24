@@ -46,14 +46,7 @@ export function useAICardInspector(cardId: string | null) {
 
   const persistAIState = useCallback(
     async (result: typeof analysisResult, candidates: CoverCandidate[]) => {
-      const motionCards = useAIStore.getState().motionCards;
-      const storyboardPlan = useAIStore.getState().storyboardPlan;
-      const fallbackState = createPersistedAIState(
-        result,
-        candidates,
-        motionCards,
-        storyboardPlan,
-      );
+      const fallbackState = createPersistedAIState(result, candidates);
       const projectDir = getProjectDir();
       if (!projectDir) {
         return fallbackState;
@@ -138,7 +131,7 @@ export function useAICardInspector(cardId: string | null) {
         label: `重生成卡片：${card.title}`,
         mode: 'indeterminate',
         progress: 0,
-        phase: '生成网页卡片',
+        phase: '生成 Motion 卡片',
         level: 2,
         canCancel: false,
       });

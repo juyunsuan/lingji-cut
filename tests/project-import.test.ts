@@ -48,8 +48,6 @@ function makeProjectData(timeline: TimelineData | null): ProjectData {
     aiAnalysis: {
       analysisResult: null,
       coverCandidates: [],
-      motionCards: [],
-      storyboardPlan: null,
     },
     script: {
       templateId: 'news-broadcast',

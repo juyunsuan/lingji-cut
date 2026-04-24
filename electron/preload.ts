@@ -27,13 +27,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     projectBindings?: PromptBindingMap | null;
   }) =>
     ipcRenderer.invoke('analyze-srt', args),
-  planStoryboard: (args: {
-    entries?: SrtEntry[];
-    srtContent?: string;
-    settings: AISettings;
-    globalPrompt?: string;
-    projectBindings?: PromptBindingMap | null;
-  }) => ipcRenderer.invoke('plan-storyboard', args),
   regenerateAICard: (args: {
     entries: SrtEntry[];
     card: AICard;

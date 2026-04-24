@@ -67,8 +67,7 @@ describe('AI video workflow regressions', () => {
       'utf8',
     );
 
-    expect(appSource).toContain('const storyboardPlan = useAIStore.getState().storyboardPlan;');
-    expect(appSource).toContain('createPersistedAIState(null, [], motionCards, storyboardPlan)');
+    expect(appSource).toContain('createPersistedAIState(null, [])');
     expect(appSource).toContain('const shouldReanalyze = window.confirm(');
     expect(appSource).toContain('await rerunAiAnalysisForEntries(entries);');
     expect(editorSource).toContain('open={Boolean(pendingReanalyzeEntries)}');

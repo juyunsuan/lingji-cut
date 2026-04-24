@@ -25,7 +25,6 @@ import type {
   CoverEditState,
   CoverSaveMode,
 } from '../lib/cover-editor/contracts';
-import { MotionPanel } from './MotionPanel';
 import {
   ActionBar,
   Alert,
@@ -50,14 +49,13 @@ interface AIPanelProps {
   onOpenSettings?: () => void;
 }
 
-type AITabKey = 'cards' | 'cover' | 'motion';
+type AITabKey = 'cards' | 'cover';
 
 const TAB_META: Record<AITabKey, { label: string; shortLabel: string }> = {
   cards: { label: '内容卡片', shortLabel: '卡片' },
   cover: { label: '封面', shortLabel: '封面' },
-  motion: { label: '视觉编排', shortLabel: '视觉' },
 };
-const SUB_TABS: AITabKey[] = ['cards', 'cover', 'motion'];
+const SUB_TABS: AITabKey[] = ['cards', 'cover'];
 
 export function AIPanel({
   compact,
@@ -85,7 +83,6 @@ export function AIPanel({
   setAnalyzing,
   setAnalysisError,
   setCoverCandidates,
-  setStoryboardPlan,
   selectCover,
   setGeneratingCovers,
   setActiveTab,
@@ -99,10 +96,6 @@ export function AIPanel({
 
   const handleTabChange = useCallback(
     (tab: AITabKey) => {
-      if (tab === 'motion') {
-        setActiveTabLocal(tab);
-        return;
-      }
       setActiveTabLocal(tab);
       setActiveTab(tab);
     },
@@ -171,15 +164,8 @@ export function AIPanel({
     async (
       result: AIAnalysisResult | null,
       candidates: CoverCandidate[],
-      nextStoryboardPlan = useAIStore.getState().storyboardPlan,
     ) => {
-      const motionCards = useAIStore.getState().motionCards;
-      const fallbackState = createPersistedAIState(
-        result,
-        candidates,
-        motionCards,
-        nextStoryboardPlan,
-      );
+      const fallbackState = createPersistedAIState(result, candidates);
       const projectDir = getProjectDir();
       if (!projectDir) {
         return fallbackState;
@@ -361,11 +347,9 @@ export function AIPanel({
         globalPrompt: globalPromptDraft.trim() || undefined,
         projectBindings: useAIStore.getState().projectBindings,
       })) as AIAnalysisResult;
-      setStoryboardPlan(null);
-      const persistedState = await persistAIState(result, [], null);
+      const persistedState = await persistAIState(result, []);
       setAnalysisResult(persistedState.analysisResult ?? result);
       setCoverCandidates(persistedState.coverCandidates);
-      setStoryboardPlan(persistedState.storyboardPlan ?? null);
       // 部分失败时仍视为完成（成功段已入库），把失败列表用 inline 提示告知用户
       const failedCount = result.cardErrors?.length ?? 0;
       if (failedCount > 0) {
@@ -397,7 +381,6 @@ export function AIPanel({
     setAnalysisResult,
     setAnalyzing,
     setCoverCandidates,
-    setStoryboardPlan,
     srtEntries,
     timeline.podcast.srtPath,
   ]);
@@ -802,13 +785,6 @@ export function AIPanel({
                 </div>
               </section>
             ) : null}
-          </TabsContent>
-
-          <TabsContent value="motion" className={styles.tabContent}>
-            <MotionPanel
-              onOpenCardInspector={onOpenCardInspector}
-              onOpenSettings={onOpenSettings}
-            />
           </TabsContent>
 
           <TabsContent value="cover" className={styles.tabContent}>

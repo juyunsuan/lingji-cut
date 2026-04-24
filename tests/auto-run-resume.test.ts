@@ -111,8 +111,6 @@ describe('detectResumableAutoRun', () => {
         aiAnalysis: {
           analysisResult: FAKE_ANALYSIS,
           coverCandidates: [FAKE_COVER],
-          motionCards: [],
-          storyboardPlan: null,
         },
       }),
     });
@@ -159,8 +157,6 @@ describe('detectResumableAutoRun', () => {
         aiAnalysis: {
           analysisResult: FAKE_ANALYSIS,
           coverCandidates: [],
-          motionCards: [],
-          storyboardPlan: null,
         },
       }),
     });
@@ -182,8 +178,6 @@ describe('detectResumableAutoRun', () => {
         aiAnalysis: {
           analysisResult: FAKE_ANALYSIS,
           coverCandidates: [FAKE_COVER],
-          motionCards: [],
-          storyboardPlan: null,
         },
       }),
     });

@@ -3,10 +3,6 @@ export const PROMPT_KINDS = [
   'cover.regeneration',
   'cards.segment',
   'script.review',
-  'motion.system',
-  'motion.generate',
-  'motion.modify',
-  'motion.autofix',
 ] as const;
 
 export type PromptKind = (typeof PROMPT_KINDS)[number];
@@ -17,7 +13,7 @@ export function isPromptKind(value: unknown): value is PromptKind {
 
 export type PromptScope = 'builtin' | 'global' | 'project';
 
-export type PromptGroup = 'ai-analysis' | 'script' | 'motion';
+export type PromptGroup = 'ai-analysis' | 'script';
 
 export const PROMPT_CATEGORIES = ['script-template'] as const;
 export type PromptCategory = (typeof PROMPT_CATEGORIES)[number];
@@ -242,7 +238,7 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
       { name: 'currentCardSection', description: '当前卡片线索多行块（由调用方构造）' },
       { name: 'programContext', description: '节目级浓缩上下文（节目摘要、关键词、当前段在整期中的位置）' },
       { name: 'fullTranscript', description: '兼容旧模板：与 programContext 同值，不再注入完整全文，避免 token 爆炸' },
-      { name: 'sandboxReference', description: 'Motion 沙箱可用 API 清单（同 motion.system）' },
+      { name: 'sandboxReference', description: 'Motion 沙箱可用 API 清单（cards.segment 编译 motion-card 所需）' },
     ],
     lockedContract: {
       position: 'user-tail',
@@ -263,49 +259,5 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
       content: LOCKED_SCRIPT_REVIEW,
       reason: '业务侧按 annotations[] 定位批注；修改会让审查结果无法在编辑器中展示。',
     },
-  },
-  'motion.system': {
-    kind: 'motion.system',
-    label: 'Motion 系统提示词',
-    description: '动态 Remotion 组件生成的系统约束',
-    group: 'motion',
-    variables: [
-      { name: 'sandboxReference', description: '沙箱可用 API 清单' },
-    ],
-  },
-  'motion.generate': {
-    kind: 'motion.generate',
-    label: 'Motion 生成',
-    description: '根据用户描述生成全新 Motion Card 代码',
-    group: 'motion',
-    variables: [
-      { name: 'userPrompt', description: '用户描述' },
-      { name: 'canvasWidth', description: '画布宽度 px' },
-      { name: 'canvasHeight', description: '画布高度 px' },
-      { name: 'durationMs', description: '动画时长毫秒' },
-      { name: 'displayMode', description: 'fullscreen | pip' },
-      { name: 'assets', description: '可选素材列表（为空填"无"）' },
-    ],
-  },
-  'motion.modify': {
-    kind: 'motion.modify',
-    label: 'Motion 修改',
-    description: '基于现有源码按需求输出新版本 Motion Card 代码',
-    group: 'motion',
-    variables: [
-      { name: 'instruction', description: '修改要求' },
-      { name: 'sourceCode', description: '当前源码' },
-    ],
-  },
-  'motion.autofix': {
-    kind: 'motion.autofix',
-    label: 'Motion 自动修复',
-    description: '当 Motion 代码编译或运行失败时的自动修复提示词',
-    group: 'motion',
-    variables: [
-      { name: 'stage', description: 'compile | runtime' },
-      { name: 'error', description: '错误信息' },
-      { name: 'sourceCode', description: '当前源码' },
-    ],
   },
 };

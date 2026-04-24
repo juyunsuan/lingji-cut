@@ -96,16 +96,19 @@ describe('write / read / delete', () => {
   });
 
   it('deletes an existing override', async () => {
-    const yaml = 'name: motion.system\nuser: |-\n  hi {{sandboxReference}}\n';
-    await writePromptYaml('global', 'motion.system', yaml, { userDataPath });
-    const removed = await deletePromptYaml('global', 'motion.system', { userDataPath });
+    const yaml = 'name: cards.segment\nuser: |-\n  hi {{programContext}}\n';
+    await writePromptYaml('global', 'cards.segment', yaml, { userDataPath });
+    const removed = await deletePromptYaml('global', 'cards.segment', { userDataPath });
     expect(removed).toBe(true);
-    const raw = await readRawPromptYaml('global', 'motion.system', { userDataPath });
+    const raw = await readRawPromptYaml('global', 'cards.segment', { userDataPath });
     expect(raw).toBeNull();
   });
 
   it('returns false when deleting a non-existing override', async () => {
-    const removed = await deletePromptYaml('project', 'motion.modify', { userDataPath, projectDir });
+    const removed = await deletePromptYaml('project', 'cover.regeneration', {
+      userDataPath,
+      projectDir,
+    });
     expect(removed).toBe(false);
   });
 });
@@ -114,20 +117,20 @@ describe('listPromptOverview', () => {
   it('reports effective scope per kind', async () => {
     await writePromptYaml(
       'global',
-      'motion.generate',
-      'name: motion.generate\nuser: |-\n  G {{userPrompt}}\n',
+      'cover.regeneration',
+      'name: cover.regeneration\nuser: |-\n  G {{globalPrompt}}\n',
       { userDataPath },
     );
     await writePromptYaml(
       'project',
       'cards.segment',
-      'name: cards.segment\nuser: |-\n  P {{fullTranscript}}\n',
+      'name: cards.segment\nuser: |-\n  P {{programContext}}\n',
       { userDataPath, projectDir },
     );
     const items = await listPromptOverview({ userDataPath, projectDir });
     const map = Object.fromEntries(items.map((i) => [i.kind, i]));
-    expect(map['motion.generate'].effectiveScope).toBe('global');
-    expect(map['motion.generate'].hasGlobal).toBe(true);
+    expect(map['cover.regeneration'].effectiveScope).toBe('global');
+    expect(map['cover.regeneration'].hasGlobal).toBe(true);
     expect(map['cards.segment'].effectiveScope).toBe('project');
     expect(map['cards.segment'].hasProject).toBe(true);
     expect(map['planning.segment'].effectiveScope).toBe('builtin');

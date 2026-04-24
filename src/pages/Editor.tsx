@@ -140,7 +140,6 @@ export function Editor({
   const setAIAnalysisError = useAIStore((state) => state.setAnalysisError);
   const setAIAnalysisResult = useAIStore((state) => state.setAnalysisResult);
   const setCoverCandidates = useAIStore((state) => state.setCoverCandidates);
-  const motionCards = useAIStore((state) => state.motionCards);
   const {
     start: startWorkflow,
     cancel: cancelWorkflow,
@@ -234,8 +233,6 @@ export function Editor({
         const persistedState = createPersistedAIState(
           aiState.analysisResult,
           mergedCandidates,
-          aiState.motionCards,
-          aiState.storyboardPlan,
         );
 
         void window.electronAPI.saveProjectSection(
@@ -244,7 +241,6 @@ export function Editor({
           JSON.stringify({
             analysisResult: persistedState.analysisResult,
             coverCandidates: persistedState.coverCandidates,
-            motionCards: persistedState.motionCards ?? [],
           }),
         );
       })
@@ -374,11 +370,16 @@ export function Editor({
     };
   }, [fps, effectiveDurationMs]);
 
+  // exportRequestToken 是 App 级计数器，用户点击菜单/工具栏「导出」时自增。
+  // 这里用 ref 记录组件"已处理过的"token 值，仅在 token 真正递增时弹出导出框，
+  // 避免 Editor 因 page 切换（welcome → workbench/editor）remount 后拿到陈旧 token
+  // 被误判为新的导出请求。
+  const lastSeenExportTokenRef = useRef(exportRequestToken);
   useEffect(() => {
-    if (exportRequestToken === 0) {
+    if (exportRequestToken === lastSeenExportTokenRef.current) {
       return;
     }
-
+    lastSeenExportTokenRef.current = exportRequestToken;
     setIsExportSettingsOpen(true);
   }, [exportRequestToken]);
 
@@ -448,9 +449,7 @@ export function Editor({
         return;
       }
 
-      const motionCards = useAIStore.getState().motionCards;
-      const storyboardPlan = useAIStore.getState().storyboardPlan;
-      const persistedState = createPersistedAIState(result, [], motionCards, storyboardPlan);
+      const persistedState = createPersistedAIState(result, []);
       await window.electronAPI.saveProjectSection(
         projectDir,
         'aiAnalysis',
@@ -502,10 +501,10 @@ export function Editor({
   );
 
   const handleOpenAICardInspector = useCallback((cardId: string) => {
-    const hasMotionCard = motionCards.some((card) => card.id === cardId);
-    setInspectorSelection({ type: hasMotionCard ? 'motion-card' : 'ai-card', cardId });
+    // Motion Card 编排模块已下线；所有卡片统一按 ai-card 类型打开 inspector
+    setInspectorSelection({ type: 'ai-card', cardId });
     setActivePanel('ai');
-  }, [motionCards]);
+  }, []);
 
   const handleOpenSubtitleInspector = useCallback(() => {
     setInspectorSelection({ type: 'subtitle-style' });

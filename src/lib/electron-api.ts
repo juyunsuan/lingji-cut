@@ -5,7 +5,6 @@ import type {
   AICard,
   AISegment,
   AISettings,
-  AIStoryboardPlan,
   CoverCandidate,
   PromptBindingMap,
 } from '../types/ai';
@@ -135,13 +134,6 @@ export interface ElectronAPI {
     projectDir?: string;
     projectBindings?: PromptBindingMap | null;
   }) => Promise<unknown>;
-  planStoryboard: (args: {
-    entries?: SrtEntry[];
-    srtContent?: string;
-    settings: AISettings;
-    globalPrompt?: string;
-    projectBindings?: PromptBindingMap | null;
-  }) => Promise<AIStoryboardPlan>;
   regenerateAICard: (args: {
     entries: SrtEntry[];
     card: AICard;

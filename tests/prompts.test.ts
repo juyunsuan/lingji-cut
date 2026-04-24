@@ -89,20 +89,6 @@ describe('renderUserPromptWithLock', () => {
     expect(rendered).toContain('severity');
   });
 
-  it('does not append when kind has no lockedContract', () => {
-    const tpl = getBuiltinPromptTemplate('motion.generate');
-    const rendered = renderUserPromptWithLock('motion.generate', tpl, {
-      userPrompt: '生成粒子动画',
-      canvasWidth: 1920,
-      canvasHeight: 1080,
-      durationMs: 3000,
-      displayMode: 'fullscreen',
-      assets: '无',
-    });
-    expect(rendered).not.toContain('【系统契约 · 不可修改】');
-    expect(rendered).toContain('生成粒子动画');
-  });
-
   it('locked content is kind-specific', () => {
     const planning = renderUserPromptWithLock(
       'planning.segment',

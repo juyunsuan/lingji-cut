@@ -80,7 +80,6 @@ interface OverviewItem {
 const GROUP_LABEL: Record<PromptKindMeta['group'], string> = {
   'ai-analysis': '内容分析与卡片',
   script: '文稿流程',
-  motion: 'Motion 动效',
 };
 
 const SCOPE_LABEL: Record<PromptScope, string> = {
@@ -115,10 +114,6 @@ function computeBindingBadge(
   settings: AISettings | null,
   projectBindings: PromptBindingMap,
 ): BindingBadgeInfo {
-  if (kind === 'motion.system') {
-    return { label: '—', variant: 'secondary' };
-  }
-
   const explicit =
     scope === 'project'
       ? projectBindings[kind]
@@ -298,7 +293,6 @@ export function PromptsConfigTab() {
     const groups: Record<PromptKindMeta['group'], OverviewItem[]> = {
       'ai-analysis': [],
       script: [],
-      motion: [],
     };
     for (const item of overview) groups[item.meta.group].push(item);
     return groups;
@@ -651,7 +645,7 @@ export function PromptsConfigTab() {
             <CardDescription>按优先级：项目 &gt; 全局 &gt; 内置默认</CardDescription>
           </CardHeader>
           <CardContent className={styles.sidebarList}>
-            {(['ai-analysis', 'script', 'motion'] as const).map((group) => (
+            {(['ai-analysis', 'script'] as const).map((group) => (
               <div className={styles.group} key={group}>
                 <div className={styles.groupTitle}>{GROUP_LABEL[group]}</div>
                 {groupedKinds[group].map((item) => {
@@ -777,26 +771,24 @@ export function PromptsConfigTab() {
                 </div>
               )}
 
-              {active.kind !== 'motion.system' && (
-                <PromptBindingBar
-                  scope={scope}
-                  kind={active.kind}
-                  binding={currentScopeBinding}
-                  llmProviders={llmProviders}
-                  effectiveProviderId={resolved?.provider?.id ?? null}
-                  effectiveModel={resolved?.model ?? null}
-                  onChange={(next) => {
-                    void handleBindingChange(next);
-                  }}
-                  showImageBinding={active.kind === 'cover.regeneration'}
-                  imageProviders={imageProviders}
-                  effectiveImageProviderId={resolved?.imageProvider?.id ?? null}
-                  effectiveImageModel={resolved?.imageModel ?? null}
-                  onImageChange={(next) => {
-                    void handleImageBindingChange(next);
-                  }}
-                />
-              )}
+              <PromptBindingBar
+                scope={scope}
+                kind={active.kind}
+                binding={currentScopeBinding}
+                llmProviders={llmProviders}
+                effectiveProviderId={resolved?.provider?.id ?? null}
+                effectiveModel={resolved?.model ?? null}
+                onChange={(next) => {
+                  void handleBindingChange(next);
+                }}
+                showImageBinding={active.kind === 'cover.regeneration'}
+                imageProviders={imageProviders}
+                effectiveImageProviderId={resolved?.imageProvider?.id ?? null}
+                effectiveImageModel={resolved?.imageModel ?? null}
+                onImageChange={(next) => {
+                  void handleImageBindingChange(next);
+                }}
+              />
 
               {error && <Alert variant="error" description={error} />}
 

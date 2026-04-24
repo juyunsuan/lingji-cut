@@ -92,10 +92,6 @@ export default function App() {
   const setAIAnalysisResult = useAIStore((state) => state.setAnalysisResult);
   const { showToast } = useToast();
   const setCoverCandidates = useAIStore((state) => state.setCoverCandidates);
-  const setMotionCards = useAIStore((state) => state.setMotionCards);
-  const setGeneratingMotion = useAIStore((state) => state.setGeneratingMotion);
-  const setMotionError = useAIStore((state) => state.setMotionError);
-  const setStoryboardPlan = useAIStore((state) => state.setStoryboardPlan);
 
   const loadUserPrompts = useAIStore((state) => state.loadUserPrompts);
 
@@ -297,12 +293,9 @@ export default function App() {
       return;
     }
 
-    const motionCards = useAIStore.getState().motionCards;
-    const storyboardPlan = useAIStore.getState().storyboardPlan;
-
     await window.electronAPI.saveAIAnalysis(
       projectDir,
-      JSON.stringify(createPersistedAIState(null, [], motionCards, storyboardPlan), null, 2),
+      JSON.stringify(createPersistedAIState(null, []), null, 2),
     );
   }, [clearAIAnalysis]);
 
@@ -312,16 +305,9 @@ export default function App() {
         return;
       }
 
-      const motionCards = useAIStore.getState().motionCards;
-      const storyboardPlan = useAIStore.getState().storyboardPlan;
-
       await window.electronAPI.saveAIAnalysis(
         currentProjectDir,
-        JSON.stringify(
-          createPersistedAIState(analysisResult, [], motionCards, storyboardPlan),
-          null,
-          2,
-        ),
+        JSON.stringify(createPersistedAIState(analysisResult, []), null, 2),
       );
     },
     [currentProjectDir],
@@ -397,6 +383,9 @@ export default function App() {
   }, []);
 
   const resetToSetup = useCallback((reason: PageTransitionReason = 'default') => {
+    // 先清掉当前项目目录，避免后续 setTimeline(createDefaultTimeline()) 触发的
+    // 自动保存订阅拿到陈旧 projectDir，把空 timeline 写入前一个项目的 project.json。
+    clearCurrentProject();
     setTimeline(createDefaultTimeline());
     setSrtEntries([]);
     clearAIAnalysis();
@@ -409,6 +398,11 @@ export default function App() {
       try {
         const raw = await window.electronAPI.loadProject(projectDir);
         const projectData = JSON.parse(raw) as ProjectData;
+
+        // 先切换到新的项目目录，保证下面 setTimeline / setSrtEntries 触发的
+        // 自动保存订阅把数据写入新项目的 project.json，
+        // 而不是之前打开过的旧项目目录（会造成旧项目被空数据覆盖）。
+        setProjectDir(projectDir);
 
         // timeline 段
         if (projectData.timeline) {
@@ -462,13 +456,7 @@ export default function App() {
           setCoverCandidates(projectData.aiAnalysis?.coverCandidates ?? []);
         }
 
-        setMotionCards(projectData.aiAnalysis.motionCards ?? []);
-        setStoryboardPlan(projectData.aiAnalysis.storyboardPlan ?? null);
-        setGeneratingMotion(false);
-        setMotionError(null);
-
-        setProjectDir(projectDir);
-        // 添加到最近项目列表
+        // 添加到最近项目列表（projectDir 已在前面设置过，不需要重复设置）
         await window.electronAPI.addRecentProject(projectDir);
         void syncWorkspaceState();
         setSetupError(null);
@@ -490,7 +478,6 @@ export default function App() {
       setAIAnalysisResult,
       setCoverCandidates,
       setSrtEntries,
-      setStoryboardPlan,
       setTimeline,
       showToast,
       syncWorkspaceState,
@@ -538,11 +525,12 @@ export default function App() {
       return;
     }
 
-    // 重置当前工程数据，初始化为空白项目
+    // 先切到新项目目录，再重置 timeline / srt / AI；否则 setTimeline 触发的
+    // 自动保存订阅会把空白 timeline 写入之前打开的项目，造成旧项目内容丢失。
+    setProjectDir(projectDir);
     setTimeline(createDefaultTimeline());
     setSrtEntries([]);
     clearAIAnalysis();
-    setProjectDir(projectDir);
     // 添加到最近项目列表
     await window.electronAPI.addRecentProject(projectDir);
     void syncWorkspaceState();

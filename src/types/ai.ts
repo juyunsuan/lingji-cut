@@ -50,45 +50,6 @@ export interface AISegmentAnalysis extends AISegment {
   entities: string[];
 }
 
-export type AIVisualSuggestionType =
-  | 'content-card'
-  | 'data-motion'
-  | 'explainer-motion'
-  | 'chapter-transition';
-
-export interface AIVisualSuggestion {
-  id: string;
-  segmentId: string;
-  suggestionType: AIVisualSuggestionType;
-  priority: number;
-  reason: string;
-  enabled: boolean;
-  startMs: number;
-  endMs: number;
-  displayDurationMs: number;
-  displayMode: AICardDisplayMode;
-  templateKey: string;
-  visualBrief: string;
-  autoApplyEligible: boolean;
-}
-
-export interface AIStoryboardPlan {
-  segments: AISegmentAnalysis[];
-  suggestions: AIVisualSuggestion[];
-  summary: string;
-  globalPrompt?: string;
-  generatedAt: number;
-}
-
-export function buildDefaultStoryboardPlan(): AIStoryboardPlan {
-  return {
-    segments: [],
-    suggestions: [],
-    summary: '',
-    generatedAt: 0,
-  };
-}
-
 export interface AICard {
   id: string;
   segmentId: string;

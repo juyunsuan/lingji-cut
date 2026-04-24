@@ -16,8 +16,6 @@ describe('project-persistence', () => {
     expect(data.aiAnalysis).toEqual({
       analysisResult: null,
       coverCandidates: [],
-      motionCards: [],
-      storyboardPlan: null,
     });
     expect(data.script).toEqual({
       templateId: 'news-broadcast',
@@ -52,7 +50,6 @@ describe('project-persistence', () => {
     const aiData = {
       analysisResult: { cards: [], coverPrompts: [], summary: 'test', keywords: [] },
       coverCandidates: [],
-      motionCards: [],
     };
     const merged = mergeProjectSection(data, 'aiAnalysis', aiData);
     expect(merged.aiAnalysis).toEqual(aiData);

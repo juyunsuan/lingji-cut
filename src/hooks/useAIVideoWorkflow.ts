@@ -295,14 +295,7 @@ async function persistAIState(
     return;
   }
 
-  const motionCards = useAIStore.getState().motionCards;
-  const storyboardPlan = useAIStore.getState().storyboardPlan;
-  const persistedState = createPersistedAIState(
-    analysisResult,
-    coverCandidates,
-    motionCards,
-    storyboardPlan,
-  );
+  const persistedState = createPersistedAIState(analysisResult, coverCandidates);
   await window.electronAPI.saveProjectSection(
     projectDir,
     'aiAnalysis',
@@ -326,7 +319,6 @@ export function useAIVideoWorkflow() {
   const resetWorkflow = useAIStore((state) => state.resetWorkflow);
   const setAnalysisResult = useAIStore((state) => state.setAnalysisResult);
   const setCoverCandidates = useAIStore((state) => state.setCoverCandidates);
-  const setStoryboardPlan = useAIStore((state) => state.setStoryboardPlan);
   const selectCover = useAIStore((state) => state.selectCover);
   const timelineStore = useTimelineStore();
 
@@ -721,7 +713,6 @@ export function useAIVideoWorkflow() {
           }
 
           setAnalysisResult(analysisResult);
-          setStoryboardPlan(null);
           setCoverCandidates([]);
           await persistAIState(projectDir, analysisResult, []);
 
@@ -998,7 +989,6 @@ export function useAIVideoWorkflow() {
       selectCover,
       setAnalysisResult,
       setCoverCandidates,
-      setStoryboardPlan,
       setWorkflow,
       timelineStore,
     ],

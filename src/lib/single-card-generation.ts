@@ -80,12 +80,7 @@ export async function generateAndInsertSingleCardFromSubtitles(
     useAIStore.getState().setAnalysisResult(nextResult);
 
     if (projectDir && window.electronAPI?.saveAIAnalysis) {
-      const persisted = createPersistedAIState(
-        nextResult,
-        aiState.coverCandidates,
-        aiState.motionCards,
-        aiState.storyboardPlan,
-      );
+      const persisted = createPersistedAIState(nextResult, aiState.coverCandidates);
       try {
         await window.electronAPI.saveAIAnalysis(projectDir, JSON.stringify(persisted, null, 2));
       } catch (error) {

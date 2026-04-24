@@ -12,7 +12,6 @@ import {
   DEFAULT_JIMENG_MODEL,
   type AIAnalysisResult,
   type AICard,
-  type AIStoryboardPlan,
   type AISettings,
   type CoverCandidate,
   type CoverEditState,
@@ -94,7 +93,7 @@ function buildDefaultAISettings(): AISettings {
   };
 }
 
-export type AITab = 'cards' | 'cover' | 'motion';
+export type AITab = 'cards' | 'cover';
 
 export interface AIStore {
   analysisResult: AIAnalysisResult | null;
@@ -102,9 +101,6 @@ export interface AIStore {
   analysisError: string | null;
   coverCandidates: CoverCandidate[];
   isGeneratingCovers: boolean;
-  motionCards: AICard[];
-  isGeneratingMotion: boolean;
-  motionError: string | null;
   pendingAutoParams: AutoWorkflowParams | null;
   setPendingAutoParams: (params: AutoWorkflowParams | null) => void;
   /**
@@ -124,9 +120,6 @@ export interface AIStore {
         >
       | null,
   ) => void;
-  storyboardPlan: AIStoryboardPlan | null;
-  isPlanningStoryboard: boolean;
-  storyboardError: string | null;
   activeTab: AITab;
   // —— 提示词 × AI 绑定（项目级）——
   projectBindings: PromptBindingMap;
@@ -164,15 +157,6 @@ export interface AIStore {
   selectCover: (candidateId: string) => void;
   setGeneratingCovers: (generating: boolean) => void;
   setActiveTab: (tab: AITab) => void;
-  setMotionCards: (cards: AICard[]) => void;
-  addMotionCard: (card: AICard) => void;
-  updateMotionCard: (cardId: string, updates: Partial<AICard>) => void;
-  removeMotionCard: (cardId: string) => void;
-  setGeneratingMotion: (generating: boolean) => void;
-  setMotionError: (error: string | null) => void;
-  setPlanningStoryboard: (planning: boolean) => void;
-  setStoryboardError: (error: string | null) => void;
-  setStoryboardPlan: (plan: AIStoryboardPlan | null) => void;
   clearAnalysis: () => void;
   workflow: WorkflowState;
   setWorkflow: (updates: Partial<WorkflowState>) => void;
@@ -185,14 +169,8 @@ export const useAIStore = create<AIStore>((set, get) => ({
   analysisError: null,
   coverCandidates: [],
   isGeneratingCovers: false,
-  motionCards: [],
-  isGeneratingMotion: false,
-  motionError: null,
   pendingAutoParams: null,
   pendingAutoResumeStep: null,
-  storyboardPlan: null,
-  isPlanningStoryboard: false,
-  storyboardError: null,
   activeTab: 'cards',
   projectBindings: {},
   currentProjectDir: null,
@@ -352,43 +330,13 @@ export const useAIStore = create<AIStore>((set, get) => ({
     })),
   setGeneratingCovers: (generating) => set({ isGeneratingCovers: generating }),
   setActiveTab: (tab) => set({ activeTab: tab }),
-  setMotionCards: (cards) => set({ motionCards: cards }),
-  addMotionCard: (card) =>
-    set((state) => ({
-      motionCards: [...state.motionCards, card],
-    })),
-  updateMotionCard: (cardId, updates) =>
-    set((state) => ({
-      motionCards: state.motionCards.map((card) =>
-        card.id === cardId ? { ...card, ...updates } : card,
-      ),
-    })),
-  removeMotionCard: (cardId) =>
-    set((state) => ({
-      motionCards: state.motionCards.filter((card) => card.id !== cardId),
-    })),
-  setGeneratingMotion: (generating) => set({ isGeneratingMotion: generating }),
-  setMotionError: (error) => set({ motionError: error }),
   setPendingAutoParams: (params) => set({ pendingAutoParams: params }),
   setPendingAutoResumeStep: (step) => set({ pendingAutoResumeStep: step }),
-  setPlanningStoryboard: (planning) => set({ isPlanningStoryboard: planning }),
-  setStoryboardError: (error) =>
-    set((state) => ({
-      storyboardError: error,
-      isPlanningStoryboard: error ? false : state.isPlanningStoryboard,
-    })),
-  setStoryboardPlan: (plan) => set({ storyboardPlan: plan, storyboardError: null }),
   clearAnalysis: () =>
     set({
       analysisResult: null,
       analysisError: null,
       coverCandidates: [],
-      motionCards: [],
-      motionError: null,
-      isGeneratingMotion: false,
-      storyboardPlan: null,
-      isPlanningStoryboard: false,
-      storyboardError: null,
     }),
   workflow: { ...DEFAULT_WORKFLOW },
   setWorkflow: (updates) =>
@@ -525,9 +473,7 @@ if (typeof window !== 'undefined') {
   useAIStore.subscribe((state, prevState) => {
     if (
       state.analysisResult === prevState.analysisResult &&
-      state.coverCandidates === prevState.coverCandidates &&
-      state.motionCards === prevState.motionCards &&
-      state.storyboardPlan === prevState.storyboardPlan
+      state.coverCandidates === prevState.coverCandidates
     ) {
       return;
     }
@@ -546,8 +492,6 @@ if (typeof window !== 'undefined') {
       const persistedState = createPersistedAIState(
         state.analysisResult,
         state.coverCandidates,
-        state.motionCards,
-        state.storyboardPlan,
       );
       void window.electronAPI
         .saveProjectSection(projectDir, 'aiAnalysis', JSON.stringify(persistedState))

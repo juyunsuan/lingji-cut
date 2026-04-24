@@ -109,12 +109,16 @@ async function hydrateExistingProjectData(projectDir: string, data: ProjectData)
   const currentAI = data.aiAnalysis ?? {
     analysisResult: null,
     coverCandidates: [],
-    motionCards: [],
-    storyboardPlan: null,
   };
-  const hasMotionCards = Array.isArray(currentAI.motionCards);
   const hasWorkflowMeta = data.workflowMeta !== undefined;
-  if (hasMotionCards && hasWorkflowMeta) {
+  // 视觉编排下线后 aiAnalysis 只保留 analysisResult + coverCandidates。
+  // 若旧工程含 motionCards / storyboardPlan，这里一次性剥离并回写。
+  const legacyExtras =
+    'motionCards' in currentAI ||
+    'storyboardPlan' in currentAI ||
+    currentAI.analysisResult === undefined ||
+    currentAI.coverCandidates === undefined;
+  if (!legacyExtras && hasWorkflowMeta) {
     return data;
   }
   const nextData: ProjectData = {
@@ -122,8 +126,6 @@ async function hydrateExistingProjectData(projectDir: string, data: ProjectData)
     aiAnalysis: {
       analysisResult: currentAI.analysisResult ?? null,
       coverCandidates: currentAI.coverCandidates ?? [],
-      motionCards: hasMotionCards ? currentAI.motionCards : [],
-      storyboardPlan: currentAI.storyboardPlan ?? null,
     },
     workflowMeta: hasWorkflowMeta ? data.workflowMeta : { ...DEFAULT_WORKFLOW_META },
   };

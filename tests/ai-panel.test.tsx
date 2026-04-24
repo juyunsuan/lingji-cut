@@ -69,32 +69,7 @@ const mockModules = vi.hoisted(() => {
       isAnalyzing: false,
       analysisError: null as string | null,
       coverCandidates: [],
-      motionCards: [],
       isGeneratingCovers: false,
-      isPlanningStoryboard: false,
-      storyboardError: null as string | null,
-      storyboardPlan: {
-        segments: [],
-        suggestions: [
-          {
-            id: 'visual-1',
-            segmentId: 'segment-1',
-            suggestionType: 'data-motion' as const,
-            priority: 90,
-            reason: '这段数据值得做动画强调',
-            enabled: true,
-            startMs: 0,
-            endMs: 4_000,
-            displayDurationMs: 4_000,
-            displayMode: 'fullscreen' as const,
-            templateKey: 'kpi-countup',
-            visualBrief: '营收上涨 12%',
-            autoApplyEligible: true,
-          },
-        ],
-        summary: '视觉摘要',
-        generatedAt: 1,
-      },
       activeTab: 'cards' as const,
       setAnalysisResult: () => undefined,
       setAnalyzing: () => undefined,
@@ -104,9 +79,6 @@ const mockModules = vi.hoisted(() => {
       setCoverCandidates: () => undefined,
       selectCover: () => undefined,
       setGeneratingCovers: () => undefined,
-      setPlanningStoryboard: () => undefined,
-      setStoryboardError: () => undefined,
-      setStoryboardPlan: () => undefined,
       setActiveTab: () => undefined,
       clearAnalysis: () => undefined,
     },
@@ -142,32 +114,7 @@ describe('AIPanel', () => {
     mockModules.aiStoreState.isAnalyzing = false;
     mockModules.aiStoreState.analysisError = null;
     mockModules.aiStoreState.coverCandidates = [];
-    mockModules.aiStoreState.motionCards = [];
     mockModules.aiStoreState.isGeneratingCovers = false;
-    mockModules.aiStoreState.isPlanningStoryboard = false;
-    mockModules.aiStoreState.storyboardError = null;
-    mockModules.aiStoreState.storyboardPlan = {
-      segments: [],
-      suggestions: [
-        {
-          id: 'visual-1',
-          segmentId: 'segment-1',
-          suggestionType: 'data-motion',
-          priority: 90,
-          reason: '这段数据值得做动画强调',
-          enabled: true,
-          startMs: 0,
-          endMs: 4_000,
-          displayDurationMs: 4_000,
-          displayMode: 'fullscreen',
-          templateKey: 'kpi-countup',
-          visualBrief: '营收上涨 12%',
-          autoApplyEligible: true,
-        },
-      ],
-      summary: '视觉摘要',
-      generatedAt: 1,
-    };
     mockModules.aiStoreState.activeTab = 'cards';
     mockModules.timelineState.srtEntries = [{ index: 1, startMs: 0, endMs: 2_000, text: 'hello' }];
     mockModules.timelineState.timeline = mockModules.buildTimeline();
@@ -181,7 +128,8 @@ describe('AIPanel', () => {
     expect(html).toContain('data-ai-panel-header="true"');
     expect(html).toContain('内容卡片');
     expect(html).toContain('封面');
-    expect(html).toContain('视觉编排');
+    // 视觉编排 tab 已下线
+    expect(html).not.toContain('视觉编排');
     expect(html).toContain('AI 分析');
     expect(html).toContain('已选 1/1');
     // HTML 卡片导入入口已随 Web Card 一并下线，不再出现 import-row 按钮
@@ -245,28 +193,4 @@ describe('AIPanel', () => {
     expect(html).toContain('卡片');
   });
 
-  it('renders the motion planning shell and regenerate action in visual planning tab', () => {
-    mockModules.aiStoreState.activeTab = 'motion';
-
-    const html = renderToStaticMarkup(<AIPanel compact={false} />);
-
-    expect(html).toContain('视觉编排');
-    expect(html).toContain('整体创作提示词');
-    expect(html).toContain('重新分析并生成');
-    expect(html).toContain('还没有动画卡片');
-    expect(html).not.toContain('自动应用到时间轴');
-    expect(html).not.toContain('这段数据值得做动画强调');
-  });
-
-  it('shows an independent analyze action when visual planning has not been generated', () => {
-    mockModules.aiStoreState.activeTab = 'motion';
-    mockModules.aiStoreState.storyboardPlan = null;
-
-    const html = renderToStaticMarkup(<AIPanel compact={false} />);
-
-    expect(html).toContain('分析并生成动画卡片');
-    expect(html).toContain('还没有动画卡片');
-    expect(html).not.toContain('重新分析并生成');
-    expect(html).not.toContain('这段数据值得做动画强调');
-  });
 });
