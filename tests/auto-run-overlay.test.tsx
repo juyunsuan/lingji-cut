@@ -205,4 +205,23 @@ describe('AutoRunController wiring (source contract)', () => {
   it('passes failedStep ?? "arranging" fallback to overlay error prop', () => {
     expect(source).toMatch(/failedStep:\s*workflow\.failedStep\s*\?\?\s*'arranging'/);
   });
+
+  // 回归:抖音导入卡"准备中"问题。AutoRunController 订阅了 onDouyinImportProgress
+  // 但只推 task-progress store,不同步 script store 的 videoImportProgress —— 导致
+  // 第三个 effect 的 douyinImportStatus === 'done' 信号永远收不到,workflow 不起跑;
+  // 下载结束后 completeTask 让 douyinTask.status != 'active',overlay 回落到
+  // STEP_LABELS['idle']='准备中' 并卡死。本测试确保同步调用存在。
+  it('syncs every douyin progress snapshot into script store videoImportProgress', () => {
+    expect(source).toMatch(
+      /onDouyinImportProgress\([\s\S]*?setVideoImportProgress\(snapshot\)/,
+    );
+  });
+
+  // 回归:离开 auto-run 的每条路径都要清 videoImportProgress,避免下次进入
+  // 时残留 status='done' 让第三个 effect 立即起跑 workflow。
+  it('clears videoImportProgress on done / cancel / jump paths', () => {
+    const occurrences = source.match(/clearVideoImportState\(\)/g) ?? [];
+    // done 分支 + 取消分支 + handleCancel + onJumpToScriptWorkbench + onJumpToEditor
+    expect(occurrences.length).toBeGreaterThanOrEqual(4);
+  });
 });
