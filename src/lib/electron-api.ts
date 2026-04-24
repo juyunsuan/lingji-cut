@@ -125,6 +125,8 @@ export interface RecentProjectEntry {
 export interface ElectronAPI {
   parseSrtFile: (filePath: string) => Promise<{ entries: SrtEntry[]; durationMs: number }>;
   getAudioDuration: (filePath: string) => Promise<number>;
+  /** 返回文件的 mtime（毫秒整数）。文件不存在或读取失败时返回 null。 */
+  getFileMtime: (filePath: string) => Promise<number | null>;
   analyzeSrt: (args: {
     entries?: SrtEntry[];
     srtContent?: string;

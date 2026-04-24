@@ -150,6 +150,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('save-script-file', projectDir, filename, content),
   loadScriptFile: (projectDir: string, filename: string) =>
     ipcRenderer.invoke('load-script-file', projectDir, filename),
+  getFileMtime: (filePath: string) =>
+    ipcRenderer.invoke('get-file-mtime', filePath) as Promise<number | null>,
   saveScriptState: (projectDir: string, state: string) =>
     ipcRenderer.invoke('save-script-state', projectDir, state),
   loadScriptState: (projectDir: string) =>

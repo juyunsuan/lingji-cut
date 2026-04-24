@@ -593,6 +593,16 @@ ipcMain.handle('get-audio-duration', async (_event, filePath: string) => {
   return Math.max(1_000, Math.round((metadata.durationInSeconds ?? 0) * 1000));
 });
 
+ipcMain.handle('get-file-mtime', async (_event, filePath: string) => {
+  if (!filePath) return null;
+  try {
+    const stat = await fs.stat(filePath);
+    return Math.round(stat.mtimeMs);
+  } catch {
+    return null;
+  }
+});
+
 ipcMain.handle(
   'analyze-srt',
   async (
