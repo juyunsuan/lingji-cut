@@ -17,18 +17,19 @@ vi.mock('../src/components/AssetPanel', () => ({
   AssetPanel: (props: {
     onUseAsPodcastAudio?: () => Promise<void>;
     onUseAsPodcastSrt?: () => Promise<void>;
-    showAIClip?: boolean;
-    onStartAIClip?: () => void;
   }) => (
     <div
       data-asset-audio-hook={String(Boolean(props.onUseAsPodcastAudio))}
       data-asset-srt-hook={String(Boolean(props.onUseAsPodcastSrt))}
     >
       asset-panel
-      {props.showAIClip && props.onStartAIClip ? (
-        <button type="button" onClick={props.onStartAIClip}>AI 一键剪辑</button>
-      ) : null}
     </div>
+  ),
+}));
+
+vi.mock('../src/components/AutoRunLauncher', () => ({
+  AutoRunLauncher: (props: { projectDir: string }) => (
+    <div data-auto-run-launcher-project-dir={props.projectDir}>auto-run-launcher</div>
   ),
 }));
 
@@ -134,7 +135,7 @@ describe('Editor', () => {
     expect(html).toContain('data-asset-srt-hook="true"');
   });
 
-  it('renders AI one-click clip button when project dir is available', async () => {
+  it('mounts the AutoRunLauncher banner when project dir and setPage are provided', async () => {
     const rendered = await (async () => {
       const { Editor } = await import('../src/pages/Editor');
       return renderToStaticMarkup(
@@ -145,11 +146,12 @@ describe('Editor', () => {
           onUseAsPodcastSrt={async () => undefined}
           exportRequestToken={0}
           projectDir="/tmp/project"
+          setPage={() => undefined}
         />,
       );
     })();
 
-    expect(rendered).toContain('AI 一键剪辑');
+    expect(rendered).toContain('data-auto-run-launcher-project-dir="/tmp/project"');
   });
 
   it('passes retry support and timeline compact flag into the AI overlay', async () => {

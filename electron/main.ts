@@ -845,7 +845,11 @@ ipcMain.handle(
   'save-project-section',
   async (_event, projectDir: string, section: string, data: string) => {
     const parsed = JSON.parse(data);
-    await saveProjectSection(projectDir, section as 'timeline' | 'aiAnalysis' | 'script', parsed);
+    await saveProjectSection(
+      projectDir,
+      section as 'timeline' | 'aiAnalysis' | 'script' | 'workflowMeta',
+      parsed,
+    );
   },
 );
 

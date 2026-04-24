@@ -20,11 +20,15 @@ import {
 } from '../ui';
 import { ProjectList } from '../components/ProjectList';
 import { ImportScriptDialog } from '../components/script/ImportScriptDialog';
-import { AutoModeSection } from '../components/script/AutoModeSection';
+import {
+  AutoModeSection,
+  type AutoModeModelBinding,
+  type AutoModeOption,
+} from '../components/script/AutoModeSection';
+import type { AISettings } from '../types/ai';
 import { useScriptStore } from '../store/script';
 import { loadAISettings, type AutoWorkflowParams } from '../store/ai';
 import { MINIMAX_SYSTEM_VOICES } from '../lib/minimax-voices';
-import { SCRIPT_TEMPLATE_SEEDS } from '../lib/prompts/script-template-defaults';
 import { getAllRoles } from '../lib/script-templates';
 import heroBg from '../assets/hero-bg.png';
 import styles from './Setup.module.css';
@@ -37,22 +41,24 @@ interface SetupProps {
   onComplete: (audioPath: string, srtPath: string) => Promise<void>;
   onOpenRecentProject: (projectDir: string) => Promise<void>;
   onRemoveRecentProject?: (projectDir: string) => Promise<void> | void;
-  /** 文稿导入完成回调：传入父目录、项目名、原稿内容、是否一键成稿与自动模式参数 */
+  /** 文稿导入完成回调：传入父目录、项目名、原稿内容、是否一键成稿、自动模式参数、写稿模型绑定 */
   onImportScript: (
     parentDir: string,
     projectName: string,
     content: string,
     autoMode: boolean,
     autoParams: AutoWorkflowParams,
+    modelBinding: AutoModeModelBinding | null,
   ) => Promise<void>;
   onOpenSettings: () => void;
-  /** 抖音导入完成回调：传入父目录、标题、原始链接、是否一键成稿与自动模式参数 */
+  /** 抖音导入完成回调：传入父目录、标题、原始链接、是否一键成稿、自动模式参数、写稿模型绑定 */
   onDouyinImport: (
     parentDir: string,
     title: string,
     douyinUrl: string,
     autoMode: boolean,
     autoParams: AutoWorkflowParams,
+    modelBinding: AutoModeModelBinding | null,
   ) => Promise<void>;
   /** 导入项目回调：打开导入项目向导（处理跨机器项目目录识别与路径修复） */
   onImportProject: () => void;
@@ -103,37 +109,60 @@ export function Setup({
   const selectedTemplate = useScriptStore((s) => s.selectedTemplate);
   const selectedRole = useScriptStore((s) => s.selectedRole);
   const [voiceIdDefault, setVoiceIdDefault] = useState('male-qn-qingse');
+  const [aiSettings, setAiSettings] = useState<AISettings | null>(null);
   useEffect(() => {
     void (async () => {
       const settings = await loadAISettings();
-      if (settings?.minimaxVoiceId) setVoiceIdDefault(settings.minimaxVoiceId);
+      if (!settings) return;
+      setAiSettings(settings);
+      if (settings.minimaxVoiceId) setVoiceIdDefault(settings.minimaxVoiceId);
     })();
   }, []);
 
-  const autoModeOptions = useMemo(
-    () => ({
-      templates: SCRIPT_TEMPLATE_SEEDS.map((t) => ({ value: t.id, label: t.name })),
-      // getAllRoles() 已经在头部包含 NONE_ROLE（id='none'），这里直接映射即可
+  const autoModeOptions = useMemo(() => {
+    const models: AutoModeOption[] = [];
+    for (const provider of aiSettings?.llmProviders ?? []) {
+      for (const model of provider.models ?? []) {
+        models.push({
+          value: `${provider.id}::${model}`,
+          label: `${provider.name} / ${model}`,
+        });
+      }
+    }
+    const defaultModelBinding: AutoModeModelBinding | null =
+      aiSettings?.defaultProviderId && aiSettings?.defaultModel
+        ? { providerId: aiSettings.defaultProviderId, model: aiSettings.defaultModel }
+        : null;
+    return {
+      // getAllRoles() 已合并：NONE_ROLE + 内置模板（派生角色）+ 用户自定义角色，
+      // 与 AI 写稿工作台 QuickActionBar 的角色下拉保持一致口径。
       roles: getAllRoles().map((r) => ({ value: r.id, label: r.name })),
       voices: MINIMAX_SYSTEM_VOICES.map((v) => ({ value: v.voiceId, label: v.name })),
+      models,
       defaults: {
+        // templateId 在 UI 上不再暴露；沿用当前工作台选中的模板作为写稿结构，
+        // role 作为风格/身份前缀。与 ScriptWorkbench 运行时口径一致。
         templateId: selectedTemplate || 'news-broadcast',
         roleId: selectedRole || 'none',
         voiceId: voiceIdDefault,
       } satisfies AutoWorkflowParams,
-    }),
-    [selectedTemplate, selectedRole, voiceIdDefault],
-  );
+      defaultModelBinding,
+    };
+  }, [aiSettings, selectedTemplate, selectedRole, voiceIdDefault]);
 
   // ── 抖音弹窗的一键成稿状态 ──
   const [douyinAutoMode, setDouyinAutoMode] = useState(false);
   const [douyinAutoParams, setDouyinAutoParams] = useState<AutoWorkflowParams>(autoModeOptions.defaults);
+  const [douyinModelBinding, setDouyinModelBinding] = useState<AutoModeModelBinding | null>(
+    autoModeOptions.defaultModelBinding,
+  );
   useEffect(() => {
     if (!douyinDialogOpen) {
       setDouyinAutoMode(false);
       setDouyinAutoParams(autoModeOptions.defaults);
+      setDouyinModelBinding(autoModeOptions.defaultModelBinding);
     }
-  }, [douyinDialogOpen, autoModeOptions.defaults]);
+  }, [douyinDialogOpen, autoModeOptions.defaults, autoModeOptions.defaultModelBinding]);
 
   const canImport = useMemo(
     () => Boolean(selectedAudio && selectedSrt && !busy),
@@ -161,11 +190,12 @@ export function Setup({
       content: string,
       autoMode: boolean,
       autoParams: AutoWorkflowParams,
+      modelBinding: AutoModeModelBinding | null,
     ) => {
       setImportScriptCreating(true);
       setImportScriptError(null);
       try {
-        await onImportScript(parentDir, projectNameInput, content, autoMode, autoParams);
+        await onImportScript(parentDir, projectNameInput, content, autoMode, autoParams, modelBinding);
         setImportScriptOpen(false);
       } catch (err) {
         setImportScriptError(err instanceof Error ? err.message : '创建项目失败');
@@ -223,6 +253,7 @@ export function Setup({
         douyinUrl.trim(),
         douyinAutoMode,
         douyinAutoParams,
+        douyinAutoMode ? douyinModelBinding : null,
       );
       setDouyinDialogOpen(false);
     } catch (err) {
@@ -230,7 +261,7 @@ export function Setup({
     } finally {
       setDouyinCreating(false);
     }
-  }, [douyinTitle, douyinParentDir, douyinUrl, douyinAutoMode, douyinAutoParams, onDouyinImport]);
+  }, [douyinTitle, douyinParentDir, douyinUrl, douyinAutoMode, douyinAutoParams, douyinModelBinding, onDouyinImport]);
 
   const canCreateDouyinProject = Boolean(douyinTitle && douyinParentDir && !douyinCreating);
 
@@ -573,9 +604,11 @@ export function Setup({
                   onToggle={setDouyinAutoMode}
                   params={douyinAutoParams}
                   onChangeParams={setDouyinAutoParams}
-                  templateOptions={autoModeOptions.templates}
                   roleOptions={autoModeOptions.roles}
                   voiceOptions={autoModeOptions.voices}
+                  modelOptions={autoModeOptions.models}
+                  modelBinding={douyinModelBinding}
+                  onChangeModelBinding={setDouyinModelBinding}
                 />
               </div>
             )}

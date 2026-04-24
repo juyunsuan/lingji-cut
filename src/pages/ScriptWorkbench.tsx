@@ -3,7 +3,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { EditorView } from '@codemirror/view';
 import { AppIcon } from '../components/AppIcon';
 import { useAIVideoWorkflow } from '../hooks/useAIVideoWorkflow';
-import type { FileEntry } from '../lib/electron-api';
+import type { AppPage, FileEntry } from '../lib/electron-api';
+import { AutoRunLauncher } from '../components/AutoRunLauncher';
 import {
   createPersistedScriptState,
   isSavingFile,
@@ -63,17 +64,14 @@ import styles from './ScriptWorkbench.module.css';
 interface ScriptWorkbenchProps {
   onBack: () => void;
   onNavigateToEditor?: () => void;
+  /** 供 AutoRunLauncher 跳到 auto-run 页 */
+  setPage?: (next: AppPage) => void;
 }
 
 const SPECIAL_FILES = new Set(['original.md', 'script.md']);
 
-export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchProps) {
-  const {
-    start: startWorkflow,
-    cancel: cancelWorkflow,
-    retry: retryWorkflow,
-    workflow,
-  } = useAIVideoWorkflow();
+export function ScriptWorkbench({ onBack, onNavigateToEditor, setPage }: ScriptWorkbenchProps) {
+  const { workflow } = useAIVideoWorkflow();
   const {
     originalText,
     scriptText,
@@ -1259,13 +1257,6 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
     }
   }, [openDrawer, scriptText, setAnnotations, setReviewing]);
 
-  const handleGenerateVideo = useCallback(() => {
-    if (!scriptText.trim()) {
-      return;
-    }
-
-    startWorkflow(scriptText, { pauseAfterTts: true });
-  }, [scriptText, startWorkflow]);
 
   const handleUseExternalVersion = useCallback(
     (file: string) => {
@@ -1683,7 +1674,12 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
           {/* 版本预览横幅 */}
           <VersionPreviewBar />
 
-          {/* 快捷操作栏：根据工作流状态展示导入/生成/审稿等操作 */}
+          {/* AI 一键剪辑入口：两个页面共用的统一横幅 */}
+          {projectDir && setPage ? (
+            <AutoRunLauncher projectDir={projectDir} setPage={setPage} />
+          ) : null}
+
+          {/* 快捷操作栏：导入文稿 / 抖音视频 */}
           {projectDir && (
             <QuickActionBar
               onImportText={() => { void handleImportText(); }}
@@ -1693,90 +1689,20 @@ export function ScriptWorkbench({ onBack, onNavigateToEditor }: ScriptWorkbenchP
               }}
             />
           )}
-          {projectDir ? (
+          {projectDir && hasDouyinDetailAction && (workflow.step === 'idle' || workflow.step === 'error') && !hasAICardOverlays ? (
             <div className={styles.workflowBar}>
-              {(workflow.step === 'idle' ||
-                workflow.step === 'error') &&
-                !hasAICardOverlays ? (
-                <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!scriptText.trim()}
-                    className={styles.workflowButton}
-                    onClick={handleGenerateVideo}
-                  >
-                    <AppIcon name="film" size={14} />
-                    <span>生成视频</span>
-                  </Button>
-                  {hasDouyinDetailAction ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={styles.workflowButton}
-                      onClick={handleOpenImportPreview}
-                    >
-                      <AppIcon name="folder-open" size={14} />
-                      <span>查看抖音详情</span>
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
-              {workflow.step !== 'idle' &&
-              workflow.step !== 'done' &&
-              workflow.step !== 'error' ? (
-                <div className={styles.workflowStatus}>
-                  <span>AI 视频流程进行中</span>
-                  <span>{workflow.stepLabel} {Math.round(workflow.progress)}%</span>
-                </div>
-              ) : null}
-              {workflow.step === 'error' && workflow.error ? (
-                <div className={styles.workflowError}>{workflow.error}</div>
-              ) : null}
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.workflowButton}
+                onClick={handleOpenImportPreview}
+              >
+                <AppIcon name="folder-open" size={14} />
+                <span>查看抖音详情</span>
+              </Button>
             </div>
           ) : null}
           <div className={styles.editorBody}>
-            {workflow.step !== 'idle' && workflow.step !== 'done' ? (
-              <div className={styles.workflowOverlay}>
-                <div className={styles.workflowOverlayCard}>
-                  <div className={styles.workflowOverlayHeader}>
-                    <span className={styles.workflowOverlayTitle}>
-                      {workflow.step === 'error' ? 'AI 视频流程已中断' : 'AI 正在生成视频草稿'}
-                    </span>
-                    <span className={styles.workflowOverlayMeta}>
-                      {workflow.step === 'error'
-                        ? workflow.error ?? '发生未知错误'
-                        : `${workflow.stepLabel} ${Math.round(workflow.progress)}%`}
-                    </span>
-                  </div>
-                  {workflow.step !== 'error' ? (
-                    <div className={styles.workflowOverlayProgressTrack}>
-                      <div
-                        className={styles.workflowOverlayProgressValue}
-                        style={{ width: `${workflow.progress}%` }}
-                      />
-                    </div>
-                  ) : null}
-                  <div className={styles.workflowOverlayActions}>
-                    {workflow.canCancel ? (
-                      <Button variant="ghost" size="sm" onClick={cancelWorkflow}>
-                        取消
-                      </Button>
-                    ) : null}
-                    {workflow.step === 'error' ? (
-                      <>
-                        <Button variant="secondary" size="sm" onClick={retryWorkflow}>
-                          断点重试
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={cancelWorkflow}>
-                          关闭
-                        </Button>
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            ) : null}
             {activeFile && fileConflictMap[activeFile] ? (
               <div className={styles.conflictBanner}>
                 <div className={styles.conflictBannerText}>

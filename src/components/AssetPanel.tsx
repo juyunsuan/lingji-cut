@@ -212,8 +212,6 @@ export function AssetPanel({
   onUseAsPodcastSrt,
   onReplaceAudio,
   onReplaceSrt,
-  showAIClip,
-  onStartAIClip,
   onRegeneratePodcastFromScript,
   regeneratePodcastFromScriptDisabled,
 }: {
@@ -226,8 +224,6 @@ export function AssetPanel({
   onUseAsPodcastSrt?: (path: string) => Promise<void>;
   onReplaceAudio?: () => Promise<void>;
   onReplaceSrt?: () => Promise<void>;
-  showAIClip?: boolean;
-  onStartAIClip?: () => void;
   onRegeneratePodcastFromScript?: () => void;
   regeneratePodcastFromScriptDisabled?: boolean;
 }) {
@@ -354,19 +350,6 @@ export function AssetPanel({
       onDragLeave={handleDragLeave}
       onDrop={(event) => void handleDrop(event)}
     >
-      {showAIClip && onStartAIClip ? (
-        <div className={styles.aiClipCard}>
-          <Button
-            variant="primary"
-            size="sm"
-            fullWidth
-            leftIcon={<AppIcon name="sparkles" size={13} />}
-            onClick={onStartAIClip}
-          >
-            AI 一键剪辑
-          </Button>
-        </div>
-      ) : null}
       <PodcastResourceSection
         compact={compact}
         expanded={podcastExpanded}

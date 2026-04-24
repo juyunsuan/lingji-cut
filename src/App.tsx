@@ -31,6 +31,7 @@ import type { ProjectData } from './lib/project-persistence';
 import { useScriptStore } from './store/script';
 import { getRoleById } from './lib/script-templates';
 import { SCRIPT_TEMPLATE_SEEDS } from './lib/prompts/script-template-defaults';
+import { userPromptBindingKey } from './lib/prompts';
 import {
   clearCurrentProject,
   getCurrentProjectDir,
@@ -590,6 +591,7 @@ export default function App() {
       content: string,
       autoMode: boolean,
       autoParams: AutoWorkflowParams,
+      modelBinding: { providerId: string; model: string } | null,
     ) => {
       const trimmedName = projectName.trim();
       if (!parentDir || !trimmedName) {
@@ -614,6 +616,20 @@ export default function App() {
       if (autoMode) {
         // 先把原稿落盘——失败时直接抛出，pendingAutoParams 不会被污染
         await window.electronAPI.saveScriptFile(projectDir, 'original.md', content);
+        // 把用户在导入弹窗选择的写稿模型写入项目绑定，
+        // 供 auto-run 起跑时 generateScriptDraft 解析使用。
+        if (modelBinding) {
+          await useAIStore.getState().loadProjectBindings(projectDir);
+          await useAIStore.getState().setProjectBinding(
+            userPromptBindingKey('script-template', autoParams.templateId),
+            {
+              providerId: modelBinding.providerId,
+              model: modelBinding.model,
+              imageProviderId: null,
+              imageModel: null,
+            },
+          );
+        }
         useAIStore.getState().setPendingAutoParams(autoParams);
         // 同时清掉 pending，否则进 ScriptWorkbench 时会被原写稿流程消费
         useScriptStore.getState().setPendingImportedScript(null);
@@ -637,6 +653,7 @@ export default function App() {
     douyinUrl: string,
     autoMode: boolean,
     autoParams: AutoWorkflowParams,
+    modelBinding: { providerId: string; model: string } | null,
   ) => {
     const projectDir = `${parentDir}/${title}`;
 
@@ -655,6 +672,18 @@ export default function App() {
     setSetupError(null);
 
     if (autoMode) {
+      if (modelBinding) {
+        await useAIStore.getState().loadProjectBindings(projectDir);
+        await useAIStore.getState().setProjectBinding(
+          userPromptBindingKey('script-template', autoParams.templateId),
+          {
+            providerId: modelBinding.providerId,
+            model: modelBinding.model,
+            imageProviderId: null,
+            imageModel: null,
+          },
+        );
+      }
       useAIStore.getState().setPendingAutoParams(autoParams);
       // 注意：pendingDouyinUrl 不在这里清理，由 AutoRunController（Task 10/11）
       // 在抖音下载启动后自行清掉，避免 ScriptWorkbench 后续误消费
@@ -1080,6 +1109,7 @@ export default function App() {
                     <ScriptWorkbench
                       onBack={() => setPage('welcome')}
                       onNavigateToEditor={() => setPage('editor')}
+                      setPage={setPage}
                     />
                   </div>
                   <div style={{ display: page === 'editor' ? 'contents' : 'none' }}>
@@ -1091,6 +1121,7 @@ export default function App() {
                       exportRequestToken={exportRequestToken}
                       projectDir={currentProjectDir}
                       isActive={page === 'editor'}
+                      setPage={setPage}
                     />
                   </div>
                 </>

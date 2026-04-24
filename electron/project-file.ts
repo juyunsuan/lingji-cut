@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import {
+  DEFAULT_WORKFLOW_META,
   createDefaultProjectData,
   mergeProjectSection,
   type ProjectData,
@@ -112,7 +113,9 @@ async function hydrateExistingProjectData(projectDir: string, data: ProjectData)
     motionCards: [],
     storyboardPlan: null,
   };
-  if (Array.isArray(currentAI.motionCards)) {
+  const hasMotionCards = Array.isArray(currentAI.motionCards);
+  const hasWorkflowMeta = data.workflowMeta !== undefined;
+  if (hasMotionCards && hasWorkflowMeta) {
     return data;
   }
   const nextData: ProjectData = {
@@ -120,9 +123,10 @@ async function hydrateExistingProjectData(projectDir: string, data: ProjectData)
     aiAnalysis: {
       analysisResult: currentAI.analysisResult ?? null,
       coverCandidates: currentAI.coverCandidates ?? [],
-      motionCards: [],
+      motionCards: hasMotionCards ? currentAI.motionCards : [],
       storyboardPlan: currentAI.storyboardPlan ?? null,
     },
+    workflowMeta: hasWorkflowMeta ? data.workflowMeta : { ...DEFAULT_WORKFLOW_META },
   };
 
   await writeProjectJson(projectDir, nextData);

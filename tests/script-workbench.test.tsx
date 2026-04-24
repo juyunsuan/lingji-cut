@@ -105,14 +105,17 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('onNavigateToEditor');
   });
 
-  it('includes a generate video action in the workbench shell', () => {
+  it('mounts the AutoRunLauncher as the unified AI 一键剪辑 entry', () => {
     const source = readFileSync(
       new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
       'utf8',
     );
 
-    expect(source).toContain('生成视频');
+    expect(source).toContain('AutoRunLauncher');
     expect(source).toContain('useAIVideoWorkflow');
+    // 老的"生成视频"按钮和 handleGenerateVideo 已移除
+    expect(source).not.toContain('生成视频');
+    expect(source).not.toContain('handleGenerateVideo');
   });
 
   it('declares a quick douyin detail action beside the AI video workflow entry', () => {
@@ -126,15 +129,14 @@ describe('ScriptWorkbench', () => {
     expect(source).toContain('handleOpenImportPreview');
   });
 
-  it('renders workflow overlay controls for cancel and retry', () => {
+  it('no longer renders inline workflow overlay (progress now lives on the auto-run page)', () => {
     const source = readFileSync(
       new URL('../src/pages/ScriptWorkbench.tsx', import.meta.url),
       'utf8',
     );
 
-    expect(source).toContain('workflowOverlay');
-    expect(source).toContain('断点重试');
-    expect(source).toContain('cancelWorkflow');
+    expect(source).not.toContain('workflowOverlay');
+    expect(source).not.toContain('断点重试');
   });
 
   it('wires a douyin import dialog into the workbench shell', () => {

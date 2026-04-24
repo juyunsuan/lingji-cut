@@ -5,6 +5,10 @@
 // 做结构断言；对受控组件的 onToggle / onChangeParams 行为，通过直接
 // 调用 React 元素树上的 props 函数进行验证（组件本身是纯函数式的、
 // 无内部状态）。
+//
+// AutoModeSection 现已迁移至系统 UI 组件库（Checkbox / Select），
+// 不再渲染原生 <input type="checkbox"> / <select> 的语义结构，
+// 因此本测试通过 React 元素树（而非 SSR HTML 文本）验证受控行为。
 import { describe, expect, it, vi } from 'vitest';
 import { isValidElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -16,12 +20,10 @@ function makeBaseProps(overrides: Partial<AutoModeSectionProps> = {}): AutoModeS
     onToggle: vi.fn(),
     params: { templateId: 'news-broadcast', roleId: 'none', voiceId: 'female-shaonv' },
     onChangeParams: vi.fn(),
-    templateOptions: [
-      { value: 'news-broadcast', label: '新闻播报' },
-      { value: 'casual-talk', label: '轻松对话' },
-    ],
+    // roleOptions 由父组件从 getAllRoles() 派生，已合并内置模板 + 自定义角色
     roleOptions: [
-      { value: 'none', label: '默认' },
+      { value: 'none', label: '不指定角色' },
+      { value: 'news-broadcast', label: '新闻播报' },
       { value: 'host', label: '主播' },
     ],
     voiceOptions: [
@@ -33,7 +35,7 @@ function makeBaseProps(overrides: Partial<AutoModeSectionProps> = {}): AutoModeS
 }
 
 /**
- * 在 React 元素树中按 aria-label 查找第一个匹配节点，
+ * 在 React 元素树中按 aria-label 查找首个匹配节点，
  * 用于在不依赖 DOM 的情况下读取受控组件的 props（含 onChange）。
  */
 function findByAriaLabel(node: unknown, ariaLabel: string): ReactElement | null {
@@ -59,46 +61,98 @@ function findByAriaLabel(node: unknown, ariaLabel: string): ReactElement | null 
 describe('AutoModeSection', () => {
   it('renders the toggle and hides params when disabled', () => {
     const html = renderToStaticMarkup(<AutoModeSection {...makeBaseProps()} />);
-    // 复选框存在且未勾选
+    // 系统 Checkbox 内部仍渲染 type="checkbox" 的隐藏 input，未勾选时无 checked 属性
     expect(html).toContain('type="checkbox"');
     expect(html).not.toMatch(/type="checkbox"[^>]*checked/);
+    // 标题与说明可读
     expect(html).toContain('一键成稿');
-    // 未启用时不渲染参数下拉
-    expect(html).not.toContain('aria-label="写稿模板"');
-    expect(html).not.toContain('aria-label="写稿角色"');
-    expect(html).not.toContain('aria-label="TTS 音色"');
+    expect(html).toContain('写稿');
+    // 未启用时不渲染参数下拉文案
+    expect(html).not.toContain('不指定角色');
+    expect(html).not.toContain('少女音');
   });
 
   it('toggling fires onToggle with the new boolean state', () => {
     const onToggle = vi.fn();
     const tree = AutoModeSection(makeBaseProps({ onToggle }));
-    const handler = findCheckboxOnChange(tree);
-    expect(handler).toBeTypeOf('function');
-    handler!({ target: { checked: true } } as unknown as React.ChangeEvent<HTMLInputElement>);
+    const checkbox = findByAriaLabel(tree, '启用一键成稿');
+    expect(checkbox).not.toBeNull();
+    const onChange = (checkbox!.props as { onChange: (next: boolean) => void }).onChange;
+    expect(onChange).toBeTypeOf('function');
+    onChange(true);
     expect(onToggle).toHaveBeenCalledWith(true);
-    handler!({ target: { checked: false } } as unknown as React.ChangeEvent<HTMLInputElement>);
+    onChange(false);
     expect(onToggle).toHaveBeenLastCalledWith(false);
   });
 
-  it('shows params when enabled and renders the current selections', () => {
+  it('shows params when enabled and reflects current selections', () => {
+    const props = makeBaseProps({ enabled: true });
+    const html = renderToStaticMarkup(<AutoModeSection {...props} />);
+    // 启用态：隐藏 input 带 checked
+    expect(html).toMatch(/type="checkbox"[^>]*checked/);
+    // 两个下拉的当前选中文案在系统 Select 触发器中可见
+    expect(html).toContain('不指定角色');
+    expect(html).toContain('少女音');
+
+    // 元素树层面校验 Select 的 value 与 options 已正确传入
+    const tree = AutoModeSection(props);
+    // 重构后不再单独暴露 "写稿模板"：与 AI 写稿工作台保持一致，只保留角色 + 音色
+    expect(findByAriaLabel(tree, '写稿模板')).toBeNull();
+    const role = findByAriaLabel(tree, '写稿角色');
+    const voice = findByAriaLabel(tree, 'TTS 音色');
+    expect(role).not.toBeNull();
+    expect(voice).not.toBeNull();
+    expect((role!.props as { value: string }).value).toBe('none');
+    expect((voice!.props as { value: string }).value).toBe('female-shaonv');
+  });
+
+  it("mode='always' 时不渲染 checkbox，字段始终展开", () => {
+    const html = renderToStaticMarkup(
+      <AutoModeSection
+        {...makeBaseProps({ mode: 'always', enabled: false })}
+      />,
+    );
+    // always 模式不再渲染 Checkbox（也就没有隐藏 input type=checkbox）
+    expect(html).not.toContain('type="checkbox"');
+    // 字段区始终展开
+    expect(html).toContain('不指定角色');
+    expect(html).toContain('少女音');
+  });
+
+  it('传入 modelOptions 时渲染写稿模型字段，并通过 onChangeModelBinding 回传解码后的绑定', () => {
+    const onChangeModelBinding = vi.fn();
+    const props = makeBaseProps({
+      mode: 'always',
+      modelOptions: [
+        { value: 'p1::gpt-5.4', label: 'Provider 1 / gpt-5.4' },
+        { value: 'p2::claude-sonnet-4-6', label: 'Provider 2 / claude-sonnet-4-6' },
+      ],
+      modelBinding: { providerId: 'p1', model: 'gpt-5.4' },
+      onChangeModelBinding,
+    });
+    const html = renderToStaticMarkup(<AutoModeSection {...props} />);
+    expect(html).toContain('写稿模型');
+    expect(html).toContain('Provider 1 / gpt-5.4');
+
+    const tree = AutoModeSection(props);
+    const modelSelect = findByAriaLabel(tree, '写稿模型');
+    expect(modelSelect).not.toBeNull();
+    expect((modelSelect!.props as { value: string }).value).toBe('p1::gpt-5.4');
+    const onChange = (modelSelect!.props as {
+      onChange: (e: { target: { value: string } }) => void;
+    }).onChange;
+    onChange({ target: { value: 'p2::claude-sonnet-4-6' } });
+    expect(onChangeModelBinding).toHaveBeenCalledWith({
+      providerId: 'p2',
+      model: 'claude-sonnet-4-6',
+    });
+  });
+
+  it('未传 modelOptions 时不渲染写稿模型字段（向后兼容）', () => {
     const html = renderToStaticMarkup(
       <AutoModeSection {...makeBaseProps({ enabled: true })} />,
     );
-    // 复选框为勾选态
-    expect(html).toMatch(/type="checkbox"[^>]*checked/);
-    // 三个下拉均渲染
-    expect(html).toContain('aria-label="写稿模板"');
-    expect(html).toContain('aria-label="写稿角色"');
-    expect(html).toContain('aria-label="TTS 音色"');
-    // option 文案
-    expect(html).toContain('新闻播报');
-    expect(html).toContain('轻松对话');
-    expect(html).toContain('少女音');
-    expect(html).toContain('青涩青年男声');
-    // 当前选中项被标记 selected
-    expect(html).toMatch(/<option[^>]*value="news-broadcast"[^>]*selected/);
-    expect(html).toMatch(/<option[^>]*value="none"[^>]*selected/);
-    expect(html).toMatch(/<option[^>]*value="female-shaonv"[^>]*selected/);
+    expect(html).not.toContain('写稿模型');
   });
 
   it('emits onChangeParams with merged patch when a select changes', () => {
@@ -108,7 +162,7 @@ describe('AutoModeSection', () => {
     );
     const voice = findByAriaLabel(tree, 'TTS 音色');
     expect(voice).not.toBeNull();
-    const onChange = (voice!.props as { onChange: (e: unknown) => void }).onChange;
+    const onChange = (voice!.props as { onChange: (e: { target: { value: string } }) => void }).onChange;
     onChange({ target: { value: 'male-qn-qingse' } });
     expect(onChangeParams).toHaveBeenCalledWith({
       templateId: 'news-broadcast',
@@ -116,44 +170,14 @@ describe('AutoModeSection', () => {
       voiceId: 'male-qn-qingse',
     });
 
-    const template = findByAriaLabel(tree, '写稿模板');
-    expect(template).not.toBeNull();
-    const onTemplateChange = (template!.props as { onChange: (e: unknown) => void }).onChange;
-    onTemplateChange({ target: { value: 'casual-talk' } });
+    const role = findByAriaLabel(tree, '写稿角色');
+    expect(role).not.toBeNull();
+    const onRoleChange = (role!.props as { onChange: (e: { target: { value: string } }) => void }).onChange;
+    onRoleChange({ target: { value: 'host' } });
     expect(onChangeParams).toHaveBeenLastCalledWith({
-      templateId: 'casual-talk',
-      roleId: 'none',
+      templateId: 'news-broadcast',
+      roleId: 'host',
       voiceId: 'female-shaonv',
     });
   });
 });
-
-/**
- * 沿元素树查找首个 `<input type="checkbox">` 的 onChange 回调。
- */
-function findCheckboxOnChange(
-  node: unknown,
-): ((e: React.ChangeEvent<HTMLInputElement>) => void) | null {
-  if (!node || typeof node !== 'object') return null;
-  if (Array.isArray(node)) {
-    for (const child of node) {
-      const hit = findCheckboxOnChange(child);
-      if (hit) return hit;
-    }
-    return null;
-  }
-  if (!isValidElement(node)) return null;
-  const props = node.props as Record<string, unknown> | null;
-  if (
-    node.type === 'input' &&
-    props &&
-    props.type === 'checkbox' &&
-    typeof props.onChange === 'function'
-  ) {
-    return props.onChange as (e: React.ChangeEvent<HTMLInputElement>) => void;
-  }
-  if (props && 'children' in props) {
-    return findCheckboxOnChange(props.children);
-  }
-  return null;
-}

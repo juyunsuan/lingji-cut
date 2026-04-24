@@ -109,7 +109,7 @@ describe('useAIVideoWorkflow autoMode wiring (source contract)', () => {
     expect(source).toContain('autoMode?: boolean');
     expect(source).toContain('autoParams?: AutoWorkflowParams');
     expect(source).toContain('originalText?: string');
-    expect(source).toMatch(/startFromStep\?:\s*Extract<\s*WorkflowStep,\s*'tts_generating'\s*\|\s*'ai_analyzing'\s*\|\s*'script_generating'\s*>/);
+    expect(source).toMatch(/startFromStep\?:\s*Extract<\s*WorkflowStep,\s*'script_generating'\s*\|\s*'tts_generating'\s*\|\s*'ai_analyzing'\s*\|\s*'cover_generating'\s*\|\s*'arranging'\s*>/);
   });
 
   it('extends WorkflowSessionState with autoMode/autoParams/originalText fields', () => {

@@ -2,6 +2,12 @@ import { useCallback } from 'react';
 import { runScriptGenerating } from '../lib/auto-workflow';
 import { createPersistedAIState, selectCoverCandidate } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
+import {
+  DEFAULT_WORKFLOW_META,
+  type ProjectData,
+  type ProjectWorkflowMeta,
+} from '../lib/project-persistence';
+import { hashScriptForPodcast } from '../lib/script-hash';
 import { serializeSrtEntries } from '../lib/srt-parser';
 import { generateSubtitleHighlights } from '../lib/subtitle-highlight-runner';
 import {
@@ -29,7 +35,7 @@ interface WorkflowStartOptions {
   ttsOnly?: boolean;
   startFromStep?: Extract<
     WorkflowStep,
-    'tts_generating' | 'ai_analyzing' | 'script_generating'
+    'script_generating' | 'tts_generating' | 'ai_analyzing' | 'cover_generating' | 'arranging'
   >;
   /** autoMode：从 script_generating 开始的一键全流程 */
   autoMode?: boolean;
@@ -244,6 +250,40 @@ async function hydrateReusablePodcastMedia(): Promise<void> {
         ? timelineState.timeline.podcast.durationMs
         : durationMs,
   );
+}
+
+/**
+ * 读取项目当前 workflowMeta 并合并 patch 后写回。
+ * 避免不同调用点各自全量覆盖丢掉彼此写入的字段
+ * （例如 autoMode 启动写入 lastAutoParams 时不应清空 lastPodcastScriptHash）。
+ */
+async function patchWorkflowMeta(
+  projectDir: string,
+  patch: Partial<ProjectWorkflowMeta>,
+): Promise<void> {
+  if (!projectDir) {
+    return;
+  }
+
+  let current: ProjectWorkflowMeta = { ...DEFAULT_WORKFLOW_META };
+  try {
+    const raw = await window.electronAPI.loadProject(projectDir);
+    const parsed = JSON.parse(raw) as ProjectData;
+    current = { ...DEFAULT_WORKFLOW_META, ...(parsed.workflowMeta ?? {}) };
+  } catch {
+    // 首次写入或项目文件不可读时使用默认值；忽略错误以不阻塞主流程
+  }
+
+  const next: ProjectWorkflowMeta = { ...current, ...patch };
+  try {
+    await window.electronAPI.saveProjectSection(
+      projectDir,
+      'workflowMeta',
+      JSON.stringify(next),
+    );
+  } catch {
+    // 持久化失败不阻塞主流程——下次成功写入会修正
+  }
 }
 
 async function persistAIState(
@@ -542,6 +582,11 @@ export function useAIVideoWorkflow() {
             ttsResult.srtPath,
             actualDurationMs > 0 ? actualDurationMs : ttsResult.durationMs,
           );
+
+          // 记录本次 TTS 使用的文稿哈希：用于 Editor 顶部的"文稿已修改"提示
+          void patchWorkflowMeta(projectDir, {
+            lastPodcastScriptHash: hashScriptForPodcast(scriptText),
+          });
 
           // ttsOnly：仅重跑口播，完成后立刻收回到 idle，
           // 避免 Editor 里 tts_done 自动续跑 AI 分析/封面/排版。
@@ -985,6 +1030,20 @@ export function useAIVideoWorkflow() {
         text = diskText ?? '';
       }
       workflowSession.scriptText = text;
+
+      // autoMode 启动时把 autoParams 落盘到 project.json.workflowMeta，
+      // 为 Editor 顶部的"恢复横幅"提供精确的参数来源（avoid race: 不 await）。
+      // 使用 patchWorkflowMeta 合并写入，避免覆盖 lastPodcastScriptHash 等已有字段。
+      if (
+        workflowSession.autoMode &&
+        workflowSession.autoParams &&
+        workflowSession.projectDir
+      ) {
+        void patchWorkflowMeta(workflowSession.projectDir, {
+          lastAutoParams: workflowSession.autoParams,
+          lastAutoRunAt: new Date().toISOString(),
+        });
+      }
 
       void runFromStep(initialStep, text, workflowSession.projectDir);
     },

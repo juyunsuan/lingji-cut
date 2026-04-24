@@ -10,14 +10,7 @@ import { PreviewPanel } from '../components/PreviewPanel';
 import { TimelineAIOverlay } from '../components/TimelineAIOverlay';
 import { Timeline } from '../components/Timeline';
 import type { ProjectOverviewMeta } from '../components/ProjectOverviewPanel';
-import {
-  isReusablePodcastMedia,
-  readStoredExistingMediaDecision,
-  resolveWorkflowStartStep,
-  writeStoredExistingMediaDecision,
-  type ExistingMediaDecision,
-} from '../lib/ai-clip-reuse';
-import type { ProjectMetadata } from '../lib/electron-api';
+import type { AppPage, ProjectMetadata } from '../lib/electron-api';
 import { createPersistedAIState } from '../lib/ai-persistence';
 import { mergeCoverCandidatesFromScannedAssets } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
@@ -43,7 +36,6 @@ import {
   Button,
   Card,
   CardContent,
-  Checkbox,
   ConfirmDialog,
   Dialog,
   DialogBody,
@@ -58,6 +50,8 @@ import {
   TabsTrigger,
 } from '../ui';
 import { AppIcon } from '../components/AppIcon';
+import { AutoRunLauncher } from '../components/AutoRunLauncher';
+import { ScriptDriftBanner } from '../components/ScriptDriftBanner';
 import styles from './Editor.module.css';
 
 interface EditorProps {
@@ -69,6 +63,8 @@ interface EditorProps {
   exportRequestToken: number;
   projectDir?: string;
   isActive?: boolean;
+  /** 供 AutoRunResumeBanner 恢复 auto-run 使用 */
+  setPage?: (next: AppPage) => void;
 }
 
 const TIMELINE_PANEL_HEIGHT_KEY = 'podcast-editor-timeline-panel-height';
@@ -111,6 +107,7 @@ export function Editor({
   exportRequestToken,
   projectDir = '',
   isActive = false,
+  setPage,
 }: EditorProps) {
   const viewport = useViewportSize();
   const layout = getEditorLayoutMode(viewport.width, viewport.height);
@@ -129,9 +126,6 @@ export function Editor({
   const [outputPath, setOutputPath] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [missingScriptDialogOpen, setMissingScriptDialogOpen] = useState(false);
-  const [existingMediaDialogOpen, setExistingMediaDialogOpen] = useState(false);
-  const [pendingWorkflowScript, setPendingWorkflowScript] = useState<string | null>(null);
-  const [rememberExistingMediaDecision, setRememberExistingMediaDecision] = useState(false);
   const [regeneratePodcastDialogOpen, setRegeneratePodcastDialogOpen] = useState(false);
   const [pendingRegenerateScript, setPendingRegenerateScript] = useState<string | null>(null);
   const [pendingReanalyzeEntries, setPendingReanalyzeEntries] = useState<
@@ -592,66 +586,6 @@ export function Editor({
     });
   }, [pendingRegenerateScript, startWorkflow]);
 
-  const handleStartAIClip = useCallback(async () => {
-    if (!projectDir) {
-      return;
-    }
-
-    const scriptContent = await window.electronAPI
-      .loadScriptFile(projectDir, 'script.md')
-      .catch(() => null);
-
-    if (!scriptContent?.trim()) {
-      setMissingScriptDialogOpen(true);
-      return;
-    }
-
-    const hasReusableMedia = isReusablePodcastMedia(podcastAudioPath, podcastSrtPath);
-    const rememberedDecision = hasReusableMedia
-      ? readStoredExistingMediaDecision()
-      : null;
-
-    if (hasReusableMedia && rememberedDecision) {
-      startWorkflow(scriptContent, {
-        startFromStep: resolveWorkflowStartStep(rememberedDecision),
-      });
-      return;
-    }
-
-    if (hasReusableMedia) {
-      setPendingWorkflowScript(scriptContent);
-      setRememberExistingMediaDecision(false);
-      setExistingMediaDialogOpen(true);
-      return;
-    }
-
-    startWorkflow(scriptContent);
-  }, [podcastAudioPath, podcastSrtPath, projectDir, startWorkflow]);
-
-  const handleExistingMediaDecision = useCallback(
-    (decision: ExistingMediaDecision) => {
-      const scriptContent = pendingWorkflowScript;
-      if (!scriptContent?.trim()) {
-        setExistingMediaDialogOpen(false);
-        setPendingWorkflowScript(null);
-        setRememberExistingMediaDecision(false);
-        return;
-      }
-
-      if (rememberExistingMediaDecision) {
-        writeStoredExistingMediaDecision(decision);
-      }
-
-      setExistingMediaDialogOpen(false);
-      setPendingWorkflowScript(null);
-      setRememberExistingMediaDecision(false);
-      startWorkflow(scriptContent, {
-        startFromStep: resolveWorkflowStartStep(decision),
-      });
-    },
-    [pendingWorkflowScript, rememberExistingMediaDecision, startWorkflow],
-  );
-
   const handleAddTextOverlay = useCallback(() => {
     const store = useTimelineStore.getState();
     const currentTime = currentTimeRef.current;
@@ -758,9 +692,27 @@ export function Editor({
       className={styles.root}
       data-editor-region="root"
       style={{
-        gridTemplateRows: `minmax(0, 1fr) ${RESIZE_HANDLE_THICKNESS}px ${timelinePanelHeight}px`,
+        gridTemplateRows: `auto minmax(0, 1fr) ${RESIZE_HANDLE_THICKNESS}px ${timelinePanelHeight}px`,
       }}
     >
+      <div data-editor-region="banners">
+        {projectDir && setPage ? (
+          <AutoRunLauncher projectDir={projectDir} setPage={setPage} />
+        ) : null}
+        {projectDir ? (
+          <ScriptDriftBanner
+            projectDir={projectDir}
+            podcastAudioPath={podcastAudioPath}
+            podcastSrtPath={podcastSrtPath}
+            workflowStep={workflow.step}
+            isActive={isActive}
+            regenerateDisabled={workflow.step !== 'idle' && workflow.step !== 'error'}
+            onRegenerate={() => {
+              void handleRegeneratePodcastFromScript();
+            }}
+          />
+        ) : null}
+      </div>
       <div
         className={styles.workspace}
         data-editor-region="workspace"
@@ -851,15 +803,6 @@ export function Editor({
                       onUseAsPodcastSrt={onUseAsPodcastSrt}
                       onReplaceAudio={handleReplaceAudio}
                       onReplaceSrt={handleReplaceSrt}
-                      showAIClip={
-                        (workflow.step === 'idle' ||
-                          workflow.step === 'error') &&
-                        Boolean(projectDir) &&
-                        !hasAICardOverlays
-                      }
-                      onStartAIClip={() => {
-                        void handleStartAIClip();
-                      }}
                       onRegeneratePodcastFromScript={
                         projectDir
                           ? () => {
@@ -989,73 +932,6 @@ export function Editor({
         onClose={() => setIsExportSettingsOpen(false)}
         onConfirm={handleConfirmExport}
       />
-      <Dialog
-        open={existingMediaDialogOpen}
-        onOpenChange={(open) => {
-          setExistingMediaDialogOpen(open);
-          if (!open) {
-            setPendingWorkflowScript(null);
-            setRememberExistingMediaDecision(false);
-          }
-        }}
-      >
-        <DialogContent size="md">
-          <DialogHeader>
-            <DialogTitle>已检测到现有口播资源</DialogTitle>
-            <DialogDescription>
-              当前工程里已经有口播音频和字幕文件。默认建议直接跳过已有资源，
-              继续生成内容卡片，避免重复等待。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody>
-            <Card>
-              <CardContent className="grid gap-2.5">
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                  音频：{getFileNameFromPath(podcastAudioPath) || '未识别'}
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--color-text-secondary)' }}>
-                  字幕：{getFileNameFromPath(podcastSrtPath) || '未识别'}
-                </div>
-              </CardContent>
-            </Card>
-            <div style={{ marginTop: 16 }}>
-              <Checkbox
-                checked={rememberExistingMediaDecision}
-                onChange={setRememberExistingMediaDecision}
-                label="记住我的选择，后续默认这样处理"
-              />
-            </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setExistingMediaDialogOpen(false);
-                setPendingWorkflowScript(null);
-                setRememberExistingMediaDecision(false);
-              }}
-            >
-              取消
-            </Button>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                handleExistingMediaDecision('regenerate');
-              }}
-            >
-              重新生成音频和字幕
-            </Button>
-            <Button
-              variant="primary"
-              onClick={() => {
-                handleExistingMediaDecision('skip-existing');
-              }}
-            >
-              跳过已有并继续
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
       <Dialog
         open={regeneratePodcastDialogOpen}
         onOpenChange={(open) => {

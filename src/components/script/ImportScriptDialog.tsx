@@ -24,7 +24,11 @@ import {
   Textarea,
 } from '../../ui';
 import { getFileNameFromPath } from '../../lib/utils';
-import { AutoModeSection, type AutoModeOption } from './AutoModeSection';
+import {
+  AutoModeSection,
+  type AutoModeModelBinding,
+  type AutoModeOption,
+} from './AutoModeSection';
 import type { AutoWorkflowParams } from '../../store/ai';
 import styles from './ImportScriptDialog.module.css';
 
@@ -47,20 +51,22 @@ export interface ImportScriptDialogProps {
   busy: boolean;
   errorMessage: string | null;
   onOpenChange: (open: boolean) => void;
-  /** 确认导入：传入父目录、项目名、原稿内容、是否一键成稿、自动模式参数 */
+  /** 确认导入：传入父目录、项目名、原稿内容、是否一键成稿、自动模式参数、写稿模型绑定 */
   onConfirm: (
     parentDir: string,
     projectName: string,
     content: string,
     autoMode: boolean,
     autoParams: AutoWorkflowParams,
+    modelBinding: AutoModeModelBinding | null,
   ) => Promise<void> | void;
   /** 一键成稿下拉选项与默认值（由父组件提供） */
   autoModeOptions: {
-    templates: AutoModeOption[];
     roles: AutoModeOption[];
     voices: AutoModeOption[];
+    models: AutoModeOption[];
     defaults: AutoWorkflowParams;
+    defaultModelBinding: AutoModeModelBinding | null;
   };
 }
 
@@ -81,6 +87,9 @@ export function ImportScriptDialog({
   const [localError, setLocalError] = useState<string | null>(null);
   const [autoMode, setAutoMode] = useState(false);
   const [autoParams, setAutoParams] = useState<AutoWorkflowParams>(autoModeOptions.defaults);
+  const [modelBinding, setModelBinding] = useState<AutoModeModelBinding | null>(
+    autoModeOptions.defaultModelBinding,
+  );
   const dragDepthRef = useRef(0);
 
   // 弹窗关闭时重置状态
@@ -95,9 +104,10 @@ export function ImportScriptDialog({
       setLocalError(null);
       setAutoMode(false);
       setAutoParams(autoModeOptions.defaults);
+      setModelBinding(autoModeOptions.defaultModelBinding);
       dragDepthRef.current = 0;
     }
-  }, [open, autoModeOptions.defaults]);
+  }, [open, autoModeOptions.defaults, autoModeOptions.defaultModelBinding]);
 
   const trimmedName = projectName.trim();
   const canConfirm = useMemo(
@@ -187,8 +197,8 @@ export function ImportScriptDialog({
 
   const handleConfirm = useCallback(() => {
     if (!canConfirm || !parentDir) return;
-    void onConfirm(parentDir, trimmedName, content, autoMode, autoParams);
-  }, [canConfirm, parentDir, trimmedName, content, autoMode, autoParams, onConfirm]);
+    void onConfirm(parentDir, trimmedName, content, autoMode, autoParams, modelBinding);
+  }, [canConfirm, parentDir, trimmedName, content, autoMode, autoParams, modelBinding, onConfirm]);
 
   const previewPath = parentDir && trimmedName ? `${parentDir}/${trimmedName}` : null;
   const displayedError = errorMessage ?? localError;
@@ -308,9 +318,11 @@ export function ImportScriptDialog({
               onToggle={setAutoMode}
               params={autoParams}
               onChangeParams={setAutoParams}
-              templateOptions={autoModeOptions.templates}
               roleOptions={autoModeOptions.roles}
               voiceOptions={autoModeOptions.voices}
+              modelOptions={autoModeOptions.models}
+              modelBinding={modelBinding}
+              onChangeModelBinding={setModelBinding}
             />
           </div>
 

@@ -107,6 +107,23 @@ export interface AIStore {
   motionError: string | null;
   pendingAutoParams: AutoWorkflowParams | null;
   setPendingAutoParams: (params: AutoWorkflowParams | null) => void;
+  /**
+   * auto-run 恢复起点：AutoRunResumeBanner 触发恢复时写入，
+   * AutoRunController 在起跑 useAIVideoWorkflow.start 时作为 startFromStep。
+   * 离开 auto-run 页或恢复完成后由 AutoRunController 清空。
+   */
+  pendingAutoResumeStep: Extract<
+    WorkflowStep,
+    'script_generating' | 'tts_generating' | 'ai_analyzing' | 'cover_generating' | 'arranging'
+  > | null;
+  setPendingAutoResumeStep: (
+    step:
+      | Extract<
+          WorkflowStep,
+          'script_generating' | 'tts_generating' | 'ai_analyzing' | 'cover_generating' | 'arranging'
+        >
+      | null,
+  ) => void;
   storyboardPlan: AIStoryboardPlan | null;
   isPlanningStoryboard: boolean;
   storyboardError: string | null;
@@ -172,6 +189,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   isGeneratingMotion: false,
   motionError: null,
   pendingAutoParams: null,
+  pendingAutoResumeStep: null,
   storyboardPlan: null,
   isPlanningStoryboard: false,
   storyboardError: null,
@@ -352,6 +370,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
   setGeneratingMotion: (generating) => set({ isGeneratingMotion: generating }),
   setMotionError: (error) => set({ motionError: error }),
   setPendingAutoParams: (params) => set({ pendingAutoParams: params }),
+  setPendingAutoResumeStep: (step) => set({ pendingAutoResumeStep: step }),
   setPlanningStoryboard: (planning) => set({ isPlanningStoryboard: planning }),
   setStoryboardError: (error) =>
     set((state) => ({
