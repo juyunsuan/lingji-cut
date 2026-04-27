@@ -1,20 +1,29 @@
+import path from 'node:path';
 import { getImageProvider } from '../src/lib/image-gen/registry';
+import { getVideoProvider } from '../src/lib/video-gen/registry';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
 import {
   ensureCardAssetDir,
   writeCardImage,
   writeCardMeta,
+  writeCardVideo,
+  writeCardPoster,
 } from './ai-card-assets';
 import type {
   AISettings,
   MediaCardContent,
   PromptBindingMap,
   ImageAspectRatio,
+  VideoAspectRatio,
 } from '../src/types/ai';
 import type {
   ImageGenerationContext,
   ImageGenerationProgressUpdate,
 } from '../src/lib/image-gen/types';
+import type {
+  VideoGenerationContext,
+  VideoGenerationProgressUpdate,
+} from '../src/lib/video-gen/types';
 
 export interface GenerateCardImageArgs {
   projectDir: string;
@@ -130,4 +139,167 @@ async function imageToBuffer(img: {
     return Buffer.from(await res.arrayBuffer());
   }
   throw new Error('image 既没有 base64 也没有 url');
+}
+
+export interface GenerateCardVideoArgs {
+  projectDir: string;
+  cardId: string;
+  prompt: string;
+  negativePrompt?: string;
+  aspectRatio: VideoAspectRatio;
+  durationSeconds: number;
+  providerId?: string | null;
+  model?: string | null;
+  extraParams?: Record<string, unknown>;
+}
+
+export interface CardVideoHandlerCtx {
+  settings: AISettings;
+  projectBindings: PromptBindingMap | null;
+  onProgress: (u: VideoGenerationProgressUpdate) => void;
+  signal?: AbortSignal;
+}
+
+export async function handleGenerateCardVideo(
+  args: GenerateCardVideoArgs,
+  ctx: CardVideoHandlerCtx,
+): Promise<MediaCardContent> {
+  let providerId = args.providerId ?? null;
+  let model = args.model ?? null;
+
+  if (!providerId || !model) {
+    const binding = resolvePromptBinding('card.video', ctx.settings, ctx.projectBindings);
+    if (!providerId) providerId = binding.videoProvider?.id ?? null;
+    if (!model) model = binding.videoModel ?? null;
+  }
+
+  const provider = providerId
+    ? ctx.settings.videoProviders.find((p) => p.id === providerId) ?? null
+    : null;
+  if (!provider) {
+    throw new Error('card.video 未绑定 VideoProvider');
+  }
+  if (!model) {
+    throw new Error('card.video 未指定模型');
+  }
+
+  await ensureCardAssetDir(args.projectDir, args.cardId);
+
+  const adapter = getVideoProvider(provider.type);
+  const signal = ctx.signal ?? new AbortController().signal;
+  const vgCtx: VideoGenerationContext = {
+    taskId: `card-video-${args.cardId}`,
+    signal,
+    onProgress: ctx.onProgress,
+  };
+  const result = await adapter.generate(
+    {
+      prompt: args.prompt,
+      negativePrompt: args.negativePrompt,
+      model,
+      aspectRatio: args.aspectRatio,
+      durationSeconds: args.durationSeconds,
+      extraParams: args.extraParams,
+    },
+    { baseUrl: provider.baseUrl, apiKey: provider.apiKey, extras: provider.extras },
+    vgCtx,
+  );
+
+  ctx.onProgress({ percent: 92, phase: 'downloading', message: '下载视频…' });
+  const videoRes = await fetch(result.videoUrl);
+  if (!videoRes.ok) {
+    throw new Error(`下载视频失败 HTTP ${videoRes.status}`);
+  }
+  const videoBuf = Buffer.from(await videoRes.arrayBuffer());
+  const assetPath = await writeCardVideo(args.projectDir, args.cardId, videoBuf);
+
+  let posterPath: string | undefined;
+  if (result.posterUrl) {
+    try {
+      const posterRes = await fetch(result.posterUrl);
+      if (posterRes.ok) {
+        const posterBuf = Buffer.from(await posterRes.arrayBuffer());
+        posterPath = await writeCardPoster(args.projectDir, args.cardId, posterBuf);
+      }
+    } catch {
+      // 海报下载失败不影响主流程，回退到 ffmpeg 抽帧
+      posterPath = undefined;
+    }
+  }
+  if (!posterPath) {
+    ctx.onProgress({ percent: 96, phase: 'postprocessing', message: '抽取首帧…' });
+    posterPath = await extractPosterWithFfmpeg(args.projectDir, args.cardId);
+  }
+
+  const generatedAt = Date.now();
+  await writeCardMeta(args.projectDir, args.cardId, {
+    cardId: args.cardId,
+    mediaType: 'video',
+    prompt: args.prompt,
+    negativePrompt: args.negativePrompt,
+    providerId: provider.id,
+    model,
+    aspectRatio: args.aspectRatio,
+    durationSeconds: args.durationSeconds,
+    mediaDurationMs: result.durationMs,
+    width: result.width,
+    height: result.height,
+    generatedAt,
+    extras: args.extraParams,
+  });
+  ctx.onProgress({ percent: 100, phase: 'rendering', message: '完成' });
+
+  return {
+    mediaType: 'video',
+    assetPath,
+    posterPath: posterPath ?? null,
+    mediaDurationMs: result.durationMs,
+    aspectRatio: args.aspectRatio,
+    prompt: args.prompt,
+    negativePrompt: args.negativePrompt,
+    providerId: provider.id,
+    model,
+    generationStatus: 'ready',
+    generatedAt,
+    extraParams: args.extraParams,
+  };
+}
+
+async function extractPosterWithFfmpeg(
+  projectDir: string,
+  cardId: string,
+): Promise<string | undefined> {
+  try {
+    const { spawn } = await import('node:child_process');
+    let ffmpegPath: string | undefined;
+    try {
+      const renderer = (await import('@remotion/renderer')) as {
+        getFfmpegPath?: () => Promise<string> | string;
+      };
+      const resolved = renderer.getFfmpegPath ? await renderer.getFfmpegPath() : undefined;
+      ffmpegPath = typeof resolved === 'string' ? resolved : undefined;
+    } catch {
+      ffmpegPath = undefined;
+    }
+    if (!ffmpegPath) return undefined;
+    const inFile = path.join(projectDir, 'ai-cards', cardId, 'video.mp4');
+    const outFile = path.join(projectDir, 'ai-cards', cardId, 'poster.jpg');
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(ffmpegPath as string, [
+        '-y',
+        '-i',
+        inFile,
+        '-frames:v',
+        '1',
+        '-q:v',
+        '3',
+        outFile,
+      ]);
+      proc.on('error', reject);
+      proc.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exit ${code}`))));
+    });
+    return path.relative(projectDir, outFile);
+  } catch {
+    return undefined;
+  }
 }
