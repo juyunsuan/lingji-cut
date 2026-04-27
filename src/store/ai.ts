@@ -375,6 +375,9 @@ export async function loadAISettings(): Promise<AISettings | null> {
           imageProviders: file.aiSettings.imageProviders ?? [],
           defaultImageProviderId: file.aiSettings.defaultImageProviderId ?? null,
           defaultImageModel: file.aiSettings.defaultImageModel ?? null,
+          videoProviders: file.aiSettings.videoProviders ?? [],
+          defaultVideoProviderId: file.aiSettings.defaultVideoProviderId ?? null,
+          defaultVideoModel: file.aiSettings.defaultVideoModel ?? null,
           promptBindings: file.aiSettings.promptBindings ?? {},
         };
         const providerMigrated = migrateToProviders(settings);
@@ -414,6 +417,9 @@ export async function loadAISettings(): Promise<AISettings | null> {
           imageProviders: parsed.imageProviders ?? [],
           defaultImageProviderId: parsed.defaultImageProviderId ?? null,
           defaultImageModel: parsed.defaultImageModel ?? null,
+          videoProviders: parsed.videoProviders ?? [],
+          defaultVideoProviderId: parsed.defaultVideoProviderId ?? null,
+          defaultVideoModel: parsed.defaultVideoModel ?? null,
           promptBindings: parsed.promptBindings ?? {},
         };
         const providerMigrated = migrateToProviders(raw);
