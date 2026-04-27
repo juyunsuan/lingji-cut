@@ -21,7 +21,12 @@ import {
 import { buildExportRenderConfig, type ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/cover-generation';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
-import { handleGenerateCardImage, type GenerateCardImageArgs } from './card-media-handlers';
+import {
+  handleGenerateCardImage,
+  handleGenerateCardVideo,
+  type GenerateCardImageArgs,
+  type GenerateCardVideoArgs,
+} from './card-media-handlers';
 import { prepareTimelineForRemotionRender, type RenderAssetDescriptor } from '../src/lib/remotion-assets';
 import {
   buildMinimaxTtsRequestBody,
@@ -864,6 +869,42 @@ ipcMain.handle(
     cardMediaAbortMap.set(args.cardId, ac);
     try {
       return await handleGenerateCardImage(args, {
+        settings: args.settings,
+        projectBindings: args.projectBindings ?? null,
+        signal: ac.signal,
+        onProgress: (u) => {
+          mainWindow?.webContents.send('card-media-progress', {
+            cardId: args.cardId,
+            percent: u.percent,
+            phase: u.phase,
+            message: u.message,
+            taskId: `card-media-${args.cardId}`,
+          });
+        },
+      });
+    } finally {
+      if (cardMediaAbortMap.get(args.cardId) === ac) {
+        cardMediaAbortMap.delete(args.cardId);
+      }
+    }
+  },
+);
+
+ipcMain.handle(
+  'generate-card-video',
+  async (
+    _event,
+    args: GenerateCardVideoArgs & {
+      settings: AISettings;
+      projectBindings?: PromptBindingMap | null;
+    },
+  ) => {
+    const prev = cardMediaAbortMap.get(args.cardId);
+    prev?.abort();
+    const ac = new AbortController();
+    cardMediaAbortMap.set(args.cardId, ac);
+    try {
+      return await handleGenerateCardVideo(args, {
         settings: args.settings,
         projectBindings: args.projectBindings ?? null,
         signal: ac.signal,
