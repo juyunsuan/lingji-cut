@@ -926,6 +926,19 @@ ipcMain.handle(
   },
 );
 
+ipcMain.handle('cancel-card-media-generation', async (_event, args: { cardId: string }) => {
+  const ac = cardMediaAbortMap.get(args.cardId);
+  ac?.abort();
+  cardMediaAbortMap.delete(args.cardId);
+  return { ok: true as const };
+});
+
+ipcMain.handle('delete-card-media-assets', async (_event, args: { projectDir: string; cardId: string }) => {
+  const { deleteCardAssets } = await import('./ai-card-assets');
+  await deleteCardAssets(args.projectDir, args.cardId);
+  return { ok: true as const };
+});
+
 ipcMain.handle('load-project', async (_event, projectDir: string) => {
   const data = await loadProjectFile(projectDir);
   return JSON.stringify(data, null, 2);
