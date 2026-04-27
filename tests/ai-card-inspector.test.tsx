@@ -47,6 +47,83 @@ describe('AICardInspector', () => {
     expect(html).toContain('删除此卡片');
   });
 
+  it('image 卡 → 渲染 ImageCardForm 表单（提示词字段与画幅比例）', () => {
+    const html = renderToStaticMarkup(
+      <AICardInspector
+        card={{
+          id: 'card-image',
+          segmentId: 'segment-1',
+          type: 'image',
+          title: '图片卡',
+          content: {
+            mediaType: 'image',
+            assetPath: null,
+            aspectRatio: '16:9',
+            prompt: '一只在月光下奔跑的猫',
+            providerId: null,
+            model: null,
+            generationStatus: 'idle',
+          },
+          startMs: 0,
+          endMs: 5_000,
+          displayDurationMs: 5_000,
+          displayMode: 'fullscreen',
+          template: 'image-default',
+          enabled: true,
+          style: baseCardStyle,
+        }}
+        onRegenerate={async () => null}
+        onSave={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+
+    // 图片表单应包含：prompt 文案、画幅比例、显示模式相关字段
+    expect(html).toContain('一只在月光下奔跑的猫');
+    expect(html).toMatch(/画幅比例/);
+    expect(html).toMatch(/提示词/);
+    // 不应包含 text 卡专属 section
+    expect(html).not.toContain('data-ai-card-section="text-content"');
+    expect(html).not.toContain('Motion 卡片状态');
+  });
+
+  it('video 卡 → 渲染 VideoCardForm 表单（时长档位字段）', () => {
+    const html = renderToStaticMarkup(
+      <AICardInspector
+        card={{
+          id: 'card-video',
+          segmentId: 'segment-1',
+          type: 'video',
+          title: '视频卡',
+          content: {
+            mediaType: 'video',
+            assetPath: null,
+            posterPath: null,
+            aspectRatio: '16:9',
+            prompt: '日落时分海岸线',
+            providerId: null,
+            model: null,
+            generationStatus: 'idle',
+          },
+          startMs: 0,
+          endMs: 6_000,
+          displayDurationMs: 6_000,
+          displayMode: 'fullscreen',
+          template: 'video-default',
+          enabled: true,
+          style: baseCardStyle,
+        }}
+        onRegenerate={async () => null}
+        onSave={() => undefined}
+        onDelete={() => undefined}
+      />,
+    );
+
+    expect(html).toContain('日落时分海岸线');
+    expect(html).toMatch(/时长档位/);
+    expect(html).not.toContain('data-ai-card-section="text-content"');
+  });
+
   it('shows "motion card ready" once compiled code is attached', () => {
     const html = renderToStaticMarkup(
       <AICardInspector

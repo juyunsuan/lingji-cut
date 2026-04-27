@@ -1,5 +1,7 @@
 import { AnimatePresence, m } from 'framer-motion';
-import type { AICard, AICardType } from '../types/ai';
+import { toFileSrc } from '../lib/utils';
+import { useAIStore } from '../store/ai';
+import type { AICard, AICardType, MediaCardContent } from '../types/ai';
 import { Badge, Checkbox } from '../ui';
 import { springs } from '../ui/lib/motion';
 import styles from './AICardList.module.css';
@@ -18,8 +20,37 @@ interface AICardListProps {
 }
 
 function getPreviewText(content: AICard['content']): string {
+  if (content && typeof content === 'object' && 'mediaType' in content) {
+    const media = content as MediaCardContent;
+    return media.prompt || (media.mediaType === 'image' ? '图片卡（未填提示词）' : '视频卡（未填提示词）');
+  }
   const text = typeof content === 'string' ? content : JSON.stringify(content);
   return text.length > 74 ? `${text.slice(0, 74)}…` : text;
+}
+
+function getMediaContent(card: AICard): MediaCardContent | null {
+  return card.content && typeof card.content === 'object' && 'mediaType' in card.content
+    ? (card.content as MediaCardContent)
+    : null;
+}
+
+function buildThumbnailSrc(
+  card: AICard,
+  currentProjectDir: string | null,
+): string | null {
+  const media = getMediaContent(card);
+  if (!media) return null;
+  const value =
+    media.mediaType === 'video'
+      ? (media.posterPath ?? media.assetPath ?? null)
+      : media.assetPath;
+  if (!value) return null;
+  if (value.startsWith('file://') || value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  if (!currentProjectDir) return null;
+  const abs = `${currentProjectDir.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
+  return toFileSrc(abs);
 }
 
 const CARD_TYPE_META: Record<AICardType, { label: string; color: string; tone: string }> = {
@@ -38,11 +69,21 @@ export function AICardList({
   onToggleEnabled,
   onEditCard,
 }: AICardListProps) {
+  // selector 订阅 currentProjectDir 变更；?? getState() 兼容 SSR
+  const currentProjectDir =
+    useAIStore((s) => s.currentProjectDir) ?? useAIStore.getState().currentProjectDir;
+
   return (
     <div className={styles.list} data-ai-card-list="true">
       <AnimatePresence mode="popLayout" initial={false}>
         {cards.map((card) => {
           const meta = CARD_TYPE_META[card.type];
+          const isMedia = card.type === 'image' || card.type === 'video';
+          const media = isMedia ? getMediaContent(card) : null;
+          const thumbSrc = isMedia ? buildThumbnailSrc(card, currentProjectDir) : null;
+          const status = media?.generationStatus ?? 'idle';
+          const isGenerating = status === 'generating' || status === 'pending';
+          const isFailed = status === 'failed';
 
           return (
             <m.article
@@ -69,6 +110,32 @@ export function AICardList({
                     size="sm"
                   />
                 </div>
+
+                {isMedia ? (
+                  <div className={styles.thumbnail} data-ai-card-thumbnail={card.type}>
+                    {thumbSrc ? (
+                      <img src={thumbSrc} alt="" className={styles.thumbnailImg} />
+                    ) : (
+                      <span className={styles.thumbnailPlaceholder} aria-hidden="true">
+                        {card.type === 'image' ? '🖼' : '🎬'}
+                      </span>
+                    )}
+                    {isGenerating ? (
+                      <span
+                        className={`${styles.statusBadge} ${styles.badgeGenerating}`}
+                        data-ai-card-status="generating"
+                        aria-label="生成中"
+                      />
+                    ) : null}
+                    {isFailed ? (
+                      <span
+                        className={`${styles.statusBadge} ${styles.badgeFailed}`}
+                        data-ai-card-status="failed"
+                        aria-label="生成失败"
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
 
                 <Badge
                   size="xs"

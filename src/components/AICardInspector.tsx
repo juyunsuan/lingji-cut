@@ -1,8 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getAICardOverlayPosition } from '../lib/ai-card-layout';
-import type { AICard, AICardType } from '../types/ai';
+import { toFileSrc } from '../lib/utils';
+import { getVideoProvider } from '../lib/video-gen/registry';
+import { loadAISettings, useAIStore } from '../store/ai';
+import type { AICard, AICardType, MediaCardContent, VideoProvider } from '../types/ai';
 import { Alert, Button, Input, NumberField, PillGroup, type PillGroupItem, Textarea } from '../ui';
 import { AppIcon } from './AppIcon';
+import {
+  ImageCardForm,
+  type ImageProviderOption,
+} from './media-card/ImageCardForm';
+import {
+  VideoCardForm,
+  type VideoProviderOption,
+} from './media-card/VideoCardForm';
 import styles from './AICardInspector.module.css';
 
 interface AICardInspectorProps {
@@ -67,6 +78,26 @@ export function AICardInspector({
 
   if (!card) {
     return null;
+  }
+
+  if (card.type === 'image') {
+    return (
+      <ImageCardFormHost
+        card={card}
+        onClose={onCancel ?? (() => undefined)}
+        onSave={onSave}
+      />
+    );
+  }
+
+  if (card.type === 'video') {
+    return (
+      <VideoCardFormHost
+        card={card}
+        onClose={onCancel ?? (() => undefined)}
+        onSave={onSave}
+      />
+    );
   }
 
   const parsedContent =
@@ -269,5 +300,181 @@ export function AICardInspector({
         </Button>
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 私有派发宿主：image / video 媒体卡 Inspector
+// ---------------------------------------------------------------------------
+
+function getMediaContent(card: AICard): MediaCardContent | null {
+  return card.content && typeof card.content === 'object' && 'mediaType' in card.content
+    ? (card.content as MediaCardContent)
+    : null;
+}
+
+function buildPreviewSrc(
+  card: AICard,
+  currentProjectDir: string | null,
+  pathKey: 'assetPath' | 'posterPath',
+): string | null {
+  const media = getMediaContent(card);
+  if (!media) return null;
+  const value =
+    pathKey === 'assetPath'
+      ? media.assetPath
+      : (media.posterPath ?? media.assetPath ?? null);
+  if (!value) return null;
+  // 已是绝对 URL
+  if (value.startsWith('file://') || value.startsWith('http://') || value.startsWith('https://')) {
+    return value;
+  }
+  if (!currentProjectDir) return null;
+  const abs = `${currentProjectDir.replace(/\/$/, '')}/${value.replace(/^\//, '')}`;
+  return toFileSrc(abs);
+}
+
+interface MediaCardFormHostProps {
+  card: AICard;
+  onClose: () => void;
+  onSave: (cardId: string, updates: Partial<AICard>) => void;
+}
+
+function ImageCardFormHost({ card, onClose, onSave }: MediaCardFormHostProps) {
+  const currentProjectDir = useAIStore((s) => s.currentProjectDir);
+  const taskEntry = useAIStore((s) => s.cardMediaTasks[card.id]);
+  const regenerateCardMedia = useAIStore((s) => s.regenerateCardMedia);
+  const cancelCardMediaGeneration = useAIStore((s) => s.cancelCardMediaGeneration);
+
+  const [imageProviders, setImageProviders] = useState<ImageProviderOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const settings = await loadAISettings();
+        if (cancelled || !settings) return;
+        const opts: ImageProviderOption[] = (settings.imageProviders ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          models: p.models ?? [],
+        }));
+        setImageProviders(opts);
+      } catch {
+        // 忽略：保持空数组
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const previewSrc = useMemo(
+    () => buildPreviewSrc(card, currentProjectDir, 'assetPath'),
+    [card, currentProjectDir],
+  );
+
+  return (
+    <ImageCardForm
+      card={card}
+      percent={taskEntry?.percent}
+      previewSrc={previewSrc}
+      imageProviders={imageProviders}
+      onGenerate={() => {
+        void regenerateCardMedia(card.id);
+      }}
+      onCancel={() => {
+        void cancelCardMediaGeneration(card.id);
+      }}
+      onClose={onClose}
+      onSave={onSave}
+    />
+  );
+}
+
+function getDurationOptionsForProvider(provider: VideoProvider): number[] {
+  // 优先：provider.extras.durationOptions（用户在 Settings 里覆写）
+  const fromExtras = (provider.extras as Record<string, unknown> | undefined)?.durationOptions;
+  if (Array.isArray(fromExtras) && fromExtras.every((v) => typeof v === 'number' && v > 0)) {
+    return fromExtras as number[];
+  }
+  // 次选：从 video-gen 注册表取 capabilities.durationOptions
+  try {
+    const p = getVideoProvider(provider.type);
+    return p.capabilities.durationOptions;
+  } catch {
+    return [4, 6, 8];
+  }
+}
+
+function VideoCardFormHost({ card, onClose, onSave }: MediaCardFormHostProps) {
+  const currentProjectDir = useAIStore((s) => s.currentProjectDir);
+  const taskEntry = useAIStore((s) => s.cardMediaTasks[card.id]);
+  const regenerateCardMedia = useAIStore((s) => s.regenerateCardMedia);
+  const cancelCardMediaGeneration = useAIStore((s) => s.cancelCardMediaGeneration);
+
+  const [videoProviders, setVideoProviders] = useState<VideoProviderOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const settings = await loadAISettings();
+        if (cancelled || !settings) return;
+        const opts: VideoProviderOption[] = (settings.videoProviders ?? []).map((p) => ({
+          id: p.id,
+          name: p.name,
+          models: p.models ?? [],
+          durationOptions: getDurationOptionsForProvider(p),
+        }));
+        setVideoProviders(opts);
+      } catch {
+        // 忽略：保持空数组
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const initialDuration = useMemo(() => {
+    const media = getMediaContent(card);
+    const fromExtras = media?.extraParams?.durationSeconds;
+    if (typeof fromExtras === 'number' && fromExtras > 0) return fromExtras;
+    if (typeof media?.mediaDurationMs === 'number' && media.mediaDurationMs > 0) {
+      return Math.round(media.mediaDurationMs / 1000);
+    }
+    return 6;
+  }, [card]);
+
+  const [durationSeconds, setDurationSeconds] = useState<number>(initialDuration);
+
+  // card 切换或外部 duration 变化时同步
+  useEffect(() => {
+    setDurationSeconds(initialDuration);
+  }, [initialDuration]);
+
+  const previewSrc = useMemo(() => {
+    // video 卡 ready 时优先视频本体；其次 poster 兜底（form 内部 video 标签）
+    return buildPreviewSrc(card, currentProjectDir, 'assetPath');
+  }, [card, currentProjectDir]);
+
+  return (
+    <VideoCardForm
+      card={card}
+      percent={taskEntry?.percent}
+      previewSrc={previewSrc}
+      videoProviders={videoProviders}
+      durationSeconds={durationSeconds}
+      onDurationSecondsChange={setDurationSeconds}
+      onGenerate={() => {
+        void regenerateCardMedia(card.id, { extraParams: { durationSeconds } });
+      }}
+      onCancel={() => {
+        void cancelCardMediaGeneration(card.id);
+      }}
+      onClose={onClose}
+      onSave={onSave}
+    />
   );
 }

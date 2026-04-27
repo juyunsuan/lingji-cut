@@ -74,3 +74,60 @@
   -webkit-line-clamp: 2;
   overflow: hidden;
 }
+
+.thumbnail {
+  position: relative;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-panel-recessed, rgba(0, 0, 0, 0.06));
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.thumbnailImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbnailPlaceholder {
+  font-size: 16px;
+  line-height: 1;
+  color: var(--color-text-tertiary, #888);
+}
+
+.statusBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--color-panel-elevated, #fff);
+  pointer-events: none;
+}
+
+.badgeGenerating {
+  background: var(--color-system-blue, #0a84ff);
+  animation: aiCardBadgePulse 1.2s ease-in-out infinite;
+}
+
+.badgeFailed {
+  background: var(--color-system-red, #ff453a);
+}
+
+@keyframes aiCardBadgePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.4);
+    opacity: 0.55;
+  }
+}
