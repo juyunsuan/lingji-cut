@@ -58,7 +58,14 @@ export async function pollVideoUntilDone<T>(opts: VideoPollerOptions<T>): Promis
       );
     }
 
-    if (status.status === 'succeeded' && status.result !== undefined) {
+    if (status.status === 'succeeded') {
+      if (status.result === undefined) {
+        throw new VideoGenerationError(
+          'server',
+          opts.providerType,
+          `任务 ${taskId} 标记 succeeded 但缺少结果`,
+        );
+      }
       opts.onProgress({ percent: 99, phase: 'rendering', message: '生成完成，准备下载…' });
       return status.result;
     }
@@ -73,7 +80,7 @@ export async function pollVideoUntilDone<T>(opts: VideoPollerOptions<T>): Promis
     const percent = status.percent ?? FAKE_PERCENT_STEPS[Math.min(fakeStepIndex, FAKE_PERCENT_STEPS.length - 1)];
     fakeStepIndex += 1;
     opts.onProgress({ percent, phase: 'rendering', message: '模型生成中…' });
-    await sleep(intervalMs);
+    await sleep(intervalMs, opts.signal, opts.providerType);
   }
 }
 
@@ -83,6 +90,20 @@ function ensureNotAborted(signal: AbortSignal, providerType: VideoProviderType):
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms: number, signal: AbortSignal, providerType: VideoProviderType): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new VideoGenerationError('cancelled', providerType, '任务已取消'));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new VideoGenerationError('cancelled', providerType, '任务已取消'));
+    };
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
 }

@@ -68,4 +68,35 @@ describe('pollVideoUntilDone', () => {
       }),
     ).rejects.toMatchObject({ code: 'timeout' });
   });
+
+  it('sleep 期间 abort 立即响应（不必等下一轮）', async () => {
+    const ac = new AbortController();
+    const fetchStatus = vi.fn().mockResolvedValue({ status: 'running' });
+    const promise = pollVideoUntilDone({
+      submit: async () => ({ taskId: 't1' }),
+      fetchStatus,
+      intervalMs: 5000,
+      timeoutMs: 30_000,
+      onProgress: () => {},
+      signal: ac.signal,
+      providerType: 'vidu',
+    });
+    // 等一帧让首轮 fetchStatus 落地、进入 sleep
+    await new Promise((r) => setTimeout(r, 10));
+    ac.abort();
+    await expect(promise).rejects.toMatchObject({ code: 'cancelled' });
+  });
+
+  it('succeeded 但缺 result 抛 server', async () => {
+    await expect(
+      pollVideoUntilDone({
+        submit: async () => ({ taskId: 't1' }),
+        fetchStatus: async () => ({ status: 'succeeded' as const }),
+        intervalMs: 1,
+        onProgress: () => {},
+        signal: new AbortController().signal,
+        providerType: 'vidu',
+      }),
+    ).rejects.toMatchObject({ code: 'server' });
+  });
 });
