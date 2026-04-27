@@ -7,6 +7,9 @@ import type {
   AISettings,
   CoverCandidate,
   PromptBindingMap,
+  MediaCardContent,
+  ImageAspectRatio,
+  VideoAspectRatio,
 } from '../types/ai';
 import type { ImportKind } from './import-files';
 import type {
@@ -106,6 +109,41 @@ export function isProjectRequiredCommand(command: MenuAction): boolean {
   return PROJECT_REQUIRED_COMMANDS.has(command);
 }
 
+export interface GenerateCardImageArgs {
+  projectDir: string;
+  cardId: string;
+  prompt: string;
+  negativePrompt?: string;
+  aspectRatio: ImageAspectRatio;
+  providerId?: string | null;
+  model?: string | null;
+  extraParams?: Record<string, unknown>;
+  settings: AISettings;
+  projectBindings?: PromptBindingMap | null;
+}
+
+export interface GenerateCardVideoArgs {
+  projectDir: string;
+  cardId: string;
+  prompt: string;
+  negativePrompt?: string;
+  aspectRatio: VideoAspectRatio;
+  durationSeconds: number;
+  providerId?: string | null;
+  model?: string | null;
+  extraParams?: Record<string, unknown>;
+  settings: AISettings;
+  projectBindings?: PromptBindingMap | null;
+}
+
+export interface CardMediaProgressPayload {
+  cardId: string;
+  taskId: string;
+  percent?: number;
+  phase?: string;
+  message?: string;
+}
+
 export interface ProjectMetadata {
   projectDir: string;
   sizeBytes: number;
@@ -170,6 +208,16 @@ export interface ElectronAPI {
     projectDir: string;
     projectBindings?: PromptBindingMap | null;
   }) => Promise<CoverCandidate[]>;
+  generateCardImage: (args: GenerateCardImageArgs) => Promise<MediaCardContent>;
+  generateCardVideo: (args: GenerateCardVideoArgs) => Promise<MediaCardContent>;
+  cancelCardMediaGeneration: (cardId: string) => Promise<{ ok: true }>;
+  deleteCardMediaAssets: (
+    projectDir: string,
+    cardId: string,
+  ) => Promise<{ ok: true }>;
+  onCardMediaProgress: (
+    callback: (payload: CardMediaProgressPayload) => void,
+  ) => () => void;
   saveCoverEdit: (
     args: import('./cover-editor/contracts').SaveCoverEditArgs,
   ) => Promise<import('./cover-editor/contracts').SaveCoverEditResult>;

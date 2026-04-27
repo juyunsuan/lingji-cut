@@ -63,6 +63,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     projectDir: string;
     projectBindings?: PromptBindingMap | null;
   }) => ipcRenderer.invoke('generate-cover-images', args),
+  generateCardImage: (args: import('../src/lib/electron-api').GenerateCardImageArgs) =>
+    ipcRenderer.invoke('generate-card-image', args),
+  generateCardVideo: (args: import('../src/lib/electron-api').GenerateCardVideoArgs) =>
+    ipcRenderer.invoke('generate-card-video', args),
+  cancelCardMediaGeneration: (cardId: string) =>
+    ipcRenderer.invoke('cancel-card-media-generation', { cardId }),
+  deleteCardMediaAssets: (projectDir: string, cardId: string) =>
+    ipcRenderer.invoke('delete-card-media-assets', { projectDir, cardId }),
   saveCoverEdit: (args: import('../src/lib/cover-editor/contracts').SaveCoverEditArgs) =>
     ipcRenderer.invoke('save-cover-edit', args),
   listSystemFonts: () =>
@@ -245,6 +253,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ) => callback(progress);
     ipcRenderer.on('cover-progress', handler);
     return () => ipcRenderer.removeListener('cover-progress', handler);
+  },
+  onCardMediaProgress: (
+    callback: (payload: import('../src/lib/electron-api').CardMediaProgressPayload) => void,
+  ) => {
+    const handler = (
+      _event: unknown,
+      payload: import('../src/lib/electron-api').CardMediaProgressPayload,
+    ) => callback(payload);
+    ipcRenderer.on('card-media-progress', handler);
+    return () => ipcRenderer.removeListener('card-media-progress', handler);
   },
   cancelTTS: (requestId: string) => ipcRenderer.invoke('cancel-tts', requestId),
   selectOutputPath: (defaultPath?: string) =>
