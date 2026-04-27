@@ -265,6 +265,14 @@ export interface AIStore {
     cardId: string,
     overrides?: Partial<MediaCardContent>,
   ) => Promise<void>;
+  /**
+   * 把现有卡片转换为 image/video 卡，保持 cardId / segmentId / 时间区间 / displayMode 不变。
+   * 用于「转为图片卡」「转为视频卡」入口；返回新 card；若卡片不存在或目标类型与当前一致则返回 null。
+   */
+  convertCardToMedia: (
+    cardId: string,
+    mediaType: 'image' | 'video',
+  ) => Promise<AICard | null>;
   cancelCardMediaGeneration: (cardId: string) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
   setCoverCandidates: (candidates: CoverCandidate[]) => void;
@@ -446,6 +454,55 @@ export const useAIStore = create<AIStore>((set, get) => ({
     });
     appendCardToStore(set, get, card);
     return card;
+  },
+  convertCardToMedia: async (cardId, mediaType) => {
+    const state = get();
+    const result = state.analysisResult;
+    const card = result?.cards.find((c) => c.id === cardId);
+    if (!card) return null;
+    if (card.type === mediaType) return null;
+
+    // prompt 种子：原 title + segment.summary（若可用）
+    const segment = result?.segments.find((s) => s.id === card.segmentId);
+    const seedParts: string[] = [];
+    if (card.title?.trim()) seedParts.push(card.title.trim());
+    if (segment?.summary?.trim()) seedParts.push(segment.summary.trim());
+    const seedPrompt = seedParts.join('\n');
+
+    const defaultDurationMs = MEDIA_DEFAULT_DURATION_MS[mediaType];
+    const newContent: MediaCardContent = {
+      mediaType,
+      assetPath: null,
+      aspectRatio: '16:9',
+      prompt: seedPrompt,
+      providerId: null,
+      model: null,
+      generationStatus: 'idle',
+    };
+
+    const newCard: AICard = {
+      ...card,
+      type: mediaType,
+      content: newContent,
+      template: getDefaultTemplate(mediaType),
+      style: { ...DEFAULT_CARD_STYLE[mediaType] },
+      // image/video 默认时长按媒体默认；保留原 displayDurationMs 当其有效
+      displayDurationMs:
+        card.displayDurationMs && card.displayDurationMs > 0
+          ? card.displayDurationMs
+          : defaultDurationMs,
+    };
+
+    set((s) => {
+      if (!s.analysisResult) return {};
+      return {
+        analysisResult: {
+          ...s.analysisResult,
+          cards: s.analysisResult.cards.map((c) => (c.id === cardId ? newCard : c)),
+        },
+      };
+    });
+    return newCard;
   },
   regenerateCardMedia: async (cardId, overrides) => {
     const state = get();

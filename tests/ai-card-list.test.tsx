@@ -185,6 +185,33 @@ describe('AICardList', () => {
     expect(html).toContain('data-ai-card-status="generating"');
   });
 
+  it('每条卡片渲染「更多操作」按钮（⋯ 菜单触发器）', () => {
+    const html = renderToStaticMarkup(
+      <AICardList
+        cards={[
+          {
+            id: 'card-1',
+            type: 'summary',
+            title: '本期要点',
+            content: '重点内容',
+            startMs: 0,
+            endMs: 45_000,
+            displayDurationMs: 5_000,
+            displayMode: 'fullscreen',
+            template: 'summary-default',
+            enabled: true,
+            style: baseCardStyle,
+          },
+        ]}
+        onToggleEnabled={() => undefined}
+        onDeleteCard={() => undefined}
+        onEditCard={() => undefined}
+      />,
+    );
+    expect(html).toContain('aria-label="本期要点 更多操作"');
+    expect(html).toContain('aria-haspopup="true"');
+  });
+
   it('failed 状态显示失败徽章', () => {
     useAIStore.setState({ currentProjectDir: '/tmp/proj' });
     const html = renderToStaticMarkup(

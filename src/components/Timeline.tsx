@@ -35,6 +35,8 @@ import { createDefaultAudioOverlayData } from '../types';
 import { readAudioDurationMs } from '../lib/utils';
 import { getTextTemplateById } from '../lib/text-templates';
 import { useTimelineStore } from '../store/timeline';
+import { useAIStore } from '../store/ai';
+import { v4 as uuid } from 'uuid';
 import { AppIcon } from './AppIcon';
 import { OverlayBlock } from './OverlayBlock';
 import { TimelineAudioWaveform } from './TimelineAudioWaveform';
@@ -451,6 +453,25 @@ export function Timeline({
         return;
       }
 
+      if (action === 'insert-image-card' || action === 'insert-video-card') {
+        const aiStore = useAIStore.getState();
+        const segmentId = `manual:${uuid()}`;
+        const create =
+          action === 'insert-image-card'
+            ? aiStore.createImageCard(segmentId, {
+                aspectRatio: '16:9',
+                displayMode: 'fullscreen',
+              })
+            : aiStore.createVideoCard(segmentId, {
+                aspectRatio: '16:9',
+                displayMode: 'fullscreen',
+              });
+        void create.then((card) => {
+          onOpenAICardInspector?.(card.id);
+        });
+        return;
+      }
+
       if (!options.overlayId) {
         return;
       }
@@ -460,7 +481,7 @@ export function Timeline({
         setSelectedOverlayId(null);
       }
     },
-    [copyOverlay, cutOverlay, pasteOverlay, removeOverlay, selectedOverlayId],
+    [copyOverlay, cutOverlay, pasteOverlay, removeOverlay, selectedOverlayId, onOpenAICardInspector],
   );
 
   const renderContextMenuItems = useCallback(

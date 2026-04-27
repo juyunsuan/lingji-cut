@@ -780,6 +780,7 @@ export function AIPanel({
                       onToggleEnabled={handleToggleEnabled}
                       onDeleteCard={(cardId) => handleDeleteCards([cardId])}
                       onEditCard={(cardId) => onOpenCardInspector?.(cardId)}
+                      onSelect={(cardId) => onOpenCardInspector?.(cardId)}
                     />
                   </div>
                 </div>

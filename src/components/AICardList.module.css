@@ -62,6 +62,44 @@
   text-overflow: ellipsis;
 }
 
+.cardActions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity var(--motion-fast);
+}
+
+.card:hover .cardActions,
+.cardActions:focus-within {
+  opacity: 1;
+}
+
+.cardMenuTrigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+
+.cardMenuTrigger:hover {
+  background: color-mix(in srgb, var(--color-text-secondary) 18%, transparent);
+  color: var(--color-text-primary);
+}
+
+.cardMenuTrigger:focus-visible {
+  outline: 2px solid var(--color-system-blue);
+  outline-offset: 1px;
+}
+
 .body {
   margin: 0;
   min-width: 0;

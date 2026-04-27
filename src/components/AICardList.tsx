@@ -1,8 +1,16 @@
 import { AnimatePresence, m } from 'framer-motion';
+import { useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { toFileSrc } from '../lib/utils';
 import { useAIStore } from '../store/ai';
 import type { AICard, AICardType, MediaCardContent } from '../types/ai';
 import { Badge, Checkbox } from '../ui';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from '../ui/components/dropdown-menu';
 import { springs } from '../ui/lib/motion';
 import styles from './AICardList.module.css';
 
@@ -17,6 +25,8 @@ interface AICardListProps {
   onToggleEnabled: (cardId: string) => void;
   onDeleteCard: (cardId: string) => void;
   onEditCard: (cardId: string) => void;
+  /** 转换为 image/video 后立即聚焦该卡片到 Inspector；可选 */
+  onSelect?: (cardId: string) => void;
 }
 
 function getPreviewText(content: AICard['content']): string {
@@ -68,10 +78,23 @@ export function AICardList({
   cards,
   onToggleEnabled,
   onEditCard,
+  onSelect,
 }: AICardListProps) {
   // selector 订阅 currentProjectDir 变更；?? getState() 兼容 SSR
   const currentProjectDir =
     useAIStore((s) => s.currentProjectDir) ?? useAIStore.getState().currentProjectDir;
+  const convertCardToMedia = useAIStore((s) => s.convertCardToMedia);
+  const [openMenuCardId, setOpenMenuCardId] = useState<string | null>(null);
+
+  const handleConvert = async (
+    cardId: string,
+    mediaType: 'image' | 'video',
+  ): Promise<void> => {
+    const next = await convertCardToMedia(cardId, mediaType);
+    if (next) {
+      onSelect?.(next.id);
+    }
+  };
 
   return (
     <div className={styles.list} data-ai-card-list="true">
@@ -147,6 +170,46 @@ export function AICardList({
                 </Badge>
 
                 <span className={styles.title}>{card.title}</span>
+
+                <div
+                  className={styles.cardActions}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <DropdownMenu
+                    open={openMenuCardId === card.id}
+                    onOpenChange={(open) =>
+                      setOpenMenuCardId(open ? card.id : null)
+                    }
+                  >
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={styles.cardMenuTrigger}
+                        aria-label={`${card.title} 更多操作`}
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" sideOffset={4}>
+                      <DropdownMenuItem
+                        disabled={card.type === 'image'}
+                        onSelect={() => {
+                          void handleConvert(card.id, 'image');
+                        }}
+                      >
+                        转为图片卡
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={card.type === 'video'}
+                        onSelect={() => {
+                          void handleConvert(card.id, 'video');
+                        }}
+                      >
+                        转为视频卡
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
               <p className={styles.body} data-ai-card-copy="true">
