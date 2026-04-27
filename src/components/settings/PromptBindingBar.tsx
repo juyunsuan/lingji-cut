@@ -5,6 +5,7 @@ import type {
   ImageProvider,
   LLMProvider,
   PromptBinding,
+  VideoProvider,
 } from '../../types/ai';
 import styles from './PromptBindingBar.module.css';
 
@@ -21,7 +22,7 @@ export interface PromptBindingBarProps {
   effectiveModel: string | null;
   /** 修改 LLM 绑定；传 null 表示删除绑定（回到继承） */
   onChange: (next: PromptBinding | null) => void;
-  /** 仅 cover.regeneration 开启 */
+  /** cover.regeneration / card.image 开启 */
   showImageBinding?: boolean;
   imageProviders?: ImageProvider[];
   effectiveImageProviderId?: string | null;
@@ -30,6 +31,16 @@ export interface PromptBindingBarProps {
   onImageChange?: (next: {
     imageProviderId: string | null;
     imageModel: string | null;
+  }) => void;
+  /** card.video 开启 */
+  showVideoBinding?: boolean;
+  videoProviders?: VideoProvider[];
+  effectiveVideoProviderId?: string | null;
+  effectiveVideoModel?: string | null;
+  /** 修改文生视频绑定（合并到同一 binding 中） */
+  onVideoChange?: (next: {
+    videoProviderId: string | null;
+    videoModel: string | null;
   }) => void;
 }
 
@@ -54,6 +65,11 @@ export function PromptBindingBar({
   effectiveImageProviderId = null,
   effectiveImageModel = null,
   onImageChange,
+  showVideoBinding = false,
+  videoProviders = [],
+  effectiveVideoProviderId = null,
+  effectiveVideoModel = null,
+  onVideoChange,
 }: PromptBindingBarProps) {
   // ─── LLM 段 ───────────────────────────────────────
   // 显式 LLM 绑定：当前作用域同时有 providerId 与 model 视为显式覆盖
@@ -78,17 +94,21 @@ export function PromptBindingBar({
 
   const handleLlmInheritToggle = (inherit: boolean) => {
     if (inherit) {
-      // 继承 LLM —— 但 cover.regeneration 时需要保留图像段
-      if (showImageBinding && binding) {
+      // 继承 LLM —— 但需要保留 image / video 段（如果有显式覆盖）
+      if ((showImageBinding || showVideoBinding) && binding) {
         const next: PromptBinding = {
           providerId: null,
           model: null,
           imageProviderId: binding.imageProviderId ?? null,
           imageModel: binding.imageModel ?? null,
+          videoProviderId: binding.videoProviderId ?? null,
+          videoModel: binding.videoModel ?? null,
         };
         const hasImageOverride =
           Boolean(next.imageProviderId) && Boolean(next.imageModel);
-        onChange(hasImageOverride ? next : null);
+        const hasVideoOverride =
+          Boolean(next.videoProviderId) && Boolean(next.videoModel);
+        onChange(hasImageOverride || hasVideoOverride ? next : null);
       } else {
         onChange(null);
       }
@@ -106,6 +126,8 @@ export function PromptBindingBar({
         model,
         imageProviderId: binding?.imageProviderId ?? null,
         imageModel: binding?.imageModel ?? null,
+        videoProviderId: binding?.videoProviderId ?? null,
+        videoModel: binding?.videoModel ?? null,
       });
     }
   };
@@ -119,6 +141,8 @@ export function PromptBindingBar({
       model: firstModel,
       imageProviderId: binding?.imageProviderId ?? null,
       imageModel: binding?.imageModel ?? null,
+      videoProviderId: binding?.videoProviderId ?? null,
+      videoModel: binding?.videoModel ?? null,
     });
   };
 
@@ -130,6 +154,8 @@ export function PromptBindingBar({
       model,
       imageProviderId: binding?.imageProviderId ?? null,
       imageModel: binding?.imageModel ?? null,
+      videoProviderId: binding?.videoProviderId ?? null,
+      videoModel: binding?.videoModel ?? null,
     });
   };
 
@@ -186,6 +212,61 @@ export function PromptBindingBar({
     const providerId = binding?.imageProviderId ?? effectiveImageProviderId;
     if (!providerId) return;
     onImageChange({ imageProviderId: providerId, imageModel: model });
+  };
+
+  // ─── 视频段（仅 card.video）────────────────────────
+  const isVideoInheriting =
+    !binding || !binding.videoProviderId || !binding.videoModel;
+  const displayVideoProviderId = isVideoInheriting
+    ? effectiveVideoProviderId
+    : binding!.videoProviderId!;
+  const displayVideoModel = isVideoInheriting
+    ? effectiveVideoModel
+    : binding!.videoModel!;
+
+  const videoProviderOptions = useMemo(
+    () => toProviderOptions(videoProviders),
+    [videoProviders],
+  );
+  const videoProvider = useMemo(
+    () => videoProviders.find((p) => p.id === displayVideoProviderId) ?? null,
+    [videoProviders, displayVideoProviderId],
+  );
+  const videoModelOptions = useMemo(
+    () => toModelOptions(videoProvider?.models ?? []),
+    [videoProvider],
+  );
+
+  const handleVideoInheritToggle = (inherit: boolean) => {
+    if (!onVideoChange) return;
+    if (inherit) {
+      onVideoChange({ videoProviderId: null, videoModel: null });
+    } else {
+      const providerId =
+        effectiveVideoProviderId ?? videoProviders[0]?.id ?? null;
+      const provider = videoProviders.find((p) => p.id === providerId) ?? null;
+      const model =
+        effectiveVideoModel && provider?.models.includes(effectiveVideoModel)
+          ? effectiveVideoModel
+          : (provider?.models[0] ?? null);
+      if (!providerId || !model) return;
+      onVideoChange({ videoProviderId: providerId, videoModel: model });
+    }
+  };
+
+  const handleVideoProviderChange = (providerId: string) => {
+    if (!onVideoChange) return;
+    const provider = videoProviders.find((p) => p.id === providerId);
+    const firstModel = provider?.models[0] ?? null;
+    if (!firstModel) return;
+    onVideoChange({ videoProviderId: providerId, videoModel: firstModel });
+  };
+
+  const handleVideoModelChange = (model: string) => {
+    if (!onVideoChange) return;
+    const providerId = binding?.videoProviderId ?? effectiveVideoProviderId;
+    if (!providerId) return;
+    onVideoChange({ videoProviderId: providerId, videoModel: model });
   };
 
   return (
@@ -300,6 +381,67 @@ export function PromptBindingBar({
           </div>
           <div className={styles.imageNote}>
             ↳ 该提示词输出会被送往上方文生图模型生图
+          </div>
+        </>
+      )}
+
+      {/* ─── 视频绑定行（仅 card.video）─────────── */}
+      {showVideoBinding && onVideoChange && (
+        <>
+          <div className={styles.divider} />
+          <div className={styles.row}>
+            <span className={styles.rowLabel}>文生视频（最终出片）</span>
+            <Checkbox
+              className={styles.inheritToggle}
+              label="继承"
+              size="sm"
+              checked={isVideoInheriting}
+              onChange={(checked) => handleVideoInheritToggle(checked)}
+            />
+            <div className={styles.selectCell}>
+              <span className={styles.selectCellLabel}>Provider</span>
+              {isVideoInheriting ? (
+                <span className={styles.inheritedValue}>
+                  {videoProvider?.name ?? '（未配置默认 VideoProvider）'}
+                </span>
+              ) : (
+                <Select
+                  className={styles.select}
+                  value={displayVideoProviderId ?? ''}
+                  options={videoProviderOptions}
+                  onChange={(e) => handleVideoProviderChange(e.target.value)}
+                  placeholder="选择 VideoProvider"
+                />
+              )}
+            </div>
+            <div className={styles.selectCell}>
+              <span className={styles.selectCellLabel}>Model</span>
+              {isVideoInheriting ? (
+                <span className={styles.inheritedValue}>
+                  {displayVideoModel ?? '（未配置默认 Model）'}
+                </span>
+              ) : (
+                <Select
+                  className={styles.select}
+                  value={displayVideoModel ?? ''}
+                  options={videoModelOptions}
+                  onChange={(e) => handleVideoModelChange(e.target.value)}
+                  placeholder="选择 Model"
+                />
+              )}
+            </div>
+            {!isVideoInheriting && (
+              <button
+                type="button"
+                className={styles.resetLink}
+                onClick={() => handleVideoInheritToggle(true)}
+              >
+                重置为继承
+              </button>
+            )}
+          </div>
+          <div className={styles.imageNote}>
+            ↳ 该提示词输出会被送往上方文生视频模型出片
           </div>
         </>
       )}
