@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
 import { Field, Divider, Select, SaveButton, SettingsPageHeader } from '../../ui';
 import type { SelectOption } from '../../ui';
-import { DEFAULT_JIMENG_MODEL, type ImageProvider, type LLMProvider } from '../../types/ai';
+import {
+  DEFAULT_JIMENG_MODEL,
+  type ImageProvider,
+  type LLMProvider,
+  type VideoProvider,
+} from '../../types/ai';
 import { ProviderListSection } from './ProviderListSection';
 import { ImageProviderListSection } from './ImageProviderListSection';
+import { VideoProviderListSection } from './VideoProviderListSection';
 import {
   createAIConfigSnapshot,
   hasUnsavedAIConfigChanges,
@@ -30,6 +36,10 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
   const [imageProviders, setImageProviders] = useState<ImageProvider[]>([]);
   const [defaultImageProviderId, setDefaultImageProviderId] = useState<string | null>(null);
   const [defaultImageModel, setDefaultImageModel] = useState<string | null>(null);
+  // 新：视频 Provider
+  const [videoProviders, setVideoProviders] = useState<VideoProvider[]>([]);
+  const [defaultVideoProviderId, setDefaultVideoProviderId] = useState<string | null>(null);
+  const [defaultVideoModel, setDefaultVideoModel] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState('');
@@ -44,6 +54,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
       const nextImageProviders = settings?.imageProviders ?? [];
       const nextDefaultImageProviderId = settings?.defaultImageProviderId ?? null;
       const nextDefaultImageModel = settings?.defaultImageModel ?? null;
+      const nextVideoProviders = settings?.videoProviders ?? [];
+      const nextDefaultVideoProviderId = settings?.defaultVideoProviderId ?? null;
+      const nextDefaultVideoModel = settings?.defaultVideoModel ?? null;
       const selection = normalizeProviderSelection(
         nextProviders,
         settings?.defaultProviderId ?? null,
@@ -59,6 +72,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
       setImageProviders(nextImageProviders);
       setDefaultImageProviderId(nextDefaultImageProviderId);
       setDefaultImageModel(nextDefaultImageModel);
+      setVideoProviders(nextVideoProviders);
+      setDefaultVideoProviderId(nextDefaultVideoProviderId);
+      setDefaultVideoModel(nextDefaultVideoModel);
       setLastSavedSnapshot(
         createAIConfigSnapshot({
           providers: nextProviders,
@@ -70,6 +86,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
           imageProviders: nextImageProviders,
           defaultImageProviderId: nextDefaultImageProviderId,
           defaultImageModel: nextDefaultImageModel,
+          videoProviders: nextVideoProviders,
+          defaultVideoProviderId: nextDefaultVideoProviderId,
+          defaultVideoModel: nextDefaultVideoModel,
         }),
       );
       setHasLoaded(true);
@@ -97,6 +116,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
         imageProviders,
         defaultImageProviderId,
         defaultImageModel,
+        videoProviders,
+        defaultVideoProviderId,
+        defaultVideoModel,
       }),
     [
       providers,
@@ -108,6 +130,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
       imageProviders,
       defaultImageProviderId,
       defaultImageModel,
+      videoProviders,
+      defaultVideoProviderId,
+      defaultVideoModel,
     ],
   );
 
@@ -137,6 +162,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
       imageProviders,
       defaultImageProviderId,
       defaultImageModel,
+      videoProviders,
+      defaultVideoProviderId,
+      defaultVideoModel,
     });
 
     try {
@@ -172,6 +200,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
         imageProviders,
         defaultImageProviderId,
         defaultImageModel,
+        videoProviders,
+        defaultVideoProviderId,
+        defaultVideoModel,
       });
 
       setProviders(normalizedProviders);
@@ -198,6 +229,9 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
     imageProviders,
     defaultImageProviderId,
     defaultImageModel,
+    videoProviders,
+    defaultVideoProviderId,
+    defaultVideoModel,
   ]);
 
   useSettingsTabGuard({
@@ -252,11 +286,56 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
     [imageProviders],
   );
 
+  // ─── Video Provider 派生与回调 ──────────────────────────────────────────
+  const currentDefaultVideoProvider = useMemo(
+    () => videoProviders.find((p) => p.id === defaultVideoProviderId) ?? null,
+    [videoProviders, defaultVideoProviderId],
+  );
+
+  const videoProviderOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: '', label: '未选择' },
+      ...videoProviders.map((p) => ({ value: p.id, label: p.name || '未命名 Provider' })),
+    ],
+    [videoProviders],
+  );
+
+  const videoModelOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: '', label: '未选择' },
+      ...(currentDefaultVideoProvider?.models ?? []).map((m) => ({ value: m, label: m })),
+    ],
+    [currentDefaultVideoProvider],
+  );
+
+  const handleVideoProvidersChange = useCallback(
+    (nextProviders: VideoProvider[], nextDefaultId: string | null) => {
+      setVideoProviders(nextProviders);
+      setDefaultVideoProviderId(nextDefaultId);
+      const nextProvider = nextProviders.find((p) => p.id === nextDefaultId) ?? null;
+      setDefaultVideoModel((prev) => {
+        if (!nextProvider) return null;
+        if (prev && nextProvider.models.includes(prev)) return prev;
+        return nextProvider.models[0] ?? null;
+      });
+    },
+    [],
+  );
+
+  const handleDefaultVideoProviderChange = useCallback(
+    (nextId: string | null) => {
+      setDefaultVideoProviderId(nextId);
+      const nextProvider = videoProviders.find((p) => p.id === nextId) ?? null;
+      setDefaultVideoModel(nextProvider?.models[0] ?? null);
+    },
+    [videoProviders],
+  );
+
   return (
     <>
       <SettingsPageHeader
         title="AI 基础配置"
-        description="配置 OpenAI 兼容接口与封面图像生成服务"
+        description="配置 OpenAI 兼容接口、封面图像生成与视频生成服务"
       />
 
       <div className={styles.formStack}>
@@ -298,6 +377,33 @@ export function AIConfigTab({ onRegisterLeaveGuard }: AIConfigTabProps) {
             options={imageModelOptions}
             onChange={(e) => setDefaultImageModel(e.target.value || null)}
             disabled={!currentDefaultImageProvider}
+          />
+        </Field>
+
+        <Divider label="视频生成" />
+
+        <Field label="Video Providers">
+          <VideoProviderListSection
+            videoProviders={videoProviders}
+            defaultVideoProviderId={defaultVideoProviderId}
+            onChange={handleVideoProvidersChange}
+          />
+        </Field>
+
+        <Field label="默认 Video Provider">
+          <Select
+            value={defaultVideoProviderId ?? ''}
+            options={videoProviderOptions}
+            onChange={(e) => handleDefaultVideoProviderChange(e.target.value || null)}
+          />
+        </Field>
+
+        <Field label="默认模型">
+          <Select
+            value={defaultVideoModel ?? ''}
+            options={videoModelOptions}
+            onChange={(e) => setDefaultVideoModel(e.target.value || null)}
+            disabled={!currentDefaultVideoProvider}
           />
         </Field>
       </div>

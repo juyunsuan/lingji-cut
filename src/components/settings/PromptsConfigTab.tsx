@@ -56,6 +56,7 @@ import type {
   LLMProvider,
   PromptBinding,
   PromptBindingMap,
+  VideoProvider,
 } from '../../types/ai';
 import { PromptBindingBar } from './PromptBindingBar';
 import styles from './PromptsConfigTab.module.css';
@@ -128,9 +129,15 @@ function computeBindingBadge(
 
   try {
     const resolved = resolvePromptBinding(kind, settings, projectBindings);
-    if (kind === 'cover.regeneration' && resolved.imageModel) {
+    if ((kind === 'cover.regeneration' || kind === 'card.image') && resolved.imageModel) {
       return {
         label: `${resolved.model} · ${resolved.imageModel}`,
+        variant: 'info',
+      };
+    }
+    if (kind === 'card.video' && resolved.videoModel) {
+      return {
+        label: `${resolved.model} · ${resolved.videoModel}`,
         variant: 'info',
       };
     }
@@ -304,6 +311,7 @@ export function PromptsConfigTab() {
   // ─── 绑定相关派生数据（仅 kind 编辑模式使用） ────────
   const llmProviders: LLMProvider[] = aiSettings?.llmProviders ?? [];
   const imageProviders: ImageProvider[] = aiSettings?.imageProviders ?? [];
+  const videoProviders: VideoProvider[] = aiSettings?.videoProviders ?? [];
 
   /** 当前作用域下该 kind 的显式绑定（undefined 表示继承） */
   const currentScopeBinding: PromptBinding | undefined = useMemo(() => {
@@ -404,7 +412,7 @@ export function PromptsConfigTab() {
     ],
   );
 
-  /** cover.regeneration 图像段变更：合并到同一 binding 中 */
+  /** cover.regeneration / card.image 图像段变更：合并到同一 binding 中 */
   const handleImageBindingChange = useCallback(
     async (next: { imageProviderId: string | null; imageModel: string | null }) => {
       const current: PromptBinding | undefined = currentScopeBinding;
@@ -413,13 +421,40 @@ export function PromptsConfigTab() {
         model: current?.model ?? null,
         imageProviderId: next.imageProviderId,
         imageModel: next.imageModel,
+        videoProviderId: current?.videoProviderId ?? null,
+        videoModel: current?.videoModel ?? null,
       };
-      // 若 LLM 段与图像段都为空 → 删除整个绑定（回到继承）
       const allCleared =
         !merged.providerId &&
         !merged.model &&
         !merged.imageProviderId &&
-        !merged.imageModel;
+        !merged.imageModel &&
+        !merged.videoProviderId &&
+        !merged.videoModel;
+      await handleBindingChange(allCleared ? null : merged);
+    },
+    [currentScopeBinding, handleBindingChange],
+  );
+
+  /** card.video 视频段变更：合并到同一 binding 中 */
+  const handleVideoBindingChange = useCallback(
+    async (next: { videoProviderId: string | null; videoModel: string | null }) => {
+      const current: PromptBinding | undefined = currentScopeBinding;
+      const merged: PromptBinding = {
+        providerId: current?.providerId ?? null,
+        model: current?.model ?? null,
+        imageProviderId: current?.imageProviderId ?? null,
+        imageModel: current?.imageModel ?? null,
+        videoProviderId: next.videoProviderId,
+        videoModel: next.videoModel,
+      };
+      const allCleared =
+        !merged.providerId &&
+        !merged.model &&
+        !merged.imageProviderId &&
+        !merged.imageModel &&
+        !merged.videoProviderId &&
+        !merged.videoModel;
       await handleBindingChange(allCleared ? null : merged);
     },
     [currentScopeBinding, handleBindingChange],
@@ -781,12 +816,21 @@ export function PromptsConfigTab() {
                 onChange={(next) => {
                   void handleBindingChange(next);
                 }}
-                showImageBinding={active.kind === 'cover.regeneration'}
+                showImageBinding={
+                  active.kind === 'cover.regeneration' || active.kind === 'card.image'
+                }
                 imageProviders={imageProviders}
                 effectiveImageProviderId={resolved?.imageProvider?.id ?? null}
                 effectiveImageModel={resolved?.imageModel ?? null}
                 onImageChange={(next) => {
                   void handleImageBindingChange(next);
+                }}
+                showVideoBinding={active.kind === 'card.video'}
+                videoProviders={videoProviders}
+                effectiveVideoProviderId={resolved?.videoProvider?.id ?? null}
+                effectiveVideoModel={resolved?.videoModel ?? null}
+                onVideoChange={(next) => {
+                  void handleVideoBindingChange(next);
                 }}
               />
 

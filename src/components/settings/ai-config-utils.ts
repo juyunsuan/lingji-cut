@@ -1,4 +1,4 @@
-import type { ImageProvider, LLMProvider } from '../../types/ai';
+import type { ImageProvider, LLMProvider, VideoProvider } from '../../types/ai';
 
 export interface ProviderDraftErrors {
   name?: string;
@@ -8,6 +8,13 @@ export interface ProviderDraftErrors {
 }
 
 export interface ImageProviderDraftErrors {
+  name?: string;
+  baseUrl?: string;
+  apiKey?: string;
+  models?: string;
+}
+
+export interface VideoProviderDraftErrors {
   name?: string;
   baseUrl?: string;
   apiKey?: string;
@@ -24,6 +31,9 @@ interface AIConfigSnapshotInput {
   imageProviders?: ImageProvider[];
   defaultImageProviderId?: string | null;
   defaultImageModel?: string | null;
+  videoProviders?: VideoProvider[];
+  defaultVideoProviderId?: string | null;
+  defaultVideoModel?: string | null;
 }
 
 export function normalizeProviderDraft(provider: LLMProvider): LLMProvider {
@@ -101,6 +111,9 @@ export function createAIConfigSnapshot({
   imageProviders,
   defaultImageProviderId,
   defaultImageModel,
+  videoProviders,
+  defaultVideoProviderId,
+  defaultVideoModel,
 }: AIConfigSnapshotInput): string {
   const normalizedProviders = normalizeProviderDrafts(providers);
   const selection = normalizeProviderSelection(
@@ -110,6 +123,9 @@ export function createAIConfigSnapshot({
   );
   const normalizedImageProviders = imageProviders
     ? normalizeImageProviderDrafts(imageProviders)
+    : [];
+  const normalizedVideoProviders = videoProviders
+    ? normalizeVideoProviderDrafts(videoProviders)
     : [];
 
   return JSON.stringify({
@@ -122,6 +138,9 @@ export function createAIConfigSnapshot({
     imageProviders: normalizedImageProviders,
     defaultImageProviderId: defaultImageProviderId ?? null,
     defaultImageModel: defaultImageModel ?? null,
+    videoProviders: normalizedVideoProviders,
+    defaultVideoProviderId: defaultVideoProviderId ?? null,
+    defaultVideoModel: defaultVideoModel ?? null,
   });
 }
 
@@ -169,6 +188,36 @@ export function validateImageProviderDraft(provider: ImageProvider): ImageProvid
   if (normalized.models.length === 0) {
     errors.models = '请至少添加一个模型';
   }
+
+  return errors;
+}
+
+// ─── Video Provider 校验与归一化 ─────────────────────────────────────────
+
+export function normalizeVideoProviderDraft(provider: VideoProvider): VideoProvider {
+  return {
+    ...provider,
+    name: provider.name.trim(),
+    baseUrl: provider.baseUrl.trim(),
+    apiKey: provider.apiKey.trim(),
+    models: provider.models
+      .map((model) => model.trim())
+      .filter((model, index, list) => model.length > 0 && list.indexOf(model) === index),
+  };
+}
+
+export function normalizeVideoProviderDrafts(providers: VideoProvider[]): VideoProvider[] {
+  return providers.map(normalizeVideoProviderDraft);
+}
+
+export function validateVideoProviderDraft(provider: VideoProvider): VideoProviderDraftErrors {
+  const normalized = normalizeVideoProviderDraft(provider);
+  const errors: VideoProviderDraftErrors = {};
+
+  if (!normalized.name) errors.name = '请输入 Provider 名称';
+  if (!normalized.baseUrl) errors.baseUrl = '请输入 Base URL';
+  if (!normalized.apiKey) errors.apiKey = '请输入 API Key';
+  if (normalized.models.length === 0) errors.models = '请至少添加一个模型';
 
   return errors;
 }
