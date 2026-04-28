@@ -98,7 +98,7 @@ export interface SettingsSnapshot {
   promptBindings: Record<string, unknown> | null;
 }
 
-const SECRET_KEY_RE = /apikey|secret|token|sessionid/i;
+const SECRET_KEY_RE = /apikey|secret|token|sessionid|password|credential|bearer|signature/i;
 
 function stripSecrets<T extends Record<string, unknown>>(obj: T | null | undefined): Record<string, unknown> | null {
   if (!obj) return null;
