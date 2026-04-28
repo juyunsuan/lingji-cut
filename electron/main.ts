@@ -127,6 +127,8 @@ import {
   resolveRemotionBinariesDirectory,
 } from './remotion-paths';
 import { getWindowChromeOptions } from './window-chrome';
+import { getPipelineService, attachTaskProgressBridge } from './pipeline';
+import { setActiveProjectPath } from './pipeline/context';
 
 const execFileAsync = promisify(execFile);
 
@@ -941,6 +943,7 @@ ipcMain.handle('delete-card-media-assets', async (_event, args: { projectDir: st
 
 ipcMain.handle('load-project', async (_event, projectDir: string) => {
   const data = await loadProjectFile(projectDir);
+  setActiveProjectPath(projectDir);
   return JSON.stringify(data, null, 2);
 });
 
@@ -2364,6 +2367,8 @@ app.whenReady().then(async () => {
     writeAppLog('warn', 'user-prompts', '迁移旧口播模板失败', String(err));
   }
   createWindow();
+  // 启动 PipelineService 并桥接任务进度到 renderer
+  attachTaskProgressBridge(getPipelineService(), () => mainWindow);
   // 在 whenReady 内订阅，避免 electron-vite 开发模式下主模块 HMR 重新执行
   // 时多次叠加监听器；广播只发给 mainWindow，与其他通道（analyze-progress /
   // cover-progress / menu-action / app-log）保持一致。

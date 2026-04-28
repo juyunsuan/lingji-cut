@@ -4,10 +4,11 @@
  */
 import { readFile } from 'node:fs/promises';
 import { resolve, isAbsolute } from 'node:path';
-import { ipcMain, type BrowserWindow } from 'electron';
+import { app, ipcMain, type BrowserWindow } from 'electron';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getVideoImportService } from '../video-import/import-service';
+import { registerPipelineMcpTools } from '../pipeline/tools/register';
 
 // ─── 默认超时（毫秒） ─────────────────────────────────────
 const DEFAULT_TIMEOUT = 30_000;
@@ -410,6 +411,9 @@ export function registerTools(
       return jsonResult(result);
     }),
   );
+
+  // ─── Pipeline 基础设施工具（22 工具中的 7 个同步基础工具） ─────
+  registerPipelineMcpTools(server, getMainWindow, () => app.getPath('userData'));
 }
 
 // ─── 结果构造辅助 ─────────────────────────────────────────
@@ -420,9 +424,11 @@ function jsonResult(data: unknown) {
   };
 }
 
-function errorResult(message: string) {
+function errorResult(message: string, code?: string) {
+  const payload: Record<string, unknown> = { error: message };
+  if (code) payload.code = code;
   return {
-    content: [{ type: 'text' as const, text: JSON.stringify({ error: message }, null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
     isError: true,
   };
 }
