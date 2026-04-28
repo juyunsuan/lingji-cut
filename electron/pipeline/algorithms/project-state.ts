@@ -44,10 +44,17 @@ async function dirHasImage(dir: string): Promise<boolean> {
   }
 }
 
-async function readProjectJson(dir: string): Promise<any | null> {
+type ProjectJsonShape = {
+  timeline?: { tracks?: unknown } | null;
+  aiAnalysis?: {
+    analysisResult?: { subtitleAnalysis?: unknown; cards?: unknown } | null;
+  } | null;
+};
+
+async function readProjectJson(dir: string): Promise<ProjectJsonShape | null> {
   try {
     const raw = await fs.readFile(path.join(dir, 'project.json'), 'utf-8');
-    return JSON.parse(raw);
+    return JSON.parse(raw) as ProjectJsonShape;
   } catch {
     return null;
   }
@@ -102,9 +109,10 @@ export async function computeProjectState(projectPath: string): Promise<ProjectS
   const tracks: unknown = project?.timeline?.tracks;
   const has_timeline =
     Array.isArray(tracks) &&
-    tracks.some(
-      (t: any) => Array.isArray(t?.overlays) && t.overlays.length > 0,
-    );
+    tracks.some((t: unknown) => {
+      const overlays = (t as { overlays?: unknown })?.overlays;
+      return Array.isArray(overlays) && overlays.length > 0;
+    });
 
   return {
     has_original: originalNon,
