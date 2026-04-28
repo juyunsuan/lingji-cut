@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import type { BrowserWindow } from 'electron';
 import { TaskRegistry } from './task-registry';
 import { resolveProject } from './context';
 import {
@@ -9,6 +10,7 @@ import {
   type PipelineTaskKind,
   type PipelineTaskProgress,
 } from './types';
+import { createTaskProgressBridge, type BridgeSender } from './task-progress-bridge';
 
 export interface TaskHandle {
   taskId: string;
@@ -180,3 +182,15 @@ export function getPipelineService(): PipelineService {
 }
 
 export { PIPELINE_ERROR_CODES } from './types';
+
+export function attachTaskProgressBridge(
+  svc: PipelineService,
+  getMainWindow: () => BrowserWindow | null,
+): () => void {
+  const sender: BridgeSender = (channel, payload) => {
+    const win = getMainWindow();
+    win?.webContents.send(channel, payload);
+  };
+  const bridge = createTaskProgressBridge({ send: sender });
+  return svc.onTaskUpdate((task) => bridge.notify(task));
+}
