@@ -227,6 +227,11 @@ Lingji Cut 目前是桌面优先的创作工具，最小窗口约束约为 `1100
 
 - [LINUX DO](https://linux.do) — 新一代开源社区
 
+## 联系作者
+
+- X / Twitter：[@LYoqu60097](https://x.com/LYoqu60097)
+- 微信：`yoqu2020`
+
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
