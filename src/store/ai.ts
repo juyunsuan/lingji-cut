@@ -156,6 +156,15 @@ function appendCardToStore(
 }
 
 
+/**
+ * 规范化卡片生成并发数：必须为 >= 1 的整数；非法值回退到默认 2。
+ */
+function normalizeConcurrency(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 2;
+  const n = Math.floor(value);
+  return n >= 1 ? n : 2;
+}
+
 function buildDefaultAISettings(): AISettings {
   return {
     llmProviders: [],
@@ -183,6 +192,7 @@ function buildDefaultAISettings(): AISettings {
     defaultVideoProviderId: null,
     defaultVideoModel: null,
     promptBindings: {},
+    cardGenerationConcurrency: 2,
   };
 }
 
@@ -790,6 +800,9 @@ export async function loadAISettings(): Promise<AISettings | null> {
           defaultVideoProviderId: file.aiSettings.defaultVideoProviderId ?? null,
           defaultVideoModel: file.aiSettings.defaultVideoModel ?? null,
           promptBindings: file.aiSettings.promptBindings ?? {},
+          cardGenerationConcurrency: normalizeConcurrency(
+            file.aiSettings.cardGenerationConcurrency,
+          ),
         };
         const providerMigrated = migrateToProviders(settings);
         const imageMigrated = migrateImageProviders(providerMigrated);
@@ -833,6 +846,7 @@ export async function loadAISettings(): Promise<AISettings | null> {
           defaultVideoProviderId: parsed.defaultVideoProviderId ?? null,
           defaultVideoModel: parsed.defaultVideoModel ?? null,
           promptBindings: parsed.promptBindings ?? {},
+          cardGenerationConcurrency: normalizeConcurrency(parsed.cardGenerationConcurrency),
         };
         const providerMigrated = migrateToProviders(raw);
         const settings = migrateImageProviders(providerMigrated);

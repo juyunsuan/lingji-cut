@@ -15,12 +15,31 @@ export type MotionTemplateKey =
   | 'step-flow-explainer'
   | 'chapter-stinger';
 
+/**
+ * 单行字幕注入到 Motion Card 运行时。
+ * relativeStartFrame / relativeEndFrame 已经换算为相对于当前卡片 Sequence 起点的帧号，
+ * 方便 LLM 生成的代码用 frame 直接做 interpolate，而不需要再做 ms→frame 换算。
+ */
+export interface MotionSubtitleCue {
+  startMs: number;
+  endMs: number;
+  text: string;
+  relativeStartFrame: number;
+  relativeEndFrame: number;
+}
+
 export interface MotionComponentProps {
   frame: number;
   fps: number;
   durationInFrames: number;
   width: number;
   height: number;
+  /**
+   * 当前卡片时间窗内的字幕行（按 relativeStartFrame 升序）。
+   * 用于让 Motion Card 的入场 / 数字增长 / 表格展开等动画严格跟随讲述节奏，
+   * 而不是用固定的 12-24 帧硬时序。
+   */
+  subtitles: MotionSubtitleCue[];
 }
 
 export interface MotionAssetInfo {

@@ -209,6 +209,13 @@ export interface AISettings {
   defaultVideoModel: string | null;
   // —— 新增：提示词 → AI 绑定（全局层）——
   promptBindings: PromptBindingMap;
+  /**
+   * 段落信息卡片（含信息图）生成并发数。
+   * 控制 analyzeSrt 中分段卡片生成 worker 数；image 卡片的图像 Provider 调用
+   * 嵌套在 worker 内，因此该值同时决定信息图并行生成数。
+   * 必须 >= 1，默认 2。
+   */
+  cardGenerationConcurrency?: number;
 }
 
 export const DEFAULT_JIMENG_MODEL = 'jimeng-5.0';

@@ -87,6 +87,7 @@ export function PodcastComposition({ timeline, srtEntries }: PodcastCompositionP
                   fps={timeline.fps}
                   chapterIndex={aiCardIndex}
                   zIndex={zIndex}
+                  srtEntries={srtEntries}
                 />
               );
             }

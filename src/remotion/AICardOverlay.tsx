@@ -1,9 +1,10 @@
 import type { CSSProperties } from 'react';
 import { Img, OffthreadVideo, Sequence } from 'remotion';
-import type { OverlayItem } from '../types';
+import type { OverlayItem, SrtEntry } from '../types';
 import { isDataContent, isMediaContent } from '../types/ai';
 import { msToFrame } from '../lib/utils';
 import { resolveRemotionAssetSrc } from '../lib/remotion-assets';
+import type { MotionSubtitleCue } from '../types/motion';
 import { SummaryCard } from './cards/SummaryCard';
 import { DataCard } from './cards/DataCard';
 import { InsightCard } from './cards/InsightCard';
@@ -17,6 +18,32 @@ interface AICardOverlayProps {
   fps: number;
   chapterIndex?: number;
   zIndex?: number;
+  srtEntries?: SrtEntry[];
+}
+
+function sliceSubtitlesForOverlay(
+  entries: SrtEntry[] | undefined,
+  overlay: OverlayItem,
+  fps: number,
+): MotionSubtitleCue[] {
+  if (!entries || entries.length === 0) return [];
+  const overlayStart = overlay.startMs;
+  const overlayEnd = overlay.startMs + overlay.durationMs;
+  const cues: MotionSubtitleCue[] = [];
+  for (const entry of entries) {
+    if (entry.endMs <= overlayStart) continue;
+    if (entry.startMs >= overlayEnd) break;
+    const clampedStart = Math.max(entry.startMs, overlayStart);
+    const clampedEnd = Math.min(entry.endMs, overlayEnd);
+    cues.push({
+      startMs: entry.startMs,
+      endMs: entry.endMs,
+      text: entry.text,
+      relativeStartFrame: msToFrame(clampedStart - overlayStart, fps),
+      relativeEndFrame: msToFrame(clampedEnd - overlayStart, fps),
+    });
+  }
+  return cues;
 }
 
 function formatTime(ms: number): string {
@@ -30,6 +57,7 @@ interface RenderCardContext {
   motionDurationInFrames: number;
   motionWidth: number;
   motionHeight: number;
+  motionSubtitles: MotionSubtitleCue[];
 }
 
 function renderCard(
@@ -49,6 +77,7 @@ function renderCard(
         durationInFrames={context.motionDurationInFrames}
         width={context.motionWidth}
         height={context.motionHeight}
+        subtitles={context.motionSubtitles}
       />
     );
   }
@@ -107,7 +136,13 @@ function renderCard(
   return <QuoteCard content={String(data.content)} style={data.style} />;
 }
 
-export function AICardOverlay({ overlay, fps, chapterIndex = 1, zIndex }: AICardOverlayProps) {
+export function AICardOverlay({
+  overlay,
+  fps,
+  chapterIndex = 1,
+  zIndex,
+  srtEntries,
+}: AICardOverlayProps) {
   if (overlay.overlayType !== 'ai-card' || !overlay.aiCardData) {
     return null;
   }
@@ -131,6 +166,7 @@ export function AICardOverlay({ overlay, fps, chapterIndex = 1, zIndex }: AICard
     motionDurationInFrames: durationInFrames,
     motionWidth,
     motionHeight,
+    motionSubtitles: sliceSubtitlesForOverlay(srtEntries, overlay, fps),
   };
   const wrapperStyle: CSSProperties = isFullscreen
     ? { position: 'absolute', inset: 0, zIndex }

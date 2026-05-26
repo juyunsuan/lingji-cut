@@ -22,6 +22,7 @@ import {
   ConfirmDialog,
   Field,
   Input,
+  NumberField,
   SettingsPageHeader,
   Tabs,
   TabsList,
@@ -43,7 +44,7 @@ import {
 } from '../../lib/prompts';
 import { SCRIPT_TEMPLATE_SEEDS } from '../../lib/prompts/script-template-defaults';
 import { getProjectDir } from '../../store/timeline';
-import { loadAISettings, useAIStore } from '../../store/ai';
+import { loadAISettings, saveAISettings, useAIStore } from '../../store/ai';
 import {
   PromptBindingError,
   resolvePromptBinding,
@@ -436,6 +437,27 @@ export function PromptsConfigTab() {
       await handleBindingChange(allCleared ? null : merged);
     },
     [currentScopeBinding, handleBindingChange],
+  );
+
+  /** cards.segment 并发数：全局调度配置，与提示词 scope 无关 */
+  const cardConcurrencyValue =
+    typeof aiSettings?.cardGenerationConcurrency === 'number' &&
+    Number.isFinite(aiSettings.cardGenerationConcurrency)
+      ? Math.max(1, Math.floor(aiSettings.cardGenerationConcurrency))
+      : 2;
+  const handleCardConcurrencyChange = useCallback(
+    async (next: number) => {
+      if (!aiSettings) return;
+      const normalized = Math.max(1, Math.floor(Number.isFinite(next) ? next : 2));
+      try {
+        await saveAISettings({ ...aiSettings, cardGenerationConcurrency: normalized });
+        await refreshAISettings();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast(message, { title: '保存并发数失败', type: 'error', duration: 4000 });
+      }
+    },
+    [aiSettings, refreshAISettings, showToast],
   );
 
   /** card.video 视频段变更：合并到同一 binding 中 */
@@ -835,6 +857,23 @@ export function PromptsConfigTab() {
                   void handleVideoBindingChange(next);
                 }}
               />
+
+              {active.kind === 'cards.segment' ? (
+                <Field
+                  label="段落卡片生成并发数"
+                  hint="同时并发生成多少个段落的卡片；信息图（image 卡）的图像 Provider 调用嵌套在 worker 内，因此该值也决定信息图并行度。必须 ≥ 1，默认 2。"
+                >
+                  <NumberField
+                    value={cardConcurrencyValue}
+                    min={1}
+                    step={1}
+                    disabled={!aiSettings}
+                    onChange={(next) => {
+                      void handleCardConcurrencyChange(next);
+                    }}
+                  />
+                </Field>
+              ) : null}
 
               {error && <Alert variant="error" description={error} />}
 

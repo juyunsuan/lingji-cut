@@ -147,10 +147,10 @@ user: |-
 `;
 
 const CARDS_SEGMENT = `name: cards.segment
-description: 围绕单个 segment 生成 Motion Card 或 Image Card 描述（视觉系统：电子杂志 × 电子墨水 · 深色变体）
-version: 6
+description: 段落 Motion Card 生成提示词（电子杂志 × 电子墨水 · 深色变体；motion-only）
+version: 7
 user: |-
-  任务：只为当前 segment 生成 1 张卡片，严格跟随 visualType={{segmentVisualType}}。
+  任务：只为当前 segment 生成 **1 张 Motion Card**（renderMode="motion-card"）。本提示词不再处理 image 段落，image 段在上游直接走 card.image 链路，不会进入这里。
 
   上下文：
   - 全局提示：{{globalPrompt}}
@@ -165,94 +165,129 @@ user: |-
 
   时间轴：startMs/endMs/displayDurationMs 必须围绕当前段核心表达；不提前覆盖铺垫、转场或相邻段。
 
-  image 分支：
-  - 输出 type="image"，不要 motionCard，不要 cardPrompt。
-  - title ≤14 字；content 30-80 字，写清图像主体/场景，供 card.image 后续生成文生图 prompt。
-  - displayMode 合理；imageAspectRatio 从 "16:9"|"9:16"|"1:1"|"4:3"|"3:4" 中选。
-
-  motion 分支 —— 技术约束（不可违反）：
-  - type 从 summary/data/insight/chapter/quote/motion 中选；renderMode="motion-card"。
+  ===== Motion Card 通用技术约束（不可违反）=====
+  - type 必须从 summary / data / insight / chapter / quote / motion 中选；renderMode="motion-card"。
   - motionCard.sourceCode 必须定义 const MotionComponent = (props) => { ... } 并 return JSX。
-  - props 只用 { frame, fps, durationInFrames, width, height }；布局基于 width/height，不硬编码 1920/1080。
-  - 禁止 import/export/async/await/useCurrentFrame/useVideoConfig/window/globalThis/require。
-  - 纯内联 style；不引入外部字体/网络资源；不输出 markdown 代码块。
-  - 内容忠于字幕，不编造，不写 Source/免责声明等画面小字。
-  - 性能：最多 1 标题 + 3 要点、6 个主元素、2 层背景装饰、1 个 SVG；禁止粒子雨/复杂滤镜/大量 path/逐帧随机/CameraMotionBlur。
-  - 动画：入场 12-24 帧、退出 12-20 帧；长卡用 2-4 个轻量 beats + 低成本微动循环；interpolate 必须 clamp。
+  - props 现在是 { frame, fps, durationInFrames, width, height, subtitles }；布局必须基于 width / height 自适应，**禁止硬编码 1920 / 1080**。
+  - subtitles 是一个数组（可能为空），每项形如 { startMs, endMs, text, relativeStartFrame, relativeEndFrame }，已按时间升序、relative*Frame 已对齐卡片起点为 0；**所有分步动画必须按 subtitles 顺序触发**，没有 subtitles 时退化为 beats 等分节奏。
+  - 禁止 import / export / async / await / useCurrentFrame / useVideoConfig / window / globalThis / require / fetch / setTimeout / setInterval / new Date 这类副作用 API。
+  - 纯内联 style；不引入外部字体 / 网络资源；不输出 markdown 代码块；不写注释解释画面。
+  - 内容忠于字幕，不编造数字与人名；画面里不要出现 Source / AI Generated / 节目水印之类小字。
+  - 性能：最多 1 标题 + 1 副标题 / 注释 + 1 个数据可视化主元素 + 至多 6 个数据/列表项 + 1 层 hairline 装饰；禁止粒子雨 / blur 氛围光 / 大量 path / 逐帧随机 / CameraMotionBlur。
+  - 可用 API：{{sandboxReference}}
+
+  ===== 字幕驱动动画契约（六类卡片通用，必须严格执行）=====
+  入场窗（永远存在）：
+  - 入场基准窗 = [0, min(18, durationInFrames * 0.25)] 帧。
+  - serif 主标题以 translateY(H*0.04) + opacity 0→1 入场；mono meta / hairline 跟随其后 4-8 帧入场。
+  - 入场结束后**不要再触发任何 opacity 0↔1 的闪烁**，已可见的元素必须保持稳定。
+
+  内容分步（核心）：
+  - 把卡片的"可分步内容单元"（要点、数据项、表格行、饼图扇区、章节副标、引文等）依次记作 step[0..N-1]。
+  - 当 subtitles.length >= N：step[i] 的揭示窗 = [subtitles[i].relativeStartFrame, subtitles[i].relativeStartFrame + 12]，揭示用 translateY(H*0.025) + opacity 0→1，禁止 scale 大于 1.04，禁止 rotate，禁止 blur 入场。
+  - 当 subtitles.length < N：把 durationInFrames 等分成 N 个 beat，step[i] 揭示窗 = [入场窗末 + beatLen * i, 入场窗末 + beatLen * i + 12]。
+  - 已揭示的 step 必须保持 opacity:1 与最终 translate 状态直到卡片末尾；**绝对禁止在揭示后再让它消失或再次入场**。
+
+  退场窗（可选）：
+  - 仅当 durationInFrames > 90 时启用，窗 = [durationInFrames - 14, durationInFrames]，整卡 opacity 1→0.0 单调下降，不允许任何元素反向运动。
+
+  动画反禁忌（**违反任意一条都视为生成失败，必须重做**）：
+  1. 禁止任何 opacity 在同一元素上出现 0→1→0 / 1→0→1 类反复；揭示后就保持。
+  2. 禁止使用 Math.sin / Math.cos / random / noise2D / noise3D 调制 opacity / scale / translate；只能用 interpolate(frame, [from,to], [a,b], { extrapolateRight:'clamp', extrapolateLeft:'clamp', easing: Easing.out(Easing.cubic) })。
+  3. 禁止 spring overshoot > 1.05；调用 spring 时必须给 { config: { damping: 200, stiffness: 120, mass: 0.6 } } 或等价稳态参数。
+  4. 禁止任何元素在不同帧间发生位置 / 尺寸的"瞬移"（即 interpolate 区间外不留出 clamp）。
+  5. 禁止整卡级 scale / rotate / 摄影机抖动 / 翻页效果。
+  6. 禁止循环抖动 / 持续呼吸缩放；唯一允许的"微动"是 hairline 长度从 0→100% 的一次性单调揭示。
+
+  布局反禁忌（杜绝文字遮挡）：
+  - 顶层容器使用 display:'flex'; flexDirection:'column'; gap: H * 0.04，padding: H * 0.08 上下 / W * 0.07 左右；不要把多个元素摞到同一坐标。
+  - 任何使用 position:'absolute' 的子元素必须显式给出 left/right/top/bottom 四角中的至少 2 个，并保证矩形不与其它绝对定位元素相交。
+  - 文字行 fontSize 之和 + gap 之和必须 ≤ height - 2 * paddingY；如果内容溢出，缩短文案、不要缩字号到不可读。
+  - 数据可视化区域（图 / 表）与文字区域必须用一行 hairline 或一个明确 gap 隔开；图表不允许压在文字之上。
+  - 中文字符不要给 letterSpacing < 0 的负字距；西文标号才允许 -0.01em ~ -0.02em。
 
   ===== 视觉系统：电子杂志 × 电子墨水（深色变体）=====
   美学锚点：Monocle 杂志的版式 × 电子墨水的克制 × 深色科技纪录片的影调。整张卡是一页杂志，不是一个营销弹窗。
 
   Design DNA（违反任何一条，杂志感都会垮）：
-  1. 克制优于炫技 —— 不用阴影、不用浮动卡片、不用 padding box，一切信息靠**大字号 + 字体对比 + 网格留白**承载
-  2. 结构优于装饰 —— 不要"装饰性 emoji"、不要彩色图标墙、不要发光晕圈；装饰只允许 1px hairline 横线、单个序号、单个 SVG 图形
-  3. 内容层级 = 字号 + 字体共同定义 —— 最大衬线 = 主标题；中衬线 = 副标；大无衬线 = lead；小无衬线 = body；等宽 = meta（小字 / 编号 / Vol. / SEGMENT 03）
-  4. 节奏靠留白 —— 卡片四周内边距 ≥ height * 0.08，正文与标题间距 ≥ height * 0.04，hairline 上下间距 ≥ height * 0.03
+  1. 克制优于炫技 —— 不用阴影、不用浮动卡片、不用 padding box，一切信息靠**大字号 + 字体对比 + 网格留白**承载。
+  2. 结构优于装饰 —— 不要"装饰性 emoji"、不要彩色图标墙、不要发光晕圈；装饰只允许 1px hairline 横线、单个序号、单个 SVG 数据图形。
+  3. 内容层级 = 字号 + 字体共同定义 —— 最大衬线 = 主标题；中衬线 = 副标；大无衬线 = lead；小无衬线 = body；等宽 = meta。
+  4. 节奏靠留白 —— 卡片四周内边距 ≥ H * 0.08，正文与标题间距 ≥ H * 0.04，hairline 上下间距 ≥ H * 0.03。
 
   主题 tokens（深色变体，硬性锁定，禁止替换）：
-  - 画布底色 paper：#0E0E10（near-ink，深色画布）
-  - 主文字 ink：#ECE7DA（warm paper，杂志暖白）
+  - 画布底色 paper：#0E0E10
+  - 主文字 ink：#ECE7DA
   - 弱化文字 ink-mute：#8A8478
   - hairline 颜色：rgba(236,231,218,0.18)
-  - 单一 accent：#0A84FF（系统蓝；**整张卡只能出现 1 次**，用于 1 个关键数字 / 1 个单词高亮 / 1 条 accent 短横线，三选一）
-  - **禁止**：任何渐变 / box-shadow / filter: blur 用于氛围光 / border-radius > 4px / 第二种 accent 色 / 霓虹紫 / 强饱和橙 / 营销绿
+  - 单一 accent：#0A84FF（系统蓝；**整张卡只能出现在 1 个语义焦点**：1 个关键数字 / 1 条进度图填充色 / 1 段高亮单词 / 1 条 accent 短横线，四选一）
+  - 数据图填充：未达成区 = rgba(236,231,218,0.12)（轨道）、已达成区 = #0A84FF；对比第二色用 ink-mute #8A8478，**绝不要引入第二种霓虹**。
+  - 禁止：任何渐变 / box-shadow / filter:blur 用于氛围光 / border-radius > 4px / 第二种 accent 色 / 霓虹紫 / 强饱和橙 / 营销绿。
 
-  字体栈（严格按 fontFamily 字符串照抄；不要引入网络字体）：
-  - serif（hero / 主标题）：'Noto Serif SC','Source Han Serif SC','Songti SC','STSong',Georgia,'Times New Roman',serif
-  - sans（lead / body）：'PingFang SC','Hiragino Sans GB','Source Han Sans SC','Noto Sans SC','Helvetica Neue',Helvetica,Arial,sans-serif
-  - mono（meta / 编号 / 期号）：'SF Mono','JetBrains Mono','Source Code Pro',Menlo,Consolas,monospace
+  字体栈：
+  - serif：'Noto Serif SC','Source Han Serif SC','Songti SC','STSong',Georgia,'Times New Roman',serif
+  - sans：'PingFang SC','Hiragino Sans GB','Source Han Sans SC','Noto Sans SC','Helvetica Neue',Helvetica,Arial,sans-serif
+  - mono：'SF Mono','JetBrains Mono','Source Code Pro',Menlo,Consolas,monospace
 
-  排版阶梯（用 vmin 或基于 width/height 的换算，下面 H = height）：
-  - hero serif 主标题：fontSize ≈ H * 0.13 ~ H * 0.18，fontWeight 500-600，letterSpacing -0.01em，lineHeight 1.05，中文 ≤ 8 字一行
-  - lead sans 副文 / 引文：fontSize ≈ H * 0.045 ~ H * 0.06，fontWeight 400，lineHeight 1.45
-  - body sans：fontSize ≈ H * 0.032 ~ H * 0.04，fontWeight 400，lineHeight 1.5，opacity 0.85
-  - meta mono：fontSize ≈ H * 0.022 ~ H * 0.028，fontWeight 500，letterSpacing 0.14em，textTransform "uppercase"
-  - 数据大字（仅 data 类型）：fontSize ≈ H * 0.28 ~ H * 0.4，fontWeight 600，serif，数字部分 accent；单位用 sans 跟在右下角，opacity 0.7
+  排版阶梯（H = height）：
+  - hero serif：H * 0.13 ~ H * 0.18，fontWeight 500-600，letterSpacing -0.01em，lineHeight 1.05，中文 ≤ 8 字 / 行
+  - lead sans：H * 0.045 ~ H * 0.06，fontWeight 400，lineHeight 1.45
+  - body sans：H * 0.032 ~ H * 0.04，fontWeight 400，lineHeight 1.5，opacity 0.85
+  - meta mono：H * 0.022 ~ H * 0.028，fontWeight 500，letterSpacing 0.14em，textTransform 'uppercase'
+  - 数据大字（data 类型主数）：H * 0.28 ~ H * 0.4，fontWeight 600，serif，accent 色；单位用 sans 小字跟在右下角，opacity 0.7
 
-  ===== 五种 type 的杂志版式锚点（强制对应，不要随意发挥）=====
-  根据 type 字段选择对应版式骨架，并在 sourceCode 中实现：
+  ===== 六类 type 的版式 + 动画规范（强制对应，按 type 实现）=====
 
-  • type="chapter"（章节幕封）—— 类似杂志的章节扉页
-    - 顶部 mono meta："VOL.{{segmentId}} · CHAPTER" 或 "SEGMENT {{segmentId}} / OBSERVATION"
-    - 中部 serif hero 大标题（节目母题，中文 ≤ 6 字）
-    - 下方一条 width * 0.08 的 accent 短横线
-    - 最下 meta：节目名 / 期号
+  • type="chapter"（章节扉页）
+    版式：顶部 mono meta（"VOL." + 章节号）→ 中部 serif hero（≤ 6 字母题）→ accent 短横线（width * 0.08）→ 底部 mono（节目名 / 期号）。
+    分步单元 step：[meta, hero, accent-bar, footer]，按 subtitles 顺序揭示；如果字幕只有 1-2 行，把 hero 放在第 1 行揭示，其它步骤回退到等分 beats。
+    动画：accent-bar 用 transform: scaleX(0→1)、transformOrigin:'left'，按 step 揭示窗一次到位；不要循环。
 
-  • type="summary"（段落总结）—— 类似左文版式
-    - 顶部 mono meta kicker：本段编号 + 单词标签
-    - serif 主标题（段落标题）
-    - hairline 横线（width * 0.12 长，居左）
-    - sans lead 段落要点（≤ 60 字，1-2 句话，不要列表）
+  • type="summary"（段落总结）
+    版式：顶部 mono kicker（编号 + 标签）→ serif 主标题（段落标题 ≤ 14 字）→ 居左 hairline（width * 0.12）→ sans lead 段落要点（≤ 60 字，1-2 句话，不要列表 ul / li）。
+    分步单元 step：[kicker, title, hairline, lead-sentence-1, lead-sentence-2?]；把 lead 文案按句号 / 问号 / 感叹号切成 1-2 句，每句一个 step。
+    动画：每句揭示用 translateY(H*0.025)+opacity，揭示完成后维持；hairline 用 scaleX(0→1) 单调揭示。
 
-  • type="quote"（金句）—— Big Quote 大引用页
-    - 居中或左上 serif 大字引文（H * 0.11 起步），开头一个超大引号 " 或「，字号是引文的 1.6 倍，accent 色
-    - 引文下 mono meta：—— 出处 / 说话人 / 时间戳
+  • type="quote"（金句）
+    版式：居左 serif 大字引文（H * 0.11 起步），起首一个超大引号 " 或「（字号 = 引文 * 1.6，accent 色）；引文下 mono meta："—— 出处 / 说话人 / 时间戳"。
+    分步单元 step：[quote-mark, quote-text, attribution]；引号先到位 → 引文按字幕逐句揭示（如果引文 ≥ 2 句，每句一个 step）→ 出处最后揭示。
+    动画：引号用 opacity 0→1 + translateY(H*0.02)，绝不缩放；引文按 step 揭示，禁止打字机逐字效果（容易卡顿）；出处揭示后保持。
 
-  • type="insight"（观点 / 结论）—— Manifesto 节奏
-    - serif 中标题（结论一句话）
-    - hairline
-    - body 三个要点（最多 3，每条 ≤ 18 字），每条前一个 mono 编号 01 / 02 / 03，编号 accent 色
+  • type="insight"（观点 / 结论）
+    版式：serif 中标题（结论一句话，≤ 18 字）→ hairline → 3 行 body 要点（每行 ≤ 18 字），每行前一个 mono 编号 01 / 02 / 03，**编号 accent 色，文字 ink 色**。
+    分步单元 step：[headline, hairline, point-01, point-02, point-03]；要点数量 ≤ 3，宁可少也不要多。
+    动画：每条要点的编号先轻微入场（translateY+opacity），紧跟着同一 step 内的文字部分一起到位；不要让编号和文字分两个时间点。
 
-  • type="data"（数据 / 数字对比）—— 数据大字报
-    - 顶部 mono meta kicker（数据语义）
-    - 主体一个超大数字（serif 数字 + accent，H * 0.32 起步），单位用 sans 小字跟着
-    - 数字下 hairline，下方 body 一句解释（≤ 24 字）
-    - 如果是对比，左右两个数字，accent 只给主数字，对比数字用 ink-mute
+  • type="data"（数据 / 数字对比 / 表格 / 图表）—— **本类是这次重构的重点**
+    根据数据形态从下列子布局里选 1 种：
+      (a) 大数字 + 解释（单值）：顶部 mono kicker → serif 大数（accent） + sans 单位 → hairline → body 一句解释。
+      (b) 双值对比：两个数横向并列，accent 给主数，ink-mute 给对照数；中间一个 mono 标签（如 "VS" 或差值）。
+      (c) 柱状图（bar）：≤ 5 个 SVG <rect>，等间距纵向条形，下方 mono 标签 + 上方 serif 小数字；轨道色 rgba(236,231,218,0.12)，已揭示部分 accent。
+      (d) 进度环 / 饼图（donut / pie）：单个 SVG <circle> 用 stroke-dasharray 揭示一段角度（推荐用 progress-ring 方式而不是真正的多片 pie，复杂度低且不易出错）；中央放 serif 大百分比。
+      (e) 折线图（line）：单条 SVG <polyline>，用 strokeDasharray + strokeDashoffset 从 100%→0% 揭示，stroke accent，不要填充。
+      (f) 表格（table）：用 div + flex 网格（不要用 <table>），最多 4 行 × 3 列；首行 mono 表头（ink-mute、letterSpacing 0.14em），数据行用 serif 数字 + sans 标签；行与行之间用 1px hairline 分隔；揭示按行进行，不要按单元格。
+    技术栈硬约束：所有图表必须用**纯 SVG + Remotion 原语**（@remotion/shapes 的 Rect / Circle / Polygon、原生 <svg> + <rect>/<circle>/<path>/<polyline>），禁止引入 recharts、d3、chart.js、任何第三方图表库；禁止 canvas / WebGL。
+    分步单元 step：根据子布局拆分 —— 单值 = [kicker, number, hairline, explain]；对比 = [kicker, value-A, vs-label, value-B, explain]；bar/line/donut = [kicker, axis/baseline, item-1, item-2, ..., item-N, explain]；table = [kicker, header-row, row-1, ..., row-N, explain]。
+    数字增长动画（适用于 (a)(b)(c)(d) 主数字）：每个 step 在揭示窗内，数值从 0 / 起始值 interpolate 到目标值（Easing.out(Easing.cubic)、clamp 两端），用 Math.round 处理整数、用 toFixed(1) 处理一位小数；**绝对不要每帧 Math.random / noise**。
+    图表入场动画：
+      - bar：每根柱子的 height（或 width）从 0 长到目标值，按 step 顺序触发；柱子之间不重叠、不挡文字。
+      - line：strokeDashoffset 从总长 → 0，单调一次性揭示。
+      - donut：strokeDashoffset 从 circumference → circumference*(1-pct)，单调一次性揭示，中央数字与环同步增长。
+      - table：每行 translateY(H*0.02) + opacity 揭示；揭示后保持。
+    数据真实性：所有数字 / 比例必须直接来自 segmentTranscriptExcerpt / segmentSummary；如果原文没有具体数字，请用 type="insight" 而不是 type="data" 编造数据。
 
   • type="motion"（兜底 / 抽象概念）—— 极简 statement
-    - serif 中文短标题居中（≤ 10 字）
-    - 标题下 hairline + 一句 sans 注解
-    - 允许一个轻量 SVG 几何（直线 / 圆环 / 三角，stroke 1.5px，accent 描边），不要填充
+    版式：serif 中文短标题居中（≤ 10 字）→ hairline → 一句 sans 注解（≤ 24 字）→ 允许一个轻量 SVG 几何（直线 / 圆环 / 三角，stroke 1.5px，accent 描边，不填充）。
+    分步单元 step：[title, hairline, annotation, glyph]，按 subtitles 顺序揭示；几何描边可用 strokeDasharray 一次性单调揭示。
 
   ===== 强制视觉硬规则 =====
-  - 容器：position relative，背景 #0E0E10 满铺，padding 用 H * 0.08 上下 / W * 0.07 左右；不要在外层加任何 borderRadius / boxShadow
-  - 不允许任何 div 出现 background 是渐变、半透明白色磨砂、彩色发光圈
-  - 不允许使用 emoji / 装饰性 unicode 字符（★ ✦ ◆ ⚡ 之类）；装饰只用纯几何 SVG 或 mono 数字编号
-  - 整张卡的非黑非白彩色块面积之和 ≤ 5%（这是 accent 的硬性配额）
-  - 文字层级必须能在不看颜色的情况下读出来 —— 字号 / 字体 / 大小写已经做完层级，颜色只是收尾
-  - 中文与西文混排时，西文（年份 / 缩写 / Vol.）用 mono 字体栈，中文用 serif / sans 字体栈
-  - 每张卡必须包含至少 1 行 mono meta，强化"这是杂志的一页"的元数据氛围
-  - 卡片入场：serif 主标题先用 translateY(H*0.04) + opacity 0→1（12-18 帧），mono meta 与 hairline 跟随后 4-8 帧入场；不要全屏 scale、不要 blur 入场、不要旋转
+  - 容器：position relative，背景 #0E0E10 满铺，flexDirection column；不要在外层加任何 borderRadius / boxShadow。
+  - 不允许任何 div 出现 background 为渐变、半透明白色磨砂、彩色发光圈。
+  - 不允许使用 emoji / 装饰性 unicode（★ ✦ ◆ ⚡ 之类）；装饰只用纯几何 SVG 或 mono 数字编号。
+  - 整张卡的非黑非白彩色块面积之和 ≤ 8%（accent + 数据已揭示区合计配额）。
+  - 中文与西文混排时，西文（年份 / 缩写 / Vol. / 单位）用 mono；中文用 serif / sans。
+  - 每张卡必须包含至少 1 行 mono meta，强化"杂志一页"的元数据氛围。
+  - 入场仅允许 translateY + opacity；禁止 scale / rotate / blur 入场；禁止全屏 zoom-in。
 
   ===== 失败示例（生成完毕后必须自查）=====
   - ✗ 用 emoji ✨ 或 🚀 当标题修饰
@@ -260,11 +295,13 @@ user: |-
   - ✗ 标题用纯无衬线 + 100% 蓝色 + box-shadow
   - ✗ 把段落摘要原文 80+ 字塞进卡片
   - ✗ 出现两种以上 accent 色（蓝 + 橙 / 蓝 + 黄）
-  - ✗ 数字卡的数字也是无衬线（必须 serif）
+  - ✗ 数字卡的数字用无衬线（必须 serif）
   - ✗ 出现 border-radius:16px 的圆角卡片浮层
   - ✗ "Source: …" / "AI Generated" / 节目水印 等小字
-
-  可用 API：{{sandboxReference}}
+  - ✗ 某个文字行揭示后又消失再揭示
+  - ✗ 柱状图柱子之间或与轴标签发生重叠
+  - ✗ 用 Math.sin(frame/10) 驱动 opacity 制造闪烁
+  - ✗ 引入 recharts / chart.js / d3 / canvas
 
   节目定位：
   {{programContext}}

@@ -52,6 +52,8 @@ export interface StructuredDataOptions {
   idleTimeoutMs?: number;
   // 可选：覆盖总硬上限
   hardTimeoutMs?: number;
+  /** 可选：观测 hook（lib 层不直接依赖 electron，main 侧显式注入） */
+  telemetry?: import('../telemetry/auto-run').TelemetryHook;
 }
 
 function isThinkingBinding(binding?: ResolvedBinding): boolean {
@@ -79,13 +81,20 @@ interface BindableModel {
 async function streamCollectWithIdleTimeout(
   model: StreamableModel,
   messages: unknown[],
-  opts: { idleTimeoutMs: number; hardTimeoutMs: number; label: string },
+  opts: {
+    idleTimeoutMs: number;
+    hardTimeoutMs: number;
+    label: string;
+    onFirstChunk?: (latencyMs: number) => void;
+  },
 ): Promise<string> {
-  const { idleTimeoutMs, hardTimeoutMs, label } = opts;
+  const { idleTimeoutMs, hardTimeoutMs, label, onFirstChunk } = opts;
   let fullText = '';
   let idleTimer: ReturnType<typeof setTimeout> | undefined;
   let hardTimer: ReturnType<typeof setTimeout> | undefined;
   let timeoutError: Error | null = null;
+  const startTs = Date.now();
+  let firstChunkSeen = false;
 
   const stream = await model.stream(messages);
   // 用 Async Iterator 接口拿到 return() 句柄，超时时主动关闭
@@ -120,6 +129,10 @@ async function streamCollectWithIdleTimeout(
     while (true) {
       const next = await iterator.next();
       if (next.done) break;
+      if (!firstChunkSeen) {
+        firstChunkSeen = true;
+        onFirstChunk?.(Date.now() - startTs);
+      }
       armIdle(); // 任意 chunk 到达即重置 idle，含 reasoning chunk
       const chunk = next.value;
       const textChunk = extractTextContent((chunk as { content?: unknown })?.content);
@@ -155,21 +168,59 @@ export async function generateStructuredData(
       : STRUCTURED_IDLE_TIMEOUT_MS);
   const hardTimeoutMs = options.hardTimeoutMs ?? STRUCTURED_HARD_TIMEOUT_MS;
   const label = `LLM 结构化输出请求${options.label ? `（${options.label}）` : ''}`;
+  const telemetryLabel = options.label ?? 'structured';
+  const thinking = isThinkingBinding(binding);
+  const tel = options.telemetry;
 
   let lastError: unknown;
   for (let attempt = 0; attempt <= STRUCTURED_MAX_RETRIES; attempt++) {
     const promptForAttempt =
       attempt === 0 ? systemPrompt : `${systemPrompt}${STRUCTURED_RETRY_HINT}`;
+    const callStart = Date.now();
+    tel?.emit('llm.start', {
+      label: telemetryLabel,
+      attempt,
+      thinking,
+      model: binding?.model ?? null,
+      provider: binding?.provider?.id ?? null,
+      systemChars: promptForAttempt.length,
+      userChars: userMessage.length,
+    });
     try {
       const fullText = await streamCollectWithIdleTimeout(
         model,
         buildPromptMessages(promptForAttempt, userMessage),
-        { idleTimeoutMs, hardTimeoutMs, label },
+        {
+          idleTimeoutMs,
+          hardTimeoutMs,
+          label,
+          onFirstChunk: (latencyMs) => {
+            tel?.emit('llm.firstChunk', { label: telemetryLabel, attempt, latencyMs });
+          },
+        },
       );
       const content = assertNonEmptyContent(fullText, 'LLM 返回空内容');
-      return parseStructuredOutput(content);
+      const parsed = parseStructuredOutput(content);
+      tel?.emit('llm.end', {
+        label: telemetryLabel,
+        attempt,
+        durationMs: Date.now() - callStart,
+        outputChars: fullText.length,
+        ok: true,
+        retry: attempt > 0,
+      });
+      return parsed;
     } catch (error) {
       lastError = error;
+      tel?.emit('llm.end', {
+        label: telemetryLabel,
+        attempt,
+        durationMs: Date.now() - callStart,
+        ok: false,
+        retry: attempt > 0,
+        error: error instanceof Error ? error.message : String(error),
+        willRetry: attempt < STRUCTURED_MAX_RETRIES,
+      });
       // 仅在还有重试次数时继续；否则抛出最后一次错误
       if (attempt >= STRUCTURED_MAX_RETRIES) break;
     }

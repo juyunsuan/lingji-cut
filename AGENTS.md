@@ -1,0 +1,137 @@
+# AGENTS.md
+
+给 AI agent（Claude Code、Codex、Gemini 等）的协作指引。CLAUDE.md 是面向项目结构 / 改动规范的指南；本文件只关心**"一键成稿"流水线的耗时观测**。
+
+---
+
+## 当用户反馈"系统卡 / 慢 / 太慢 / 跑了好久 / 等很久"
+
+**绝对优先**：先去读 auto-run jsonl 日志，定位耗时瓶颈，再做任何分析。不要凭感觉猜哪一步慢。
+
+### 日志位置
+
+- macOS：`~/Library/Application Support/灵机剪影/logs/auto-run/`
+- Windows：`%APPDATA%\灵机剪影\logs\auto-run\`
+- Linux：`~/.config/灵机剪影/logs/auto-run/`
+- 应用包名以 `package.json` 的 `productName` 为准
+
+目录结构：
+
+```
+logs/auto-run/
+  LATEST.txt                       ← 文本，内容是最近一次 runId
+  autorun-<ts>-<rand>.jsonl        ← 每次一键流程一份 jsonl
+  autorun-<ts>-<rand>.jsonl
+  ...
+```
+
+### 怎么找"最近一次卡顿的运行"
+
+最快路径：
+
+```bash
+LOGDIR="$HOME/Library/Application Support/灵机剪影/logs/auto-run"
+LATEST=$(cat "$LOGDIR/LATEST.txt")
+cat "$LOGDIR/$LATEST.jsonl"
+```
+
+如果用户描述的是"前一两次"，按 mtime 列：
+
+```bash
+ls -lt "$LOGDIR"/*.jsonl | head -10
+```
+
+### 日志事件结构
+
+每行一条 JSON，公共字段：
+
+```json
+{ "runId": "...", "ts": 1717_..., "kind": "...", ...payload }
+```
+
+主要 kind：
+
+| kind | 何时发出 | 关键字段 |
+|---|---|---|
+| `run.start` | 每次一键开跑 | `autoMode`, `startFromStep`, `projectDir` |
+| `run.end` | 流程结束（成功 / 失败 / 取消） | `ok`, `failedStage?`, `cancelled?`, `error?` |
+| `stage.start` / `stage.end` | 主进程粗粒度阶段（`tts` / `cover` / `analyze.planning` / `analyze.cards` / `highlights`） | `stage`, `durationMs`, `ok` |
+| `planning.done.received` | renderer 收到 `analyze-planning-done` 事件，封面轨道启动 | `coverPrompts`, `segments` |
+| `card.start` / `card.end` | 单段卡片生成 | `segmentIndex`, `visualType`, `durationMs`, `ok` |
+| `card.image.start` / `card.image.end` | image 卡片调图像 provider 物化资产 | `segmentIndex`, `durationMs` |
+| `highlight.batch.start` / `highlight.batch.end` | 字幕高亮单 batch | `batchIndex`, `batchTotal`, `durationMs` |
+| `llm.start` / `llm.firstChunk` / `llm.end` | 每次结构化 / 文本 LLM 调用 | `label`, `attempt`, `thinking`, `latencyMs`, `durationMs`, `outputChars`, `retry`, `willRetry`, `error` |
+
+`llm.start / llm.end` 是定位瓶颈的核心。常见 label：
+- `planning.segment` — 规划分段（最容易卡 10 分钟以上的那一步）
+- `cards.segment#i/N(seg-x)` — 每段卡片
+- `card.image(seg-x)` — image 卡片的中文 prompt 二次调用
+- `cover.regeneration` — 单独重生封面 prompt
+- `highlights#i/N` — 单 batch 字幕高亮
+
+### 标准诊断流程
+
+读完 jsonl 后，按以下顺序检查：
+
+1. **总耗时**：`run.start.ts` → `run.end.ts`，让用户看到"实际跑了 N 分 N 秒"
+2. **每个 stage 的 durationMs**：把 `stage.end` 全部拎出来，找最大那个
+3. **如果 stage 是 `analyze.cards`，深入查**：
+   - 哪些 `card.end.durationMs` 超过中位数 2 倍 → 长尾段
+   - 哪些 `card.end.ok=false` → 失败段（仍然消耗了完整一次 LLM）
+4. **如果 stage 是 `analyze.planning`，深入查 `llm.end{label:"planning.segment"}`**：
+   - `durationMs` 多少？
+   - `attempt` 是不是 0？有没有 `retry:true`（说明触发了 JSON 解析重试，时间×2）
+   - `thinking` 是不是 true？非推理任务用了 thinking 模型直接砍掉
+5. **如果 stage 是 `highlights`**：现在默认并发 4，如果还是慢，看 `highlight.batch.end` 是不是大部分 ≥ 30s → batch 内字幕太密或模型太慢
+6. **TTS 慢**：MiniMax 服务端问题，本地能做的只有换 model
+7. **cover 慢**：基本是 image provider 慢，看 `stage.end{stage:"cover"}` 的 durationMs 与 candidates count
+
+### 三路并行的预期形态
+
+新链路 TTS 之后会同时跑 3 路：
+- Track A：`analyze.planning` → `analyze.cards`
+- Track B：`highlights`
+- Track C：等到 `planning.done.received` 发出后立即启动 `stage.start{stage:"cover"}`
+
+在 jsonl 时间轴上，B 的 `stage.start{stage:"highlights"}` 应该和 A 的 `analyze.planning` 几乎同时；C 的 `stage.start{stage:"cover"}` 应该出现在 `planning.done.received` 之后、`analyze.cards` 还没结束的时段里。如果发现 B 或 C 是 A 完成之后才启动，说明并行机制坏了，需要排查。
+
+### 把发现转成行动
+
+不要只罗列数字。读完之后给用户：
+- 总耗时（实际 vs 目标）
+- 最慢的 1-2 个 stage / call，附实际 ms
+- 直接归因（thinking 模型 / 静默 retry / image 卡片占比过高 / provider 慢 / 并发不足）
+- 1-3 个可执行建议（换 binding 模型、调整 `cardGenerationConcurrency`、改 `highlights.concurrency`、瘦身 prompt）
+
+---
+
+## 这套观测体系的代码触点（修改时请保持同步）
+
+- `electron/telemetry/auto-run-logger.ts` — 写盘、读盘、列近期 run
+- `electron/main.ts` — `auto-run-telemetry/append|list-recent|read-run|get-latest|get-log-dir` IPC；`makeMainTelemetry(runId)` 工厂
+- `electron/preload.ts` — `appendAutoRunEvent / listAutoRunLogs / readAutoRunLog / getLatestAutoRunLog / getAutoRunLogDir / onAnalyzePlanningDone`
+- `src/lib/telemetry/auto-run.ts` — `createAutoRunTelemetry(runId)` 包装 + `TelemetryHook` 类型，被 lib 层共用
+- `src/lib/llm/index.ts` — `generateStructuredData` 接 `telemetry`，emits `llm.start / firstChunk / end`
+- `src/lib/ai-analysis.ts` — `analyzeSrt` 接 `telemetry` 与 `onPlanningDone`；emits `stage.start/end{stage:"analyze.planning"|"analyze.cards"}`、`card.start/end`、`card.image.start/end`
+- `src/lib/subtitle-highlight-runner.ts` — `concurrency`、`telemetry`；emits `stage.*` + `highlight.batch.*`
+- `src/hooks/useAIVideoWorkflow.ts` — 生成 `telemetryRunId`、把它透传给所有 IPC、`run.start / run.end`、3 路并行调度（analyze ‖ highlights ‖ cover）
+
+新增耗时操作时也按这个套路接入，不要再发明独立日志。
+
+---
+
+## 性能调优默认值（2026-05-25 改）
+
+- `cardGenerationConcurrency`：默认 2，目标值 4-6（在 `src/store/ai.ts` / `src/types/ai.ts`）
+- `subtitle-highlight-runner.concurrency`：默认 3，workflow 内传入 4
+- `STRUCTURED_IDLE_TIMEOUT_MS` / `STRUCTURED_THINKING_IDLE_TIMEOUT_MS` / `STRUCTURED_HARD_TIMEOUT_MS` 在 `src/lib/llm/index.ts`
+- `STRUCTURED_MAX_RETRIES = 1`（首次 JSON 解析失败会再跑一次完整请求；从日志 `llm.end{retry:true}` 可观察到）
+
+---
+
+## 不要做的事
+
+- 不要为新耗时操作另起一套日志文件；直接调 `tel.event(kind, extra)` 或 `tel.stage(name, fn)`
+- 不要在 lib 层直接调用 electron IPC；用 `TelemetryHook` 接口，main 显式注入
+- 不要把任何 API Key / 项目敏感内容放进 telemetry payload；只记 label / durationMs / 字符数 / 段数等度量
+- 用户说"系统慢"时，不要直接给猜测和建议；先读 jsonl，再讨论

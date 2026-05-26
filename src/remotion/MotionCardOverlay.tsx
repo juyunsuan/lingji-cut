@@ -4,7 +4,11 @@ import {
   createMotionComponent as buildMotionComponent,
   formatMotionRuntimeError,
 } from '../lib/motion-runtime';
-import type { MotionCardPayload, MotionComponentProps } from '../types/motion';
+import type {
+  MotionCardPayload,
+  MotionComponentProps,
+  MotionSubtitleCue,
+} from '../types/motion';
 
 interface MotionCardOverlayProps {
   motionCard: MotionCardPayload;
@@ -14,7 +18,11 @@ interface MotionCardOverlayProps {
   width?: number;
   /** 渲染容器高度。 */
   height?: number;
+  /** 当前卡片时间窗内的字幕行（含相对帧），驱动跟随讲述的顺序动画。 */
+  subtitles?: MotionSubtitleCue[];
 }
+
+const EMPTY_SUBTITLES: MotionSubtitleCue[] = [];
 
 interface CreateMotionResult {
   component?: React.ComponentType<MotionComponentProps>;
@@ -102,6 +110,7 @@ export function MotionCardOverlay({
   durationInFrames: durationInFramesProp,
   width: widthProp,
   height: heightProp,
+  subtitles,
 }: MotionCardOverlayProps) {
   // useCurrentFrame 在 <Sequence> 内是 sequence-relative，正确无需修正。
   const frame = useCurrentFrame();
@@ -142,6 +151,7 @@ export function MotionCardOverlay({
     durationInFrames,
     width,
     height,
+    subtitles: subtitles ?? EMPTY_SUBTITLES,
   };
 
   let renderedComponent: React.ReactNode;

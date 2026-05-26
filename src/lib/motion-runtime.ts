@@ -101,6 +101,7 @@ export const MOTION_SANDBOX_REFERENCE = [
   `推荐 API：${RECOMMENDED_SANDBOX_API_KEYS.join(', ')}`,
   '可用但慎用：Loop, Series, random, noise2D, noise3D, staticFile, OffthreadVideo',
   '不要使用：useCurrentFrame, useVideoConfig, delayRender, continueRender, IFrame, CameraMotionBlur',
+  '组件 props：{ frame, fps, durationInFrames, width, height, subtitles }；其中 subtitles 是 { startMs, endMs, text, relativeStartFrame, relativeEndFrame }[]，按时间升序，relativeStartFrame/relativeEndFrame 已对齐当前卡片起点；当 subtitles.length===0 时回退到等分 beats 节奏。',
 ].join('\n');
 
 export function formatMotionRuntimeError(error: unknown): string {
