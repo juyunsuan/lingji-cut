@@ -34,14 +34,14 @@ import {
 import { createHyperframesComposition } from '../src/hyperframes/composition';
 import { prepareTimelineForHyperframes, type HyperframesAssetDescriptor } from '../src/hyperframes/assets';
 import {
-  buildMinimaxTtsRequestBody,
-  decodeMinimaxAudioData,
-  extractMinimaxSubtitleSentences,
-  getMinimaxDurationMs,
   subtitleJsonToSRT,
-  type MinimaxSubtitleSentence,
-  type MinimaxTtsResponse,
+  toSRTTime,
 } from '../src/lib/minimax-tts';
+import { runTTSProvider } from './tts-provider-runner';
+import {
+  buildLegacyMinimaxTTSProvider,
+  buildLegacyMinimaxTTSVoice,
+} from '../src/lib/tts-settings';
 import { parseSrt } from '../src/lib/srt-parser';
 import type { SrtEntry, TimelineData } from '../src/types';
 import type {
@@ -51,6 +51,8 @@ import type {
   AISettings,
   ImageAspectRatio,
   PromptBindingMap,
+  TTSProvider,
+  TTSVoicePreset,
 } from '../src/types/ai';
 import { createApplicationMenuTemplate } from './app-menu';
 import {
@@ -2135,25 +2137,49 @@ ipcMain.handle(
     args: {
       requestId: string;
       text: string;
-      voiceId: string;
-      speed: number;
-      vol: number;
-      pitch: number;
-      emotion: string;
-      model: string;
-      apiKey: string;
+      provider?: TTSProvider;
+      voice?: TTSVoicePreset;
+      voiceId?: string;
+      speed?: number;
+      vol?: number;
+      pitch?: number;
+      emotion?: string;
+      model?: string;
+      apiKey?: string;
       projectDir: string;
       telemetryRunId?: string | null;
     },
   ) => {
-    const { requestId, text, voiceId, speed, vol, pitch, emotion, model, apiKey, projectDir } =
-      args;
+    const { requestId, text, projectDir } = args;
+    const provider =
+      args.provider ??
+      buildLegacyMinimaxTTSProvider({
+        minimaxApiKey: args.apiKey ?? '',
+        minimaxModel: args.model ?? 'speech-2.8-hd',
+      });
+    const voice =
+      args.voice ??
+      buildLegacyMinimaxTTSVoice({
+        minimaxVoiceId: args.voiceId ?? 'male-qn-qingse',
+        minimaxSpeed: args.speed ?? 1,
+        minimaxVol: args.vol ?? 1,
+        minimaxPitch: args.pitch ?? 0,
+        minimaxEmotion: args.emotion ?? '',
+        minimaxModel: args.model ?? 'speech-2.8-hd',
+      });
+    const model = voice.model ?? provider.models[0] ?? '';
     const controller = new AbortController();
     activeTtsRequests.set(requestId, controller);
     mainWindow?.webContents.send('tts-progress', 0);
     const ttsTelemetry = makeMainTelemetry(args.telemetryRunId);
     const ttsStartTs = Date.now();
-    ttsTelemetry.emit('stage.start', { stage: 'tts', chars: text.length, model });
+    ttsTelemetry.emit('stage.start', {
+      stage: 'tts',
+      chars: text.length,
+      model,
+      providerType: provider.type,
+      voiceSource: voice.source,
+    });
 
     // MiniMax t2a_v2 是同步接口，等待 30~120s。期间无回调信号，用估算心跳把进度从 2% 缓慢推到 30%，
     // 避免 UI 视觉上"卡在 0%"。fetch 返回后会立刻覆盖到 35%。
@@ -2167,66 +2193,23 @@ ipcMain.handle(
     }, 1500);
 
     try {
-      const response = await fetch('https://api.minimaxi.com/v1/t2a_v2', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
+      const result = await runTTSProvider({
+        text,
+        provider,
+        voice,
         signal: controller.signal,
-        body: JSON.stringify(
-          buildMinimaxTtsRequestBody({
-            text,
-            voiceId,
-            speed,
-            vol,
-            pitch,
-            emotion,
-            model,
-          }),
-        ),
       });
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => String(response.status));
-        throw new Error(`MiniMax TTS 请求失败: ${errText}`);
-      }
-
-      const result = (await response.json()) as MinimaxTtsResponse;
-      const baseResp = result.base_resp;
-      if (baseResp && typeof baseResp.status_code === 'number' && baseResp.status_code !== 0) {
-        throw new Error(
-          `MiniMax TTS 接口错误: [${baseResp.status_code}] ${baseResp.status_msg ?? '未知错误'}`,
-        );
-      }
-
-      writeAppLog(
-        'info',
-        'tts',
-        'TTS 同步响应接收完成',
-        `audio=${result.data?.audio ? '已返回' : '未返回'}, subtitle=${result.data?.subtitle_file ? '已返回' : '未返回'}`,
-      );
+      writeAppLog('info', 'tts', 'TTS 同步响应接收完成', `provider=${provider.type}`);
       mainWindow?.webContents.send('tts-progress', 35);
 
       await fs.mkdir(projectDir, { recursive: true });
 
-      const audioField = result.data?.audio ?? '';
-      if (!audioField) {
-        throw new Error('MiniMax TTS 未返回任何音频数据，请检查 API Key 及配置');
+      const audioBuf = result.audioBuffer;
+      if (audioBuf.byteLength === 0) {
+        throw new Error('TTS 未返回任何音频数据，请检查 API Key 及配置');
       }
 
-      let audioBuf: Buffer;
-      if (/^https?:\/\//.test(audioField)) {
-        const audioResponse = await fetch(audioField, { signal: controller.signal });
-        if (!audioResponse.ok) {
-          throw new Error(`MiniMax 音频下载失败: HTTP ${audioResponse.status}`);
-        }
-        audioBuf = Buffer.from(await audioResponse.arrayBuffer());
-      } else {
-        audioBuf = decodeMinimaxAudioData(audioField);
-      }
-
-      const audioPath = path.join(projectDir, 'podcast-audio.mp3');
+      const audioPath = path.join(projectDir, `podcast-audio.${result.audioExtension}`);
       await fs.writeFile(audioPath, audioBuf);
       writeAppLog(
         'info',
@@ -2235,48 +2218,13 @@ ipcMain.handle(
       );
 
       if (audioBuf.byteLength === 0) {
-        throw new Error('MiniMax TTS 未返回任何音频数据，请检查 API Key 及配置');
+        throw new Error('TTS 未返回任何音频数据，请检查 API Key 及配置');
       }
       mainWindow?.webContents.send('tts-progress', 70);
 
-      let subtitleSentences: MinimaxSubtitleSentence[] = [];
-      if (result.data?.subtitle_file) {
-        try {
-          const subtitleResp = await fetch(result.data.subtitle_file, { signal: controller.signal });
-          if (!subtitleResp.ok) {
-            throw new Error(`字幕文件下载失败: HTTP ${subtitleResp.status}`);
-          }
-          subtitleSentences = extractMinimaxSubtitleSentences(await subtitleResp.json());
-          writeAppLog(
-            'info',
-            'tts',
-            `字幕下载成功，句数=${subtitleSentences.length}`,
-          );
-        } catch (err) {
-          writeAppLog(
-            'warn',
-            'tts',
-            '字幕文件下载失败，SRT 将为空',
-            err instanceof Error ? err.message : String(err),
-          );
-        }
-      } else {
-        subtitleSentences = extractMinimaxSubtitleSentences(result.data);
-        writeAppLog(
-          'warn',
-          'tts',
-          subtitleSentences.length > 0 ? '未获取到字幕文件 URL，已回退为内联字幕数据' : '未获取到字幕文件 URL，SRT 将为空',
-        );
-      }
-
       const srtPath = path.join(projectDir, 'podcast-subtitles.srt');
       const originalSrtPath = path.join(projectDir, 'podcast-subtitles.original.srt');
-      const srtText = subtitleJsonToSRT(subtitleSentences);
-      await fs.writeFile(srtPath, srtText, 'utf-8');
-      await fs.writeFile(originalSrtPath, srtText, 'utf-8');
-      mainWindow?.webContents.send('tts-progress', 85);
-
-      let durationMs = getMinimaxDurationMs(result, subtitleSentences);
+      let durationMs = result.durationMs ?? 0;
       if (durationMs <= 0) {
         try {
           durationMs = await readAudioDurationMs(audioPath, {
@@ -2292,6 +2240,16 @@ ipcMain.handle(
           durationMs = 1_000;
         }
       }
+      const fallbackSrtText = `1\n${toSRTTime(0)} --> ${toSRTTime(durationMs)}\n${text.trim()}\n`;
+      const srtText = result.subtitleText?.trim()
+        ? result.subtitleText
+        : text.trim()
+          ? fallbackSrtText
+          : '';
+      await fs.writeFile(srtPath, srtText, 'utf-8');
+      await fs.writeFile(originalSrtPath, srtText, 'utf-8');
+      mainWindow?.webContents.send('tts-progress', 85);
+
       mainWindow?.webContents.send('tts-progress', 100);
       ttsTelemetry.emit('stage.end', {
         stage: 'tts',
@@ -2321,11 +2279,11 @@ ipcMain.handle(
       writeAppLog(
         'error',
         'tts',
-        'MiniMax TTS fetch 失败',
+        'TTS fetch 失败',
         `${(error as Error)?.message ?? String(error)} | cause=${causeMsg || '<none>'}`,
       );
       if (causeMsg) {
-        throw new Error(`MiniMax TTS 网络失败: ${causeMsg}`);
+        throw new Error(`TTS 网络失败: ${causeMsg}`);
       }
       throw error;
     } finally {

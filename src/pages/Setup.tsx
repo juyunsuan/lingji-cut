@@ -26,9 +26,9 @@ import {
   type AutoModeOption,
 } from '../components/script/AutoModeSection';
 import type { AISettings } from '../types/ai';
+import { normalizeTTSSettings } from '../lib/tts-settings';
 import { useScriptStore } from '../store/script';
 import { loadAISettings, type AutoWorkflowParams } from '../store/ai';
-import { MINIMAX_SYSTEM_VOICES } from '../lib/minimax-voices';
 import { getAllRoles } from '../lib/script-templates';
 import heroBg from '../assets/hero-bg.png';
 import styles from './Setup.module.css';
@@ -114,8 +114,18 @@ export function Setup({
     void (async () => {
       const settings = await loadAISettings();
       if (!settings) return;
-      setAiSettings(settings);
-      if (settings.minimaxVoiceId) setVoiceIdDefault(settings.minimaxVoiceId);
+      const normalized = normalizeTTSSettings(settings);
+      setAiSettings(normalized);
+      const defaultVoice = normalized.ttsVoices.find(
+        (voice) => voice.id === normalized.defaultTtsVoiceId,
+      );
+      if (defaultVoice) {
+        setVoiceIdDefault(
+          defaultVoice.providerType === 'minimax' && defaultVoice.voiceId
+            ? defaultVoice.voiceId
+            : defaultVoice.id,
+        );
+      }
     })();
   }, []);
 
@@ -137,7 +147,10 @@ export function Setup({
       // getAllRoles() 已合并：NONE_ROLE + 内置模板（派生角色）+ 用户自定义角色，
       // 与 AI 写稿工作台 QuickActionBar 的角色下拉保持一致口径。
       roles: getAllRoles().map((r) => ({ value: r.id, label: r.name })),
-      voices: MINIMAX_SYSTEM_VOICES.map((v) => ({ value: v.voiceId, label: v.name })),
+      voices: (aiSettings?.ttsVoices ?? []).map((voice) => ({
+        value: voice.providerType === 'minimax' && voice.voiceId ? voice.voiceId : voice.id,
+        label: `${voice.name}${voice.source === 'cloned' ? '（克隆）' : ''}`,
+      })),
       models,
       defaults: {
         // templateId 在 UI 上不再暴露；沿用当前工作台选中的模板作为写稿结构，

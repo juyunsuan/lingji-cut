@@ -167,6 +167,40 @@ export interface LLMProvider {
   enableThinking?: boolean;
 }
 
+export type TTSProviderType = 'minimax' | 'xiaomi_mimo' | 'custom_openai_audio';
+
+export interface TTSProvider {
+  id: string;
+  name: string;
+  type: TTSProviderType;
+  baseUrl: string;
+  apiKey: string;
+  models: string[];
+}
+
+export interface TTSVoiceParams {
+  speed: number;
+  vol?: number;
+  pitch?: number;
+  emotion?: string;
+}
+
+export interface TTSVoicePreset {
+  id: string;
+  name: string;
+  providerId: string;
+  providerType: TTSProviderType;
+  model: string | null;
+  voiceId?: string;
+  source: 'system' | 'cloned';
+  referenceAudioPath?: string;
+  referenceAudioName?: string;
+  referenceAudioMime?: 'audio/mpeg' | 'audio/wav';
+  params: TTSVoiceParams;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface AISettings {
   // 多 Provider
   llmProviders: LLMProvider[];
@@ -193,6 +227,11 @@ export interface AISettings {
   minimaxPitch?: number;
   minimaxEmotion?: string;
   minimaxModel?: string;
+  // 多 TTS Provider
+  ttsProviders: TTSProvider[];
+  defaultTtsProviderId: string | null;
+  defaultTtsVoiceId: string | null;
+  ttsVoices: TTSVoicePreset[];
   // —— 新增：图像 Provider ——
   imageProviders: ImageProvider[];
   defaultImageProviderId: string | null;

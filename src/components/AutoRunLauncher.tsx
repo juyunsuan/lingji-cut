@@ -25,7 +25,7 @@ import type { AutoWorkflowParams } from '../store/ai';
 import { loadAISettings, useAIStore } from '../store/ai';
 import { useScriptStore } from '../store/script';
 import { getAllRoles } from '../lib/script-templates';
-import { MINIMAX_SYSTEM_VOICES } from '../lib/minimax-voices';
+import { normalizeTTSSettings } from '../lib/tts-settings';
 import { userPromptBindingKey } from '../lib/prompts';
 import type { AISettings } from '../types/ai';
 import type { ProjectData } from '../lib/project-persistence';
@@ -140,8 +140,18 @@ export function AutoRunLauncher({
     void (async () => {
       const settings = await loadAISettings().catch(() => null);
       if (!settings) return;
-      setAiSettings(settings);
-      if (settings.minimaxVoiceId) setVoiceIdDefault(settings.minimaxVoiceId);
+      const normalized = normalizeTTSSettings(settings);
+      setAiSettings(normalized);
+      const defaultVoice = normalized.ttsVoices.find(
+        (voice) => voice.id === normalized.defaultTtsVoiceId,
+      );
+      if (defaultVoice) {
+        setVoiceIdDefault(
+          defaultVoice.providerType === 'minimax' && defaultVoice.voiceId
+            ? defaultVoice.voiceId
+            : defaultVoice.id,
+        );
+      }
     })();
   }, []);
 
@@ -180,9 +190,9 @@ export function AutoRunLauncher({
   const autoModeOptions = useMemo(
     () => ({
       roles: getAllRoles().map((r) => ({ value: r.id, label: r.name })),
-      voices: MINIMAX_SYSTEM_VOICES.map((v) => ({
-        value: v.voiceId,
-        label: v.name,
+      voices: (aiSettings?.ttsVoices ?? []).map((voice) => ({
+        value: voice.providerType === 'minimax' && voice.voiceId ? voice.voiceId : voice.id,
+        label: `${voice.name}${voice.source === 'cloned' ? '（克隆）' : ''}`,
       })),
       models: flattenModelOptions(aiSettings),
     }),

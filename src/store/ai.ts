@@ -8,6 +8,7 @@ import {
 } from '../lib/ai-persistence';
 import { migrateToProviders } from '../lib/llm/provider-utils';
 import { migrateImageProviders } from '../lib/llm/migrate-image-providers';
+import { normalizeTTSSettings } from '../lib/tts-settings';
 import { loadGlobalSettingsFile, updateGlobalSettingsFile } from '../lib/global-settings-client';
 import {
   DEFAULT_CARD_STYLE,
@@ -184,6 +185,10 @@ function buildDefaultAISettings(): AISettings {
     minimaxPitch: 0,
     minimaxEmotion: '',
     minimaxModel: 'speech-2.8-hd',
+    ttsProviders: [],
+    defaultTtsProviderId: null,
+    defaultTtsVoiceId: null,
+    ttsVoices: [],
     imageProviders: [],
     defaultImageProviderId: null,
     defaultImageModel: null,
@@ -792,6 +797,10 @@ export async function loadAISettings(): Promise<AISettings | null> {
           minimaxPitch: file.aiSettings.minimaxPitch ?? 0,
           minimaxEmotion: file.aiSettings.minimaxEmotion ?? '',
           minimaxModel: file.aiSettings.minimaxModel ?? 'speech-2.8-hd',
+          ttsProviders: file.aiSettings.ttsProviders ?? [],
+          defaultTtsProviderId: file.aiSettings.defaultTtsProviderId ?? null,
+          defaultTtsVoiceId: file.aiSettings.defaultTtsVoiceId ?? null,
+          ttsVoices: file.aiSettings.ttsVoices ?? [],
           imageProviders: file.aiSettings.imageProviders ?? [],
           defaultImageProviderId: file.aiSettings.defaultImageProviderId ?? null,
           defaultImageModel: file.aiSettings.defaultImageModel ?? null,
@@ -806,12 +815,18 @@ export async function loadAISettings(): Promise<AISettings | null> {
         };
         const providerMigrated = migrateToProviders(settings);
         const imageMigrated = migrateImageProviders(providerMigrated);
+        const ttsMigrated = normalizeTTSSettings(imageMigrated);
         const llmChanged = !hadProviders && providerMigrated.llmProviders.length > 0;
         const imageChanged = imageMigrated !== providerMigrated;
-        if (llmChanged || imageChanged) {
-          void saveAISettings(imageMigrated);
+        const ttsChanged =
+          !Array.isArray(file.aiSettings.ttsProviders) ||
+          file.aiSettings.ttsProviders.length === 0 ||
+          file.aiSettings.defaultTtsProviderId !== ttsMigrated.defaultTtsProviderId ||
+          file.aiSettings.defaultTtsVoiceId !== ttsMigrated.defaultTtsVoiceId;
+        if (llmChanged || imageChanged || ttsChanged) {
+          void saveAISettings(ttsMigrated);
         }
-        return imageMigrated;
+        return ttsMigrated;
       }
     } catch {
       // fallthrough to legacy
@@ -838,6 +853,10 @@ export async function loadAISettings(): Promise<AISettings | null> {
           minimaxPitch: parsed.minimaxPitch ?? 0,
           minimaxEmotion: parsed.minimaxEmotion ?? '',
           minimaxModel: parsed.minimaxModel ?? 'speech-2.8-hd',
+          ttsProviders: parsed.ttsProviders ?? [],
+          defaultTtsProviderId: parsed.defaultTtsProviderId ?? null,
+          defaultTtsVoiceId: parsed.defaultTtsVoiceId ?? null,
+          ttsVoices: parsed.ttsVoices ?? [],
           imageProviders: parsed.imageProviders ?? [],
           defaultImageProviderId: parsed.defaultImageProviderId ?? null,
           defaultImageModel: parsed.defaultImageModel ?? null,
@@ -849,7 +868,7 @@ export async function loadAISettings(): Promise<AISettings | null> {
           cardGenerationConcurrency: normalizeConcurrency(parsed.cardGenerationConcurrency),
         };
         const providerMigrated = migrateToProviders(raw);
-        const settings = migrateImageProviders(providerMigrated);
+        const settings = normalizeTTSSettings(migrateImageProviders(providerMigrated));
         // 自动迁移到 Electron 全局存储（saveAISettings 会刷新缓存）
         await saveAISettings(settings);
         window.localStorage.removeItem(AI_SETTINGS_LEGACY_KEY);
@@ -864,10 +883,10 @@ export async function loadAISettings(): Promise<AISettings | null> {
 }
 
 export async function saveAISettings(settings: AISettings): Promise<void> {
-  const normalized: AISettings = {
+  const normalized: AISettings = normalizeTTSSettings({
     ...settings,
     jimengModel: settings.jimengModel?.trim() || DEFAULT_JIMENG_MODEL,
-  };
+  });
   if (typeof window !== 'undefined' && window.electronAPI) {
     await updateGlobalSettingsFile((current) => ({
       ...current,
