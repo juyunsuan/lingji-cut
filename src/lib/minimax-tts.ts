@@ -41,7 +41,7 @@ interface MinimaxSubtitlePayload {
   };
 }
 
-function toSRTTime(ms: number): string {
+export function toSRTTime(ms: number): string {
   const safeMs = Math.max(0, Math.round(ms));
   const h = Math.floor(safeMs / 3_600_000);
   const m = Math.floor((safeMs % 3_600_000) / 60_000);

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { runScriptGenerating } from '../lib/auto-workflow';
 import { createPersistedAIState, selectCoverCandidate } from '../lib/ai-persistence';
 import { getAISettingsIssue } from '../lib/ai-settings';
+import { resolveDefaultTTSConfig } from '../lib/tts-settings';
 import { createAutoRunTelemetry, type AutoRunTelemetry } from '../lib/telemetry/auto-run';
 import {
   DEFAULT_WORKFLOW_META,
@@ -402,17 +403,26 @@ export function useAIVideoWorkflow() {
         return;
       }
 
-      if (
-        (fromStep === 'tts_generating' || fromStep === 'script_generating') &&
-        !settings.minimaxApiKey.trim()
-      ) {
-        setWorkflow({
-          ...DEFAULT_WORKFLOW,
-          step: 'error',
-          error: '请先在设置 → TTS 配置中填写 MiniMax API Key',
-          failedStep: fromStep,
-        });
-        return;
+      const defaultTtsConfig = resolveDefaultTTSConfig(settings);
+      if (fromStep === 'tts_generating' || fromStep === 'script_generating') {
+        if (!defaultTtsConfig.provider || !defaultTtsConfig.voice) {
+          setWorkflow({
+            ...DEFAULT_WORKFLOW,
+            step: 'error',
+            error: '请先在设置 → TTS 语音合成中配置默认 Provider 和默认音色',
+            failedStep: fromStep,
+          });
+          return;
+        }
+        if (!defaultTtsConfig.provider.apiKey.trim()) {
+          setWorkflow({
+            ...DEFAULT_WORKFLOW,
+            step: 'error',
+            error: '请先在设置 → TTS 语音合成中填写默认 Provider 的 API Key',
+            failedStep: fromStep,
+          });
+          return;
+        }
       }
 
       if (
@@ -540,13 +550,16 @@ export function useAIVideoWorkflow() {
           const ttsResult = await window.electronAPI.generateTTS({
             requestId: currentRequestId,
             text: scriptText,
-            voiceId: workflowSession.autoParams?.voiceId || settings.minimaxVoiceId || 'male-qn-qingse',
-            speed: settings.minimaxSpeed ?? 1,
-            vol: settings.minimaxVol ?? 1,
-            pitch: settings.minimaxPitch ?? 0,
-            emotion: settings.minimaxEmotion ?? '',
-            model: settings.minimaxModel ?? 'speech-2.8-hd',
-            apiKey: settings.minimaxApiKey,
+            provider: defaultTtsConfig.provider ?? undefined,
+            voice: defaultTtsConfig.voice
+              ? {
+                  ...defaultTtsConfig.voice,
+                  voiceId:
+                    workflowSession.autoParams?.voiceId && defaultTtsConfig.voice.providerType === 'minimax'
+                      ? workflowSession.autoParams.voiceId
+                      : defaultTtsConfig.voice.voiceId,
+                }
+              : undefined,
             projectDir,
             telemetryRunId: workflowSession.telemetryRunId,
           });

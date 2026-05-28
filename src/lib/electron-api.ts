@@ -10,6 +10,8 @@ import type {
   PromptBindingMap,
   MediaCardContent,
   ImageAspectRatio,
+  TTSProvider,
+  TTSVoicePreset,
   VideoAspectRatio,
 } from '../types/ai';
 import type { ImportKind } from './import-files';
@@ -379,13 +381,15 @@ export interface ElectronAPI {
   generateTTS: (args: {
     requestId: string;
     text: string;
-    voiceId: string;
-    speed: number;
-    vol: number;
-    pitch: number;
-    emotion: string;
-    model: string;
-    apiKey: string;
+    provider?: TTSProvider;
+    voice?: TTSVoicePreset;
+    voiceId?: string;
+    speed?: number;
+    vol?: number;
+    pitch?: number;
+    emotion?: string;
+    model?: string;
+    apiKey?: string;
     projectDir: string;
     telemetryRunId?: string | null;
   }) => Promise<{ audioPath: string; srtPath: string; durationMs: number }>;

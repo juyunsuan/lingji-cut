@@ -248,13 +248,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   generateTTS: (args: {
     requestId: string;
     text: string;
-    voiceId: string;
-    speed: number;
-    vol: number;
-    pitch: number;
-    emotion: string;
-    model: string;
-    apiKey: string;
+    provider?: import('../src/types/ai').TTSProvider;
+    voice?: import('../src/types/ai').TTSVoicePreset;
+    voiceId?: string;
+    speed?: number;
+    vol?: number;
+    pitch?: number;
+    emotion?: string;
+    model?: string;
+    apiKey?: string;
     projectDir: string;
     telemetryRunId?: string | null;
   }) => ipcRenderer.invoke('generate-tts', args),

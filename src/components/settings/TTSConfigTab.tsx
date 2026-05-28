@@ -1,105 +1,82 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
-import { Field, Input, Slider, Select, SaveButton, SettingsPageHeader } from '../../ui';
+import { Divider, Field, SaveButton, Select, SettingsPageHeader } from '../../ui';
 import type { SelectOption } from '../../ui';
+import type { AISettings, TTSProvider, TTSVoicePreset } from '../../types/ai';
+import { normalizeTTSSettings } from '../../lib/tts-settings';
 import { hasUnsavedAIConfigChanges } from './ai-config-utils';
+import { TTSProviderListSection } from './TTSProviderListSection';
+import { TTSVoiceListSection } from './TTSVoiceListSection';
 import { useSettingsTabGuard } from './useSettingsTabGuard';
 import styles from './SettingsCommon.module.css';
-
-const MINIMAX_MODEL_OPTIONS: SelectOption[] = [
-  { value: 'speech-2.8-hd', label: 'speech-2.8-hd' },
-  { value: 'speech-2.8-turbo', label: 'speech-2.8-turbo' },
-  { value: 'speech-2.6-hd', label: 'speech-2.6-hd' },
-  { value: 'speech-2.6-turbo', label: 'speech-2.6-turbo' },
-  { value: 'speech-02-hd', label: 'speech-02-hd' },
-  { value: 'speech-02-turbo', label: 'speech-02-turbo' },
-  { value: 'speech-01-hd', label: 'speech-01-hd' },
-  { value: 'speech-01-turbo', label: 'speech-01-turbo' },
-];
-
-const EMOTION_OPTIONS: SelectOption[] = [
-  { value: '', label: '自动（模型判断）' },
-  { value: 'happy', label: '高兴' },
-  { value: 'sad', label: '悲伤' },
-  { value: 'angry', label: '愤怒' },
-  { value: 'fearful', label: '害怕' },
-  { value: 'disgusted', label: '厌恶' },
-  { value: 'surprised', label: '惊讶' },
-  { value: 'calm', label: '中性' },
-  { value: 'fluent', label: '生动（2.6 系列）' },
-];
 
 interface TTSConfigTabProps {
   onRegisterLeaveGuard?: (guard: (() => Promise<boolean>) | null) => void;
 }
 
-function createTTSSnapshot({
-  apiKey,
-  model,
-  voiceId,
-  speed,
-  vol,
-  pitch,
-  emotion,
-}: {
-  apiKey: string;
-  model: string;
-  voiceId: string;
-  speed: number;
-  vol: number;
-  pitch: number;
-  emotion: string;
+function createSnapshot(input: {
+  providers: TTSProvider[];
+  defaultProviderId: string | null;
+  voices: TTSVoicePreset[];
+  defaultVoiceId: string | null;
 }): string {
-  return JSON.stringify({
-    apiKey: apiKey.trim(),
-    model,
-    voiceId: voiceId.trim(),
-    speed,
-    vol,
-    pitch,
-    emotion,
-  });
+  return JSON.stringify(input);
+}
+
+function buildFallbackSettings(): AISettings {
+  return {
+    llmProviders: [],
+    defaultProviderId: null,
+    defaultModel: null,
+    llmBaseUrl: '',
+    llmApiKey: '',
+    llmModel: '',
+    jimengApiUrl: '',
+    jimengSessionId: '',
+    minimaxApiKey: '',
+    minimaxVoiceId: 'male-qn-qingse',
+    minimaxSpeed: 1,
+    minimaxVol: 1,
+    minimaxPitch: 0,
+    minimaxEmotion: '',
+    minimaxModel: 'speech-2.8-hd',
+    ttsProviders: [],
+    defaultTtsProviderId: null,
+    defaultTtsVoiceId: null,
+    ttsVoices: [],
+    imageProviders: [],
+    defaultImageProviderId: null,
+    defaultImageModel: null,
+    videoProviders: [],
+    defaultVideoProviderId: null,
+    defaultVideoModel: null,
+    promptBindings: {},
+  };
 }
 
 export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState('speech-2.8-hd');
-  const [voiceId, setVoiceId] = useState('male-qn-qingse');
-  const [speed, setSpeed] = useState(1.0);
-  const [vol, setVol] = useState(1.0);
-  const [pitch, setPitch] = useState(0);
-  const [emotion, setEmotion] = useState('');
+  const [providers, setProviders] = useState<TTSProvider[]>([]);
+  const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
+  const [voices, setVoices] = useState<TTSVoicePreset[]>([]);
+  const [defaultVoiceId, setDefaultVoiceId] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState('');
   const saveFeedbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    void loadAISettings().then((s) => {
-      const nextApiKey = s?.minimaxApiKey ?? '';
-      const nextModel = s?.minimaxModel ?? 'speech-2.8-hd';
-      const nextVoiceId = s?.minimaxVoiceId ?? 'male-qn-qingse';
-      const nextSpeed = s?.minimaxSpeed ?? 1.0;
-      const nextVol = s?.minimaxVol ?? 1.0;
-      const nextPitch = s?.minimaxPitch ?? 0;
-      const nextEmotion = s?.minimaxEmotion ?? '';
-
-      setApiKey(nextApiKey);
-      setModel(nextModel);
-      setVoiceId(nextVoiceId);
-      setSpeed(nextSpeed);
-      setVol(nextVol);
-      setPitch(nextPitch);
-      setEmotion(nextEmotion);
+    void loadAISettings().then((settings) => {
+      const normalized = normalizeTTSSettings(settings ?? buildFallbackSettings());
+      setProviders(normalized.ttsProviders);
+      setDefaultProviderId(normalized.defaultTtsProviderId);
+      setVoices(normalized.ttsVoices);
+      setDefaultVoiceId(normalized.defaultTtsVoiceId);
       setLastSavedSnapshot(
-        createTTSSnapshot({
-          apiKey: nextApiKey,
-          model: nextModel,
-          voiceId: nextVoiceId,
-          speed: nextSpeed,
-          vol: nextVol,
-          pitch: nextPitch,
-          emotion: nextEmotion,
+        createSnapshot({
+          providers: normalized.ttsProviders,
+          defaultProviderId: normalized.defaultTtsProviderId,
+          voices: normalized.ttsVoices,
+          defaultVoiceId: normalized.defaultTtsVoiceId,
         }),
       );
       setHasLoaded(true);
@@ -117,16 +94,13 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
 
   const currentSnapshot = useMemo(
     () =>
-      createTTSSnapshot({
-        apiKey,
-        model,
-        voiceId,
-        speed,
-        vol,
-        pitch,
-        emotion,
+      createSnapshot({
+        providers,
+        defaultProviderId,
+        voices,
+        defaultVoiceId,
       }),
-    [apiKey, model, voiceId, speed, vol, pitch, emotion],
+    [providers, defaultProviderId, voices, defaultVoiceId],
   );
 
   const hasUnsavedChanges =
@@ -138,38 +112,115 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
     }
   }, [hasUnsavedChanges, saved]);
 
+  const defaultProviderOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: '', label: '未选择' },
+      ...providers.map((provider) => ({ value: provider.id, label: provider.name })),
+    ],
+    [providers],
+  );
+
+  const defaultVoiceOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: '', label: '未选择' },
+      ...voices.map((voice) => ({ value: voice.id, label: voice.name })),
+    ],
+    [voices],
+  );
+
+  const handleProvidersChange = useCallback(
+    (nextProviders: TTSProvider[], nextDefaultId: string | null) => {
+      setProviders(nextProviders);
+      setDefaultProviderId(nextDefaultId);
+      setVoices((currentVoices) =>
+        currentVoices.filter((voice) =>
+          nextProviders.some((provider) => provider.id === voice.providerId),
+        ),
+      );
+      setDefaultVoiceId((currentDefaultVoiceId) => {
+        if (
+          currentDefaultVoiceId &&
+          voices.some(
+            (voice) =>
+              voice.id === currentDefaultVoiceId &&
+              nextProviders.some((provider) => provider.id === voice.providerId),
+          )
+        ) {
+          return currentDefaultVoiceId;
+        }
+        return null;
+      });
+    },
+    [voices],
+  );
+
+  const handleVoicesChange = useCallback(
+    (nextVoices: TTSVoicePreset[], nextDefaultVoiceId: string | null) => {
+      setVoices(nextVoices);
+      setDefaultVoiceId(nextDefaultVoiceId);
+    },
+    [],
+  );
+
   const handleSave = useCallback(async () => {
     try {
       const current = await loadAISettings();
-      await saveAISettings({
-        ...(current ?? {
-          llmProviders: [],
-          defaultProviderId: null,
-          defaultModel: null,
-          llmBaseUrl: '',
-          llmApiKey: '',
-          llmModel: '',
-          jimengApiUrl: '',
-          jimengSessionId: '',
-          imageProviders: [],
-          defaultImageProviderId: null,
-          defaultImageModel: null,
-          videoProviders: [],
-          defaultVideoProviderId: null,
-          defaultVideoModel: null,
-          promptBindings: {},
-        }),
-        minimaxApiKey: apiKey,
-        minimaxModel: model,
-        minimaxVoiceId: voiceId,
-        minimaxSpeed: speed,
-        minimaxVol: vol,
-        minimaxPitch: pitch,
-        minimaxEmotion: emotion,
+      const normalized = normalizeTTSSettings({
+        ...(current ?? buildFallbackSettings()),
+        ttsProviders: providers,
+        defaultTtsProviderId: defaultProviderId,
+        ttsVoices: voices,
+        defaultTtsVoiceId: defaultVoiceId,
       });
-      setApiKey(apiKey.trim());
-      setVoiceId(voiceId.trim());
-      setLastSavedSnapshot(currentSnapshot);
+      const defaultProvider = normalized.ttsProviders.find(
+        (provider) => provider.id === normalized.defaultTtsProviderId,
+      );
+      const defaultVoice = normalized.ttsVoices.find(
+        (voice) => voice.id === normalized.defaultTtsVoiceId,
+      );
+      await saveAISettings({
+        ...normalized,
+        minimaxApiKey:
+          defaultProvider?.type === 'minimax'
+            ? defaultProvider.apiKey
+            : normalized.minimaxApiKey,
+        minimaxModel:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.model ?? defaultProvider.models[0] ?? normalized.minimaxModel
+            : normalized.minimaxModel,
+        minimaxVoiceId:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.voiceId ?? normalized.minimaxVoiceId
+            : normalized.minimaxVoiceId,
+        minimaxSpeed:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.params.speed ?? normalized.minimaxSpeed
+            : normalized.minimaxSpeed,
+        minimaxVol:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.params.vol ?? normalized.minimaxVol
+            : normalized.minimaxVol,
+        minimaxPitch:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.params.pitch ?? normalized.minimaxPitch
+            : normalized.minimaxPitch,
+        minimaxEmotion:
+          defaultProvider?.type === 'minimax'
+            ? defaultVoice?.params.emotion ?? normalized.minimaxEmotion
+            : normalized.minimaxEmotion,
+      });
+      setProviders(normalized.ttsProviders);
+      setDefaultProviderId(normalized.defaultTtsProviderId);
+      setVoices(normalized.ttsVoices);
+      setDefaultVoiceId(normalized.defaultTtsVoiceId);
+      setLastSavedSnapshot(
+        createSnapshot({
+          providers: normalized.ttsProviders,
+          defaultProviderId: normalized.defaultTtsProviderId,
+          voices: normalized.ttsVoices,
+          defaultVoiceId: normalized.defaultTtsVoiceId,
+        }),
+      );
       setSaved(true);
       if (saveFeedbackTimerRef.current) {
         clearTimeout(saveFeedbackTimerRef.current);
@@ -180,7 +231,7 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
       window.alert(error instanceof Error ? `保存 TTS 配置失败：${error.message}` : '保存 TTS 配置失败，请稍后重试。');
       return false;
     }
-  }, [apiKey, currentSnapshot, emotion, model, pitch, speed, voiceId, vol]);
+  }, [defaultProviderId, defaultVoiceId, providers, voices]);
 
   useSettingsTabGuard({
     title: 'TTS 配置',
@@ -193,55 +244,42 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
     <>
       <SettingsPageHeader
         title="TTS 语音合成配置"
-        description="MiniMax T2A v2 接口配置，用于 AI 一键剪辑的语音生成"
+        description="配置多个 TTS Provider，并保存系统音色或本地参考音频克隆音色"
       />
 
       <div className={styles.formStack}>
-        <Field label="MiniMax API Key">
-          <Input
-            variant="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="your-api-key"
+        <Field label="TTS Providers">
+          <TTSProviderListSection
+            providers={providers}
+            defaultProviderId={defaultProviderId}
+            onChange={handleProvidersChange}
           />
         </Field>
 
-        <Field label="模型">
+        <Field label="默认 TTS Provider">
           <Select
-            value={model}
-            options={MINIMAX_MODEL_OPTIONS}
-            onChange={(e) => setModel(e.target.value)}
+            value={defaultProviderId ?? ''}
+            options={defaultProviderOptions}
+            onChange={(event) => setDefaultProviderId(event.target.value || null)}
           />
         </Field>
 
-        <Field label="音色 ID" hint="系统音色 ID 或克隆音色 ID，参考 MiniMax 音色列表">
-          <Input
-            value={voiceId}
-            onChange={(e) => setVoiceId(e.target.value)}
-            placeholder="例如：male-qn-qingse"
+        <Divider label="音色库" />
+
+        <Field label="音色">
+          <TTSVoiceListSection
+            providers={providers}
+            voices={voices}
+            defaultVoiceId={defaultVoiceId}
+            onChange={handleVoicesChange}
           />
         </Field>
 
-        <Field label={`语速：${speed.toFixed(1)}x`} hint="范围 0.5–2.0，默认 1.0">
-          <Slider min={0.5} max={2.0} step={0.1} value={speed} onChange={setSpeed} size="md" />
-        </Field>
-
-        <Field label={`音量：${vol.toFixed(1)}`} hint="范围 0.1–10，默认 1.0">
-          <Slider min={0.1} max={10} step={0.1} value={vol} onChange={setVol} size="md" />
-        </Field>
-
-        <Field label={`音调：${pitch > 0 ? '+' : ''}${pitch}`} hint="范围 -12–12，0 为原音色">
-          <Slider min={-12} max={12} step={1} value={pitch} onChange={setPitch} size="md" />
-        </Field>
-
-        <Field
-          label="情绪"
-          hint="speech-2.8 系列不支持 whisper；fluent 仅 2.6 系列生效"
-        >
+        <Field label="默认音色">
           <Select
-            value={emotion}
-            options={EMOTION_OPTIONS}
-            onChange={(e) => setEmotion(e.target.value)}
+            value={defaultVoiceId ?? ''}
+            options={defaultVoiceOptions}
+            onChange={(event) => setDefaultVoiceId(event.target.value || null)}
           />
         </Field>
       </div>
