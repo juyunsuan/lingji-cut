@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { loadAISettings, saveAISettings } from '../../store/ai';
-import { Divider, Field, SaveButton, Select, SettingsPageHeader } from '../../ui';
+import { Divider, Field, SaveButton, Select, SettingsPageHeader, Switch } from '../../ui';
 import type { SelectOption } from '../../ui';
 import type { AISettings, TTSProvider, TTSVoicePreset } from '../../types/ai';
 import { normalizeTTSSettings } from '../../lib/tts-settings';
@@ -19,6 +19,7 @@ function createSnapshot(input: {
   defaultProviderId: string | null;
   voices: TTSVoicePreset[];
   defaultVoiceId: string | null;
+  ttsMimoAutoAnnotate: boolean;
 }): string {
   return JSON.stringify(input);
 }
@@ -59,6 +60,7 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
   const [defaultProviderId, setDefaultProviderId] = useState<string | null>(null);
   const [voices, setVoices] = useState<TTSVoicePreset[]>([]);
   const [defaultVoiceId, setDefaultVoiceId] = useState<string | null>(null);
+  const [ttsMimoAutoAnnotate, setTtsMimoAutoAnnotate] = useState<boolean>(true);
   const [saved, setSaved] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [lastSavedSnapshot, setLastSavedSnapshot] = useState('');
@@ -67,16 +69,19 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
   useEffect(() => {
     void loadAISettings().then((settings) => {
       const normalized = normalizeTTSSettings(settings ?? buildFallbackSettings());
+      const annotate = settings?.ttsMimoAutoAnnotate ?? true;
       setProviders(normalized.ttsProviders);
       setDefaultProviderId(normalized.defaultTtsProviderId);
       setVoices(normalized.ttsVoices);
       setDefaultVoiceId(normalized.defaultTtsVoiceId);
+      setTtsMimoAutoAnnotate(annotate);
       setLastSavedSnapshot(
         createSnapshot({
           providers: normalized.ttsProviders,
           defaultProviderId: normalized.defaultTtsProviderId,
           voices: normalized.ttsVoices,
           defaultVoiceId: normalized.defaultTtsVoiceId,
+          ttsMimoAutoAnnotate: annotate,
         }),
       );
       setHasLoaded(true);
@@ -99,8 +104,9 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
         defaultProviderId,
         voices,
         defaultVoiceId,
+        ttsMimoAutoAnnotate,
       }),
-    [providers, defaultProviderId, voices, defaultVoiceId],
+    [providers, defaultProviderId, voices, defaultVoiceId, ttsMimoAutoAnnotate],
   );
 
   const hasUnsavedChanges =
@@ -180,6 +186,7 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
       );
       await saveAISettings({
         ...normalized,
+        ttsMimoAutoAnnotate,
         minimaxApiKey:
           defaultProvider?.type === 'minimax'
             ? defaultProvider.apiKey
@@ -219,6 +226,7 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
           defaultProviderId: normalized.defaultTtsProviderId,
           voices: normalized.ttsVoices,
           defaultVoiceId: normalized.defaultTtsVoiceId,
+          ttsMimoAutoAnnotate,
         }),
       );
       setSaved(true);
@@ -280,6 +288,19 @@ export function TTSConfigTab({ onRegisterLeaveGuard }: TTSConfigTabProps) {
             value={defaultVoiceId ?? ''}
             options={defaultVoiceOptions}
             onChange={(event) => setDefaultVoiceId(event.target.value || null)}
+          />
+        </Field>
+
+        <Divider label="MiMo 智能语气打标" />
+
+        <Field
+          label="MiMo 智能语气打标"
+          hint="开启后，MiMo TTS 合成前会自动对文本添加语气标注（annotation），以提升朗读自然度；关闭则直接合成原始文本。"
+        >
+          <Switch
+            checked={ttsMimoAutoAnnotate}
+            onChange={(checked) => setTtsMimoAutoAnnotate(checked)}
+            label={ttsMimoAutoAnnotate ? '已开启' : '已关闭'}
           />
         </Field>
       </div>

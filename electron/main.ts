@@ -1571,6 +1571,8 @@ ipcMain.handle(
       version?: number;
       system: string;
       user: string;
+      ttsStyle?: string;
+      ttsAnnotateHint?: string;
     },
   ) => {
     const category = assertPromptCategory(args?.category);
@@ -1593,6 +1595,8 @@ ipcMain.handle(
         version: args.version,
         system: args.system ?? '',
         user: args.user,
+        ttsStyle: args.ttsStyle,
+        ttsAnnotateHint: args.ttsAnnotateHint,
       },
       { userDataPath },
     );

@@ -612,6 +612,8 @@ export function PromptsConfigTab() {
         version: templateDraft.version ?? 1,
         system,
         user: templateDraft.user || '{{rawText}}',
+        ttsStyle: templateDraft.ttsStyle,
+        ttsAnnotateHint: templateDraft.ttsAnnotateHint,
       });
       setTemplateDraft({ ...saved });
       showToast(`已保存「${saved.name}」`, { type: 'success', duration: 2500 });
@@ -672,14 +674,18 @@ export function PromptsConfigTab() {
         templateDraft.name.trim() ||
           templateDraft.description.trim() ||
           templateDraft.system.trim() ||
-          (templateDraft.user && templateDraft.user !== '{{rawText}}'),
+          (templateDraft.user && templateDraft.user !== '{{rawText}}') ||
+          templateDraft.ttsStyle?.trim() ||
+          templateDraft.ttsAnnotateHint?.trim(),
       );
     }
     return (
       persisted.name !== templateDraft.name ||
       persisted.description !== templateDraft.description ||
       persisted.system !== templateDraft.system ||
-      persisted.user !== templateDraft.user
+      persisted.user !== templateDraft.user ||
+      (persisted.ttsStyle ?? '') !== (templateDraft.ttsStyle ?? '') ||
+      (persisted.ttsAnnotateHint ?? '') !== (templateDraft.ttsAnnotateHint ?? '')
     );
   }, [templateDraft, userPromptEntries]);
 
@@ -1056,6 +1062,35 @@ export function PromptsConfigTab() {
                   rows={3}
                   size="sm"
                   resize="vertical"
+                />
+              </Field>
+
+              <Field
+                label="TTS 演绎人设（MiMo 朗读语气，可留空用默认）"
+                hint="向 MiMo TTS 描述该模板专属的朗读风格与角色人设，留空时使用全局默认"
+              >
+                <Textarea
+                  value={templateDraft.ttsStyle ?? ''}
+                  onChange={(e) =>
+                    setTemplateDraft({ ...templateDraft, ttsStyle: e.target.value })
+                  }
+                  placeholder="例如：用沉稳、专业的财经解说语气朗读，语速适中，重点词语适当加强。"
+                  rows={3}
+                  size="sm"
+                  resize="vertical"
+                />
+              </Field>
+
+              <Field
+                label="打标风格倾向（可留空）"
+                hint="智能语气打标时的风格偏好提示，留空时使用默认打标策略"
+              >
+                <Input
+                  value={templateDraft.ttsAnnotateHint ?? ''}
+                  onChange={(e) =>
+                    setTemplateDraft({ ...templateDraft, ttsAnnotateHint: e.target.value })
+                  }
+                  placeholder="例如：财经解说、专业沉稳"
                 />
               </Field>
 

@@ -251,6 +251,8 @@ export interface AIStore {
     version?: number;
     system: string;
     user: string;
+    ttsStyle?: string;
+    ttsAnnotateHint?: string;
   }) => Promise<UserPromptEntry>;
   deleteUserPrompt: (category: PromptCategory, id: string) => Promise<void>;
   setAnalysisResult: (result: AIAnalysisResult) => void;

@@ -501,6 +501,8 @@ export interface ElectronAPI {
     version?: number;
     system: string;
     user: string;
+    ttsStyle?: string;
+    ttsAnnotateHint?: string;
   }) => Promise<UserPromptEntry>;
   deleteUserPrompt: (
     category: PromptCategory,
