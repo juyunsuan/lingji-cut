@@ -96,6 +96,8 @@ export interface UserPromptYamlBody {
   user: string;
   createdAt?: string;
   updatedAt?: string;
+  ttsStyle?: string;
+  ttsAnnotateHint?: string;
 }
 
 export function parseUserPromptYaml(
@@ -122,6 +124,8 @@ export function parseUserPromptYaml(
   const version = typeof obj.version === 'number' ? obj.version : undefined;
   const createdAt = typeof obj.createdAt === 'string' ? obj.createdAt : undefined;
   const updatedAt = typeof obj.updatedAt === 'string' ? obj.updatedAt : undefined;
+  const ttsStyle = typeof obj.ttsStyle === 'string' ? obj.ttsStyle : undefined;
+  const ttsAnnotateHint = typeof obj.ttsAnnotateHint === 'string' ? obj.ttsAnnotateHint : undefined;
 
   if (!name) {
     throw new Error(`用户提示词 name 字段不能为空（${ctx.category}/${ctx.id}）`);
@@ -141,6 +145,8 @@ export function parseUserPromptYaml(
     isBuiltin: false,
     createdAt,
     updatedAt,
+    ttsStyle,
+    ttsAnnotateHint,
   };
 }
 
@@ -154,6 +160,8 @@ export function serializeUserPromptYaml(body: UserPromptYamlBody): string {
   payload.user = body.user;
   if (body.createdAt) payload.createdAt = body.createdAt;
   if (body.updatedAt) payload.updatedAt = body.updatedAt;
+  if (typeof body.ttsStyle === 'string' && body.ttsStyle.trim()) payload.ttsStyle = body.ttsStyle;
+  if (typeof body.ttsAnnotateHint === 'string' && body.ttsAnnotateHint.trim()) payload.ttsAnnotateHint = body.ttsAnnotateHint;
 
   return YAML.stringify(payload, {
     lineWidth: 0,

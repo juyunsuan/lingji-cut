@@ -154,6 +154,8 @@ export interface WriteUserPromptInput {
   user: string;
   createdAt?: string;
   updatedAt?: string;
+  ttsStyle?: string;
+  ttsAnnotateHint?: string;
 }
 
 export async function writeUserPromptEntry(
@@ -183,6 +185,8 @@ export async function writeUserPromptEntry(
     user: input.user,
     createdAt,
     updatedAt: now,
+    ttsStyle: input.ttsStyle,
+    ttsAnnotateHint: input.ttsAnnotateHint,
   });
 
   await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -200,6 +204,8 @@ export async function writeUserPromptEntry(
     isBuiltin: Boolean(seed),
     createdAt,
     updatedAt: now,
+    ttsStyle: input.ttsStyle,
+    ttsAnnotateHint: input.ttsAnnotateHint,
   };
 }
 
