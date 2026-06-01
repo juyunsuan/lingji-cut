@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { Undo2, Redo2, Plus, Scissors, Magnet } from 'lucide-react';
+import { Undo2, Redo2, Plus, Scissors, Magnet, LocateFixed } from 'lucide-react';
 import { useTimelineStore, type TimelineStore } from '../../store/timeline';
 import { ZoomControls } from './ZoomControls';
 import styles from './TimelineToolbar.module.css';
@@ -9,6 +9,7 @@ export interface TimelineToolbarProps {
   onZoomChange: (zoom: number) => void;
   timelineDurationMs: number;
   viewportWidth: number;
+  onFocusPlayhead: () => void;
   snapEnabled: boolean;
   onToggleSnap: () => void;
   onAddTrack: () => void;
@@ -18,6 +19,7 @@ export interface TimelineToolbarProps {
 export function TimelineToolbar({
   zoomLevel,
   onZoomChange,
+  onFocusPlayhead,
   timelineDurationMs,
   viewportWidth,
   snapEnabled,
@@ -88,6 +90,15 @@ export function TimelineToolbar({
           onClick={handle(onToggleSnap)}
         >
           <Magnet size={14} />
+        </button>
+        <button
+          type="button"
+          className={styles.btn}
+          title="定位到播放头"
+          aria-label="定位到播放头"
+          onClick={handle(onFocusPlayhead)}
+        >
+          <LocateFixed size={14} />
         </button>
         <ZoomControls
           zoomLevel={zoomLevel}

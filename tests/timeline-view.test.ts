@@ -3,6 +3,7 @@ import {
   clampTimelineZoom,
   getContinuousTimelineZoom,
   getAnchoredTimelineScrollLeft,
+  getCenteredPlayheadScrollLeft,
   getFitTimelineZoom,
   getNextTimelineZoom,
   getTimelineTrackWidth,
@@ -100,5 +101,15 @@ describe('getAnchoredTimelineScrollLeft', () => {
         nextTrackWidth: 2_500,
       }),
     ).toBe(437.5);
+  });
+});
+
+describe('getCenteredPlayheadScrollLeft', () => {
+  it('centers the playhead within the visible track area', () => {
+    expect(getCenteredPlayheadScrollLeft(1_000, 800)).toBe(600);
+  });
+
+  it('clamps to zero when the playhead is near the start', () => {
+    expect(getCenteredPlayheadScrollLeft(100, 800)).toBe(0);
   });
 });

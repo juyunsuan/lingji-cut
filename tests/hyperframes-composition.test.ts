@@ -76,6 +76,11 @@ describe('createHyperframesComposition', () => {
     expect(composition.html).toContain('window.__timelines["lingji-composition"] = tl');
     expect(composition.html).toContain('中国品牌首次拿下');
     expect(composition.html).toContain('hf-subtitle-highlight');
+    // 回归保护：预览 player 用 window.__timelines 的 GSAP 时间线作为 direct-timeline
+    // 适配器驱动，不注入 @hyperframes/core 运行时，因此字幕 .clip 的显隐必须写进主时间线 tl。
+    // 否则所有字幕 div 同时可见、堆叠在同一绝对定位处（挤在一起），且播放时不随时间切换。
+    expect(composition.html).toContain('.hf-subtitle[data-start]');
+    expect(composition.html).toContain('tl.set(el, { autoAlpha: 1 }, start)');
   });
 
   it('renders image, video, audio and text overlays as HyperFrames timed clips', () => {
@@ -196,6 +201,11 @@ describe('createHyperframesComposition', () => {
     expect(html).toContain('Motion Ready');
     expect(html).toContain('const motionTimelines = window.__lingjiMotionTimelines || []');
     expect(html.indexOf('gsap.min.js')).toBeLessThan(html.indexOf('custom-motion'));
+    // 回归保护：子时间线（含 Motion Card）以 paused:true 创建，加入主时间线后必须
+    // 交还父级控制（paused(false)），否则父级 seek/play 无法驱动，入场动画会把卡片
+    // 永久定格在 opacity:0 隐藏态，导致 player 中“卡片不显示 / 预览空白”。
+    expect(html).toContain('local.paused(false)');
+    expect(html).toContain('motion.paused(false)');
   });
 
   it('can point GSAP at a packaged local asset', () => {

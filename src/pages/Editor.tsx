@@ -22,7 +22,13 @@ import { useAIVideoWorkflow } from '../hooks/useAIVideoWorkflow';
 import { useViewportSize } from '../hooks/useViewportSize';
 import { getEditorLayoutMode, getTimelinePanelBounds } from '../lib/layout';
 import { isTextEditingTarget } from '../lib/native-shortcuts';
-import { shouldUpdatePlaybackTime } from '../lib/playback';
+import {
+  IDLE_SCRUB_STATE,
+  beginScrub,
+  endScrub,
+  resolveSeekResume,
+  shouldUpdatePlaybackTime,
+} from '../lib/playback';
 import {
   getEffectiveTimelineDurationMs,
   getFileNameFromPath,
@@ -113,6 +119,7 @@ export function Editor({
   const playerRef = useRef<HyperframesPreviewHandle>(null);
   const timelineWrapRef = useRef<HTMLDivElement>(null);
   const currentTimeRef = useRef(0);
+  const scrubStateRef = useRef(IDLE_SCRUB_STATE);
   const [timelinePanelHeight, setTimelinePanelHeight] = useState(layout.timelineHeight);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [inspectorWidth, setInspectorWidth] = useState(INSPECTOR_DEFAULT_WIDTH);
@@ -402,6 +409,29 @@ export function Editor({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleTogglePlay, isActive]);
 
+  // 拖动开始：在播放时先暂停，拖动期间播放头只跟随光标，避免边播边拖时画面自行前进。
+  const handleSeekStart = useCallback(() => {
+    const player = playerRef.current;
+    if (!player) {
+      return;
+    }
+    const { state, action } = beginScrub(player.isPlaying());
+    scrubStateRef.current = state;
+    if (action === 'pause') {
+      player.pause();
+    }
+  }, []);
+
+  // 拖动结束：若拖动开始时在播放，则从拖到的位置续播。
+  const handleSeekEnd = useCallback(() => {
+    const player = playerRef.current;
+    const { state, action } = endScrub(scrubStateRef.current);
+    scrubStateRef.current = state;
+    if (player && action === 'play') {
+      player.play();
+    }
+  }, []);
+
   const handleSeek = useCallback(
     (targetMs: number) => {
       const player = playerRef.current;
@@ -409,7 +439,13 @@ export function Editor({
         return;
       }
 
+      // player.seek() 会静默暂停（不派发 pause 事件）。一次性 seek（点击/跳转）若此前在播放，
+      // 需要 seek 后显式续播，否则会停在「实际暂停但 isPlaying=true」的错位状态。
+      const resume = resolveSeekResume(player.isPlaying(), scrubStateRef.current);
       player.seekToMs(targetMs);
+      if (resume === 'play') {
+        player.play();
+      }
       currentTimeRef.current = targetMs;
       setCurrentTimeMs(targetMs);
     },
@@ -713,6 +749,8 @@ export function Editor({
                 isPlaying={isPlaying}
                 onTogglePlay={handleTogglePlay}
                 onSeek={handleSeek}
+                onSeekStart={handleSeekStart}
+                onSeekEnd={handleSeekEnd}
                 onExport={handleExport}
                 currentTimeMs={currentTimeMs}
                 durationMs={effectiveDurationMs}
@@ -829,6 +867,8 @@ export function Editor({
                 isPlaying={isPlaying}
                 onTogglePlay={handleTogglePlay}
                 onSeek={handleSeek}
+                onSeekStart={handleSeekStart}
+                onSeekEnd={handleSeekEnd}
                 onExport={handleExport}
                 currentTimeMs={currentTimeMs}
                 durationMs={effectiveDurationMs}
@@ -895,6 +935,8 @@ export function Editor({
         <Timeline
           currentTimeMs={currentTimeMs}
           onSeek={handleSeek}
+          onSeekStart={handleSeekStart}
+          onSeekEnd={handleSeekEnd}
           compact={layout.compactTimeline}
           onOpenAICardInspector={handleOpenAICardInspector}
           onOpenSubtitleInspector={handleOpenSubtitleInspector}

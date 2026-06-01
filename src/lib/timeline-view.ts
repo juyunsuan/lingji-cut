@@ -124,6 +124,19 @@ export function getAnchoredTimelineScrollLeft({
   return Math.max(0, anchorRatio * safeNextTrackWidth - pointerX);
 }
 
+/**
+ * 把播放头滚动到可视轨道区水平居中位置时需要的 scrollLeft。
+ *
+ * 既用于"定位"按钮，也用于缩放：缩放时以缩放后的播放头偏移调用本函数，
+ * 即可让竖条在每一步缩放中都保持水平居中，内容两侧等比例展开 / 收缩。
+ */
+export function getCenteredPlayheadScrollLeft(
+  playheadPx: number,
+  visibleTrackWidth: number,
+): number {
+  return Math.max(0, playheadPx - Math.max(1, visibleTrackWidth) / 2);
+}
+
 export function getTimelineVisualEndMs(timeline: TimelineData): number {
   const podcastEnd = timeline.podcast?.durationMs ?? 0;
   const overlayEnd = timeline.overlays.reduce((max, o) => {

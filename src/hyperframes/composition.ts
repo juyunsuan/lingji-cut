@@ -276,11 +276,39 @@ function renderOverlayAnimationScript(visualOverlays: OverlayItem[]): string {
         local.to(el, { opacity: 0, y: -12, duration: Math.min(0.35, duration * 0.14), ease: 'power2.in' }, Math.max(0, duration - Math.min(0.35, duration * 0.14)));
       }
       tl.add(local, Number(el.getAttribute('data-start') || 0));
+      // 子时间线以 paused:true 创建（避免在 add 前自走时钟），加入父时间线后必须交还控制权，
+      // 否则父级 seek/play 不会驱动它，入场 from(opacity:0) 会把元素永久定格在隐藏态。
+      local.paused(false);
     }
     Array.from(document.querySelectorAll('.hf-ai-card[data-start]')).forEach((el, index) => {
       const motion = motionTimelines[index];
       if (motion && typeof motion.pause === 'function') {
         tl.add(motion, Number(el.getAttribute('data-start') || 0));
+        // Motion Card 的 timeline 同样按 paused:true 约定生成，加入后交还父级控制。
+        motion.paused(false);
+      }
+    });
+    ${renderSubtitleVisibilityScript()}
+  `;
+}
+
+function renderSubtitleVisibilityScript(): string {
+  // 预览 player 把 window.__timelines 里的 GSAP 时间线当作 direct-timeline 适配器直接
+  // seek/play，不会注入 @hyperframes/core 运行时，因此 .clip 的 data-start/data-duration
+  // 显隐控制不会自动生效。字幕没有进入主时间线 tl 时，所有字幕 div 会同时可见并堆叠在
+  // 同一绝对定位处（“挤在一起”），且播放时不随播放头切换（“不动”）。这里把字幕显隐写进
+  // tl，让预览的 direct-timeline 适配器驱动；导出链路的运行时会嵌套 tl，行为保持一致。
+  return `
+    Array.from(document.querySelectorAll('.hf-subtitle[data-start]')).forEach((el) => {
+      const start = Number(el.getAttribute('data-start') || 0);
+      const duration = Number(el.getAttribute('data-duration') || 0);
+      // 立即隐藏，避免主时间线首帧渲染前出现闪烁。
+      gsap.set(el, { autoAlpha: 0 });
+      // 进入主时间线：t=0 隐藏（保证反向 seek 回到起点仍隐藏）→ 字幕窗口内显示 → 窗口结束后隐藏。
+      tl.set(el, { autoAlpha: 0 }, 0);
+      tl.set(el, { autoAlpha: 1 }, start);
+      if (duration > 0) {
+        tl.set(el, { autoAlpha: 0 }, start + duration);
       }
     });
   `;

@@ -15,6 +15,10 @@ interface PreviewPanelProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
   onSeek?: (ms: number) => void;
+  /** 进度条拖动开始（pointerdown）。用于「拖动时暂停、松手续播」。 */
+  onSeekStart?: () => void;
+  /** 进度条拖动结束（pointerup）。 */
+  onSeekEnd?: () => void;
   onExport: () => void;
   currentTimeMs: number;
   durationMs: number;
@@ -33,6 +37,8 @@ function PreviewPanelComponent({
   isPlaying,
   onTogglePlay,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   currentTimeMs,
   durationMs,
   compact,
@@ -154,12 +160,13 @@ function PreviewPanelComponent({
       const target = event.currentTarget;
       target.setPointerCapture(event.pointerId);
       isSeekingRef.current = true;
+      onSeekStart?.();
 
       const seekFrom = computeSeekMsFromEvent(event.clientX);
       if (seekFrom !== null) onSeek(seekFrom);
       updateProgressHoverFromEvent(event.clientX);
     },
-    [computeSeekMsFromEvent, durationMs, onSeek, updateProgressHoverFromEvent],
+    [computeSeekMsFromEvent, durationMs, onSeek, onSeekStart, updateProgressHoverFromEvent],
   );
 
   const handleProgressPointerMove = useCallback(
@@ -180,8 +187,9 @@ function PreviewPanelComponent({
       if (target.hasPointerCapture(event.pointerId)) {
         target.releasePointerCapture(event.pointerId);
       }
+      onSeekEnd?.();
     },
-    [],
+    [onSeekEnd],
   );
 
   const handleProgressPointerEnter = useCallback(

@@ -16,8 +16,8 @@ import { filterValidSubtitleHighlights } from '../lib/subtitle-highlights';
 import { formatTimecode, getEffectiveTimelineDurationMs } from '../lib/utils';
 import {
   clampTimelineZoom,
-  getAnchoredTimelineScrollLeft,
   getBaseTimelineWidth,
+  getCenteredPlayheadScrollLeft,
   getContinuousTimelineZoom,
   getTimelineContentWidthPx,
   getTimelineVisualEndMs,
@@ -51,6 +51,10 @@ import type { ManualCardKind } from '../lib/manual-card-types';
 interface TimelineProps {
   currentTimeMs: number;
   onSeek: (ms: number) => void;
+  /** 播放头拖动开始（mousedown）。用于「拖动时暂停、松手续播」。 */
+  onSeekStart?: () => void;
+  /** 播放头拖动结束（mouseup）。 */
+  onSeekEnd?: () => void;
   compact: boolean;
   onOpenAICardInspector?: (cardId: string) => void;
   onOpenOverlayInspector?: (overlayId: string) => void;
@@ -98,6 +102,8 @@ type TimelineContextTarget =
 export function Timeline({
   currentTimeMs,
   onSeek,
+  onSeekStart,
+  onSeekEnd,
   compact,
   onOpenAICardInspector,
   onOpenOverlayInspector,
@@ -560,6 +566,7 @@ export function Timeline({
       onSeek(clamped);
     };
 
+    onSeekStart?.();
     seekTo(event.clientX, !event.altKey);
 
     const onMove = (ev: globalThis.MouseEvent) => {
@@ -568,6 +575,7 @@ export function Timeline({
     const onUp = () => {
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
+      onSeekEnd?.();
     };
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
@@ -578,51 +586,72 @@ export function Timeline({
     event.stopPropagation();
   };
 
-  const handleWheelZoom = useCallback((event: WheelEvent) => {
-    const zoomMode = getTimelineWheelZoomMode(event);
-    if (!zoomMode) {
-      return;
-    }
+  // 缩放（工具栏按钮 / 百分比 / 适应 / 1:1，以及 Cmd/Ctrl+滚轮、触摸板 pinch）
+  // 统一让播放头竖条保持水平居中：内容以竖条为中心两侧等比例展开 / 收缩，
+  // 竖条始终钉在可视区正中（靠近时间线起点时受 scrollLeft≥0 限制而无法再左移）。
+  const handleZoomChange = useCallback(
+    (nextZoomRaw: number) => {
+      const nextZoom = clampTimelineZoom(nextZoomRaw);
+      const container = containerRef.current;
+      const clampedPrev = clampTimelineZoom(zoomLevel);
+      if (container && nextZoom !== clampedPrev && clampedPrev > 0) {
+        const visibleTrackWidth = Math.max(
+          1,
+          container.clientWidth - sidebarWidth - outerPadding * 2,
+        );
+        // 缩放后播放头在内容坐标中的新偏移（pxPerMs 与 zoom 成正比）
+        const nextPlayheadPx = currentTimeMs * pxPerMs * (nextZoom / clampedPrev);
+        pendingScrollLeftRef.current = getCenteredPlayheadScrollLeft(
+          nextPlayheadPx,
+          visibleTrackWidth,
+        );
+      }
+      setZoomLevel(nextZoom);
+    },
+    [zoomLevel, sidebarWidth, outerPadding, currentTimeMs, pxPerMs],
+  );
 
+  const handleWheelZoom = useCallback(
+    (event: WheelEvent) => {
+      const zoomMode = getTimelineWheelZoomMode(event);
+      if (!zoomMode) {
+        return;
+      }
+      if (!containerRef.current) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const nextZoom =
+        zoomMode === 'pinch'
+          ? getContinuousTimelineZoom(zoomLevel, event.deltaY, event.deltaMode)
+          : getWheelTimelineZoom(zoomLevel, event.deltaY);
+      if (nextZoom === zoomLevel) {
+        return;
+      }
+
+      handleZoomChange(nextZoom);
+    },
+    [zoomLevel, handleZoomChange],
+  );
+
+  // 定位按钮：把视窗平滑滚动到播放头水平居中位置。
+  const focusPlayhead = useCallback(() => {
     const container = containerRef.current;
     if (!container) {
       return;
     }
-
-    event.preventDefault();
-
-    const nextZoom =
-      zoomMode === 'pinch'
-        ? getContinuousTimelineZoom(zoomLevel, event.deltaY, event.deltaMode)
-        : getWheelTimelineZoom(zoomLevel, event.deltaY);
-    if (nextZoom === zoomLevel) {
-      return;
-    }
-
-    const rect = container.getBoundingClientRect();
-    const visibleTrackWidth = Math.max(1, container.clientWidth - sidebarWidth - outerPadding * 2);
-    const hasValidClientX = event.clientX >= rect.left && event.clientX <= rect.right;
-    const pointerX = hasValidClientX
-      ? Math.max(
-          0,
-          Math.min(visibleTrackWidth, event.clientX - rect.left - sidebarWidth - outerPadding),
-        )
-      : visibleTrackWidth / 2;
-    const nextContentWidth = getTimelineContentWidthPx(
-      timeline,
-      nextZoom,
-      Math.max(480, viewportWidth || 960),
+    const visibleTrackWidth = Math.max(
+      1,
+      container.clientWidth - sidebarWidth - outerPadding * 2,
     );
-
-    pendingScrollLeftRef.current = getAnchoredTimelineScrollLeft({
-      scrollLeft: container.scrollLeft,
-      pointerX,
-      previousTrackWidth: contentWidth,
-      nextTrackWidth: nextContentWidth,
-    });
-
-    setZoomLevel(nextZoom);
-  }, [timeline, outerPadding, sidebarWidth, contentWidth, viewportWidth, zoomLevel]);
+    const left = getCenteredPlayheadScrollLeft(
+      currentTimeMs * pxPerMs,
+      visibleTrackWidth,
+    );
+    container.scrollTo({ left, behavior: 'smooth' });
+  }, [sidebarWidth, outerPadding, currentTimeMs, pxPerMs]);
 
   // 通过 ref 保持最新版本的 handler，避免 native listener 中的 stale closure
   const handleWheelZoomRef = useRef(handleWheelZoom);
@@ -1168,7 +1197,8 @@ export function Timeline({
     >
       <TimelineToolbar
         zoomLevel={zoomLevel}
-        onZoomChange={setZoomLevel}
+        onZoomChange={handleZoomChange}
+        onFocusPlayhead={focusPlayhead}
         timelineDurationMs={getTimelineVisualEndMs(timeline)}
         viewportWidth={viewportWidth}
         snapEnabled={snapEnabled}
