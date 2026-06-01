@@ -9,11 +9,10 @@ user: |-
 
 const PLANNING_SEGMENT = `name: planning.segment
 description: 字幕分段规划提示词
-version: 4
+version: 5
 user: |-
   你是一个播客内容分析助手。请先完整理解整篇字幕，再把节目拆成有明确语义边界的段落。
   {{globalPromptLine}}
-  {{projectStylePromptBlock}}
 
   段落拆分要求：
   - 必须按真实话题边界拆分，而不是按 token 长度硬切；同一话题的展开与收束可以分成 2-3 段，让卡片承载更细的子主题
@@ -58,16 +57,13 @@ user: |-
 
 const COVER_REGENERATION = `name: cover.regeneration
 description: 封面提示词重生成（视觉系统：短视频缩略图 · B站知识区 / YouTube thumbnail 风）
-version: 6
+version: 7
 user: |-
   你是一名服务于知识类短视频 / 播客节目的封面提示词工程师，目标是产出 B 站知识区 / YouTube 高点击率缩略图风格的 16:9 封面。
   请结合本期字幕内容，重生成 1 条可直接喂给 AI 生图模型的封面提示词。
 
   已有整期创作提示词：
   {{globalPrompt}}
-
-  项目统一风格要求：
-  {{projectStylePrompt}}
 
   当前封面提示词（仅用于参考，可改写）：
   {{currentPrompt}}
@@ -77,13 +73,12 @@ user: |-
 
 const CARDS_SEGMENT = `name: cards.segment
 description: 段落 Motion Card 生成提示词（电子杂志 × 电子墨水 · 深色变体 · Bento Grid 版式；motion-only）
-version: 9
+version: 10
 user: |-
   任务：只为当前 segment 生成 **1 张 Motion Card**（renderMode="motion-card"）。本提示词不再处理 image 段落，image 段在上游直接走 card.image 链路，不会进入这里。
 
   上下文：
   - 全局提示：{{globalPrompt}}
-  - 项目风格：{{projectStylePrompt}}
   - 节目总结：{{programSummary}}
   - 关键词：{{keywords}}
   - segment：{{segmentId}}｜{{segmentTitle}}｜{{segmentStartMs}}-{{segmentEndMs}}ms
@@ -168,14 +163,13 @@ user: |-
 
 const CARD_IMAGE = `name: card.image
 description: 段落图片卡文生图提示词（中文）
-version: 3
+version: 4
 user: |-
   你是一名资深中文文生图提示词工程师，服务于一档播客 / 口播节目的"段落图片卡"。
   请基于下方节目级与段落级信息，为当前段落生成 1 段可直接喂给文生图模型的**简体中文**提示词。
 
   ===== 节目级上下文 =====
   整期创作提示词：{{globalPrompt}}
-  项目统一风格要求：{{projectStylePrompt}}
   节目级总结：{{programSummary}}
   节目关键词：{{keywords}}
   {{styleSystemBlock}}
@@ -214,14 +208,13 @@ user: |-
 
 const CARD_VIDEO = `name: card.video
 description: 段落视频卡提示词
-version: 1
+version: 2
 user: |-
   你是 AI 视频导演。基于以下 segment 信息，输出一段适合直接喂给文生视频模型的英文 prompt：
 
   标题：{{segmentTitle}}
   摘要：{{segmentSummary}}
   关键句：{{segmentExcerpt}}
-  项目统一风格要求：{{projectStylePrompt}}
   显示模式：{{displayMode}}
   画幅比例：{{aspectRatio}}
   时长：{{durationSeconds}} 秒

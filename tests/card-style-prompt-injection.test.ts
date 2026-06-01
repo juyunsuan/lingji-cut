@@ -89,6 +89,21 @@ describe('新增风格预设 facet 锚点', () => {
   });
 });
 
+describe('提示词移除 projectStylePrompt 注入', () => {
+  const kinds = ['planning.segment', 'cover.regeneration', 'cards.segment', 'card.image', 'card.video'] as const;
+  it('5 个业务提示词不再含 projectStylePrompt 占位符', () => {
+    for (const k of kinds) {
+      expect(DEFAULT_PROMPT_YAML[k]).not.toContain('{{projectStylePrompt}}');
+      expect(DEFAULT_PROMPT_YAML[k]).not.toContain('{{projectStylePromptBlock}}');
+    }
+  });
+  it('卡片提示词仍含 styleSystemBlock', () => {
+    expect(DEFAULT_PROMPT_YAML['cards.segment']).toContain('{{styleSystemBlock}}');
+    expect(DEFAULT_PROMPT_YAML['cover.regeneration']).toContain('{{styleSystemBlock}}');
+    expect(DEFAULT_PROMPT_YAML['card.image']).toContain('{{styleSystemBlock}}');
+  });
+});
+
 describe('build 函数注入 styleSystemBlock', () => {
   const segment: AISegment = {
     id: 'seg-1',
