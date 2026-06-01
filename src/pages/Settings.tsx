@@ -1,12 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { ArrowLeft, Bot, Cpu, DatabaseBackup, Palette, Server, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, Bot, Cpu, DatabaseBackup, Server, Sparkles, Volume2 } from 'lucide-react';
 import { ConfigBackupTab } from '../components/settings/ConfigBackupTab';
 import { AIConfigTab } from '../components/settings/AIConfigTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
 import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import { McpSettingsTab } from '../components/settings/McpSettingsTab';
 import { PromptsConfigTab } from '../components/settings/PromptsConfigTab';
-import { StyleLibraryTab } from '../components/settings/StyleLibraryTab';
 import { Button, Tabs, TabsContent } from '../ui';
 import styles from './Settings.module.css';
 import type { SettingsLeaveGuard } from '../components/settings/useSettingsTabGuard';
@@ -17,7 +16,6 @@ type SettingsTab =
   | 'agent'
   | 'mcp'
   | 'prompts'
-  | 'style-library'
   | 'backup';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
@@ -26,7 +24,6 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'agent', label: 'AI Agent', icon: Cpu },
   { id: 'mcp', label: 'MCP 服务', icon: Server },
   { id: 'prompts', label: '提示词配置', icon: Sparkles },
-  { id: 'style-library', label: '风格库', icon: Palette },
   { id: 'backup', label: '配置备份', icon: DatabaseBackup },
 ];
 
@@ -122,9 +119,6 @@ export function Settings({ onBack }: SettingsProps) {
         </TabsContent>
         <TabsContent value="prompts" className={styles.contentPanelWide}>
           <PromptsConfigTab />
-        </TabsContent>
-        <TabsContent value="style-library" className={styles.contentPanel}>
-          <StyleLibraryTab />
         </TabsContent>
         <TabsContent value="backup" className={styles.contentPanel}>
           <ConfigBackupTab />

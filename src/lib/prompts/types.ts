@@ -1,5 +1,4 @@
 export const PROMPT_KINDS = [
-  'project.style',
   'planning.segment',
   'cover.regeneration',
   'cards.segment',
@@ -196,13 +195,6 @@ const LOCKED_CARD_IMAGE = `【系统契约 · 不可修改】
 画面中禁止出现任何文字 / UI 元素 / Logo / 水印 / 字幕条。`;
 
 export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
-  'project.style': {
-    kind: 'project.style',
-    label: '项目统一风格',
-    description: '统一定义整期项目的设计语言，可被其他提示词通过 {{projectStylePrompt}} 复用引用',
-    group: 'project',
-    variables: [],
-  },
   'planning.segment': {
     kind: 'planning.segment',
     label: '字幕分段规划',
@@ -210,8 +202,6 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
     group: 'ai-analysis',
     variables: [
       { name: 'globalPromptLine', description: '额外创作要求行；有值时形如"额外创作要求：xxx"，无值为空字符串' },
-      { name: 'projectStylePrompt', description: '项目统一风格要求（为空填"无"）' },
-      { name: 'projectStylePromptBlock', description: '项目统一风格要求块；无值为空字符串' },
     ],
     lockedContract: {
       position: 'user-tail',
@@ -226,8 +216,6 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
     group: 'ai-analysis',
     variables: [
       { name: 'globalPrompt', description: '整期创作提示词（为空填"无"）' },
-      { name: 'projectStylePrompt', description: '项目统一风格要求（为空填"无"）' },
-      { name: 'projectStylePromptBlock', description: '项目统一风格要求块；无值为空字符串' },
       { name: 'currentPrompt', description: '当前封面提示词（为空填"无"）' },
       { name: 'styleSystemBlock', description: '系统风格库注入的视觉系统块；由所选风格预设的对应 facet 决定' },
     ],
@@ -244,8 +232,6 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
     group: 'ai-analysis',
     variables: [
       { name: 'globalPrompt', description: '整期创作提示词' },
-      { name: 'projectStylePrompt', description: '项目统一风格要求（为空填"无"）' },
-      { name: 'projectStylePromptBlock', description: '项目统一风格要求块；无值为空字符串' },
       { name: 'programSummary', description: '节目级总结' },
       { name: 'keywords', description: '节目关键词（顿号分隔）' },
       { name: 'segmentId', description: 'segment id' },
@@ -290,8 +276,6 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
     group: 'ai-analysis',
     variables: [
       { name: 'globalPrompt', description: '整期创作提示词（为空填"无"）' },
-      { name: 'projectStylePrompt', description: '项目统一风格要求（为空填"无"）' },
-      { name: 'projectStylePromptBlock', description: '项目统一风格要求块；无值为空字符串' },
       { name: 'programSummary', description: '节目级总结（为空填"无"）' },
       { name: 'keywords', description: '节目关键词（顿号分隔，无则为"无"）' },
       { name: 'segmentId', description: 'segment id' },
@@ -321,8 +305,6 @@ export const PROMPT_KIND_META: Record<PromptKind, PromptKindMeta> = {
       { name: 'segmentTitle', description: 'segment 标题' },
       { name: 'segmentSummary', description: 'segment 摘要' },
       { name: 'segmentExcerpt', description: 'segment 字幕摘录' },
-      { name: 'projectStylePrompt', description: '项目统一风格要求（为空填"无"）' },
-      { name: 'projectStylePromptBlock', description: '项目统一风格要求块；无值为空字符串' },
       { name: 'displayMode', description: '显示模式：fullscreen 或 pip' },
       { name: 'aspectRatio', description: '画幅比例：16:9 / 9:16 / 1:1' },
       { name: 'durationSeconds', description: '视频时长（秒），档位由 provider capabilities 决定' },

@@ -2,7 +2,6 @@ import path from 'node:path';
 import { getImageProvider } from '../src/lib/image-gen/registry';
 import { getVideoProvider } from '../src/lib/video-gen/registry';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
-import { appendProjectStylePrompt } from '../src/lib/project-style-prompt';
 import {
   ensureCardAssetDir,
   writeCardImage,
@@ -41,7 +40,6 @@ export interface GenerateCardImageArgs {
 export interface CardMediaHandlerCtx {
   settings: AISettings;
   projectBindings: PromptBindingMap | null;
-  projectStylePrompt?: string;
   onProgress: (u: ImageGenerationProgressUpdate) => void;
   signal?: AbortSignal;
 }
@@ -87,7 +85,7 @@ export async function handleGenerateCardImage(
   };
   const result = await adapter.generate(
     {
-      prompt: appendProjectStylePrompt(args.prompt, ctx.projectStylePrompt),
+      prompt: args.prompt,
       model,
       aspectRatio: args.aspectRatio,
       n: 1,
@@ -159,7 +157,6 @@ export interface GenerateCardVideoArgs {
 export interface CardVideoHandlerCtx {
   settings: AISettings;
   projectBindings: PromptBindingMap | null;
-  projectStylePrompt?: string;
   onProgress: (u: VideoGenerationProgressUpdate) => void;
   signal?: AbortSignal;
 }
@@ -198,7 +195,7 @@ export async function handleGenerateCardVideo(
   };
   const result = await adapter.generate(
     {
-      prompt: appendProjectStylePrompt(args.prompt, ctx.projectStylePrompt),
+      prompt: args.prompt,
       negativePrompt: args.negativePrompt,
       model,
       aspectRatio: args.aspectRatio,

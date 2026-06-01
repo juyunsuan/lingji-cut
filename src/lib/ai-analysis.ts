@@ -31,10 +31,6 @@ import {
   renderUserPromptWithLock,
   type PromptTemplate,
 } from './prompts';
-import {
-  buildProjectStylePromptBlock,
-  projectStylePromptValue,
-} from './project-style-prompt';
 import { getStyleFacetBlock, resolveStylePresetId } from './card-style';
 import { compileMotionSource } from './motion-compiler';
 
@@ -68,8 +64,7 @@ interface AnalyzeSrtOptions {
   generateText?: typeof generateText;
   generateCardImage?: GenerateCardImageFn;
   globalPrompt?: string;
-  projectStylePrompt?: string;
-  /** 项目级视觉风格预设 ID；与 projectStylePrompt 并列透传，注入各 build 函数的 styleSystemBlock。 */
+  /** 项目级视觉风格预设 ID；注入各 build 函数的 styleSystemBlock。 */
   projectStylePresetId?: string;
   /** 全局默认视觉风格预设 ID；优先级低于项目级。 */
   defaultStylePresetId?: string;
@@ -98,7 +93,6 @@ interface RegenerateCardOptions {
   generateStructuredData?: typeof generateStructuredData;
   generateText?: typeof generateText;
   globalPrompt?: string;
-  projectStylePrompt?: string;
   projectStylePresetId?: string;
   defaultStylePresetId?: string;
   cardPrompt?: string;
@@ -112,7 +106,6 @@ interface RegenerateCardOptions {
 interface RegenerateCoverPromptOptions {
   generateStructuredData?: typeof generateStructuredData;
   globalPrompt?: string;
-  projectStylePrompt?: string;
   projectStylePresetId?: string;
   defaultStylePresetId?: string;
   currentPrompt?: string;
@@ -687,7 +680,6 @@ function buildProgramContext(params: {
 
 export function buildSegmentPlanningPrompt(
   globalPrompt?: string,
-  projectStylePrompt?: string,
   template?: PromptTemplate,
 ): string {
   const tpl = template ?? getBuiltinPromptTemplate('planning.segment');
@@ -695,15 +687,12 @@ export function buildSegmentPlanningPrompt(
   const globalPromptLine = trimmed ? `额外创作要求：${trimmed}` : '';
   return renderUserPromptWithLock('planning.segment', tpl, {
     globalPromptLine,
-    projectStylePrompt: projectStylePromptValue(projectStylePrompt),
-    projectStylePromptBlock: buildProjectStylePromptBlock(projectStylePrompt),
   });
 }
 
 export function buildCoverPromptRegenerationPrompt(
   options: {
     globalPrompt?: string;
-    projectStylePrompt?: string;
     currentPrompt?: string;
     stylePresetId?: string;
   } = {},
@@ -711,12 +700,9 @@ export function buildCoverPromptRegenerationPrompt(
 ): string {
   const tpl = template ?? getBuiltinPromptTemplate('cover.regeneration');
   const globalPrompt = options.globalPrompt?.trim();
-  const projectStylePrompt = options.projectStylePrompt?.trim();
   const currentPrompt = options.currentPrompt?.trim();
   return renderUserPromptWithLock('cover.regeneration', tpl, {
     globalPrompt: globalPrompt || '无',
-    projectStylePrompt: projectStylePrompt || '无',
-    projectStylePromptBlock: buildProjectStylePromptBlock(projectStylePrompt),
     currentPrompt: currentPrompt || '无',
     styleSystemBlock: getStyleFacetBlock(options.stylePresetId, 'cover'),
   });
@@ -727,7 +713,6 @@ export function buildSegmentCardPrompt(
     programContext: string;
     segment: AISegment;
     globalPrompt?: string;
-    projectStylePrompt?: string;
     cardPrompt?: string;
     currentCard?: AICard;
     programSummary?: string;
@@ -741,7 +726,6 @@ export function buildSegmentCardPrompt(
     programContext,
     segment,
     globalPrompt,
-    projectStylePrompt,
     cardPrompt,
     currentCard,
     programSummary,
@@ -770,8 +754,6 @@ export function buildSegmentCardPrompt(
 
   return renderUserPromptWithLock('cards.segment', tpl, {
     globalPrompt: truncatePromptValue(globalPrompt ?? '', 240) || '无',
-    projectStylePrompt: truncatePromptValue(projectStylePromptValue(projectStylePrompt), 240) || '无',
-    projectStylePromptBlock: buildProjectStylePromptBlock(projectStylePrompt),
     programSummary: truncatePromptValue(programSummary ?? '', 180) || '无',
     keywords: keywords.length > 0 ? keywords.join('、') : '无',
     segmentId: segment.id,
@@ -803,7 +785,6 @@ export function buildSegmentImagePrompt(
     card: AICard;
     aspectRatio: ImageAspectRatio;
     globalPrompt?: string;
-    projectStylePrompt?: string;
     programSummary?: string;
     keywords?: string[];
     cardPromptHint?: string;
@@ -816,7 +797,6 @@ export function buildSegmentImagePrompt(
     card,
     aspectRatio,
     globalPrompt,
-    projectStylePrompt,
     programSummary,
     keywords = [],
     cardPromptHint,
@@ -829,8 +809,6 @@ export function buildSegmentImagePrompt(
       : segment.summary;
   return renderUserPromptWithLock('card.image', tpl, {
     globalPrompt: globalPrompt?.trim() || '无',
-    projectStylePrompt: projectStylePromptValue(projectStylePrompt),
-    projectStylePromptBlock: buildProjectStylePromptBlock(projectStylePrompt),
     programSummary: programSummary?.trim() || '无',
     keywords: keywords.length > 0 ? keywords.join('、') : '无',
     segmentId: segment.id,
@@ -856,7 +834,6 @@ async function generateImagePromptForSegment(params: {
   settings: AISettings;
   generateText: typeof generateText;
   globalPrompt?: string;
-  projectStylePrompt?: string;
   stylePresetId?: string;
   programSummary?: string;
   keywords?: string[];
@@ -871,7 +848,6 @@ async function generateImagePromptForSegment(params: {
     settings,
     generateText: requestText,
     globalPrompt,
-    projectStylePrompt,
     stylePresetId,
     programSummary,
     keywords,
@@ -890,7 +866,6 @@ async function generateImagePromptForSegment(params: {
       card,
       aspectRatio,
       globalPrompt,
-      projectStylePrompt,
       stylePresetId,
       programSummary,
       keywords,
@@ -944,7 +919,6 @@ export async function planTranscriptSegments(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
-    projectStylePrompt,
     planningTemplate,
     projectBindings,
     telemetry,
@@ -957,7 +931,7 @@ export async function planTranscriptSegments(
   const binding = maybeResolveBinding('planning.segment', settings, projectBindings);
   const payload = await requestStructuredData(
     settings,
-    buildSegmentPlanningPrompt(globalPrompt, projectStylePrompt, planningTemplate),
+    buildSegmentPlanningPrompt(globalPrompt, planningTemplate),
     buildSrtText(entries),
     binding,
     { label: 'planning.segment', telemetry },
@@ -997,7 +971,6 @@ export async function generateCardForSegment(
     generateStructuredData?: typeof generateStructuredData;
     generateText?: typeof generateText;
     globalPrompt?: string;
-    projectStylePrompt?: string;
     /** 已解析的视觉风格预设 ID（含单卡 / 项目 / 全局优先级）；注入 build 函数的 styleSystemBlock。 */
     stylePresetId?: string;
     cardPrompt?: string;
@@ -1017,7 +990,6 @@ export async function generateCardForSegment(
     generateStructuredData: requestStructuredData = generateStructuredData,
     generateText: requestText = generateText,
     globalPrompt,
-    projectStylePrompt,
     stylePresetId,
     cardPrompt,
     currentCard,
@@ -1072,7 +1044,6 @@ export async function generateCardForSegment(
           programContext,
           segment,
           globalPrompt: globalPrompt?.trim() || planning.globalPrompt,
-          projectStylePrompt,
           stylePresetId,
           cardPrompt,
           currentCard,
@@ -1107,7 +1078,6 @@ export async function generateCardForSegment(
       settings,
       generateText: requestText,
       globalPrompt: globalPrompt?.trim() || planning.globalPrompt,
-      projectStylePrompt,
       stylePresetId,
       programSummary: planning.summary,
       keywords: planning.keywords,
@@ -1170,7 +1140,6 @@ export async function analyzeSrt(
     generateText: requestText = generateText,
     generateCardImage,
     globalPrompt,
-    projectStylePrompt,
     projectStylePresetId,
     defaultStylePresetId,
     planningTemplate,
@@ -1200,7 +1169,6 @@ export async function analyzeSrt(
     planning = await planTranscriptSegments(entries, settings, {
       generateStructuredData: requestStructuredData,
       globalPrompt,
-      projectStylePrompt,
       planningTemplate,
       projectBindings,
       telemetry,
@@ -1245,7 +1213,6 @@ export async function analyzeSrt(
       const prompts = await regenerateCoverPrompt(entries, settings, {
         generateStructuredData: requestStructuredData,
         globalPrompt: planning.globalPrompt ?? globalPrompt,
-        projectStylePrompt,
         projectStylePresetId,
         defaultStylePresetId,
         coverTemplate,
@@ -1324,7 +1291,6 @@ export async function analyzeSrt(
           generateStructuredData: requestStructuredData,
           generateText: requestText,
           globalPrompt: planning.globalPrompt,
-          projectStylePrompt,
           stylePresetId: resolvedStylePresetId,
           cardTemplate,
           imageTemplate,
@@ -1448,7 +1414,6 @@ export async function regenerateAICard(
     generateStructuredData: requestStructuredData = generateStructuredData,
     generateText: requestText = generateText,
     globalPrompt,
-    projectStylePrompt,
     projectStylePresetId,
     defaultStylePresetId,
     cardPrompt = card.cardPrompt,
@@ -1483,7 +1448,6 @@ export async function regenerateAICard(
       generateStructuredData: requestStructuredData,
       generateText: requestText,
       globalPrompt,
-      projectStylePrompt,
       stylePresetId: resolvedStylePresetId,
       cardPrompt,
       currentCard: card,
@@ -1531,7 +1495,6 @@ export async function generateSingleCardFromSubtitles(
   settings: AISettings,
   options: {
     globalPrompt?: string;
-    projectStylePrompt?: string;
     projectStylePresetId?: string;
     defaultStylePresetId?: string;
     programSummary?: string;
@@ -1559,7 +1522,6 @@ export async function generateSingleCardFromSubtitles(
 
   const {
     globalPrompt,
-    projectStylePrompt,
     projectStylePresetId,
     defaultStylePresetId,
     programSummary,
@@ -1603,7 +1565,6 @@ export async function generateSingleCardFromSubtitles(
       generateStructuredData: requestStructuredData,
       generateText: requestText,
       globalPrompt,
-      projectStylePrompt,
       // 手动选段是新卡片，无单卡覆盖；按 项目 → 全局 → 内置默认 解析。
       stylePresetId: resolveStylePresetId({
         project: projectStylePresetId,
@@ -1634,7 +1595,6 @@ export async function regenerateCoverPrompt(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     globalPrompt,
-    projectStylePrompt,
     projectStylePresetId,
     defaultStylePresetId,
     currentPrompt,
@@ -1652,7 +1612,6 @@ export async function regenerateCoverPrompt(
     buildCoverPromptRegenerationPrompt(
       {
         globalPrompt,
-        projectStylePrompt,
         // 封面重生成无单卡层；按 项目 → 全局 → 内置默认 解析。
         stylePresetId: resolveStylePresetId({
           project: projectStylePresetId,

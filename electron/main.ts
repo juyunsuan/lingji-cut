@@ -21,10 +21,6 @@ import {
 import { resolveStylePresetId } from '../src/lib/card-style';
 import type { ExportConfig } from '../src/lib/export-settings';
 import { generateCoverCandidates } from '../src/lib/cover-generation';
-import {
-  appendProjectStylePrompt,
-  getProjectStylePromptFromTemplate,
-} from '../src/lib/project-style-prompt';
 import { resolvePromptBinding } from '../src/lib/llm/binding-resolver';
 import {
   handleGenerateCardImage,
@@ -728,11 +724,6 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       const projectStylePresetId = await loadProjectStylePresetId(args.projectDir);
       // 仅当 renderer 提供了 projectDir 时，才把 image 卡片物化能力注入；
       // 否则 LLM 仍可吐出 image 类型 prompt，但保留 generationStatus='pending'，
@@ -754,7 +745,6 @@ ipcMain.handle(
               {
                 settings: args.settings,
                 projectBindings: args.projectBindings ?? null,
-                projectStylePrompt,
                 onProgress: () => {
                   // analyze-srt 主进度由 onProgress 已覆盖；图像生成内部进度暂不上报
                 },
@@ -765,7 +755,6 @@ ipcMain.handle(
       const telemetry = makeMainTelemetry(args.telemetryRunId);
       const result = await analyzeSrt(entries, args.settings, {
         globalPrompt: args.globalPrompt,
-        projectStylePrompt,
         // 项目级默认风格：从 project.json 读取，缺省时为 undefined（下游回退全局/内置默认）。
         projectStylePresetId,
         defaultStylePresetId: args.settings.defaultStylePresetId,
@@ -861,15 +850,9 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       const projectStylePresetId = await loadProjectStylePresetId(args.projectDir);
       return await regenerateAICard(args.entries, args.card, args.segment, args.settings, {
         globalPrompt: args.globalPrompt,
-        projectStylePrompt,
         // 单卡覆盖来自 args.card.stylePresetId（lib 层 resolve 时合并）；项目级从 project.json 读取。
         projectStylePresetId,
         defaultStylePresetId: args.settings.defaultStylePresetId,
@@ -930,11 +913,6 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       const projectStylePresetId = await loadProjectStylePresetId(args.projectDir);
       let card = await generateCardForSegment(
         args.entries,
@@ -947,7 +925,6 @@ ipcMain.handle(
         args.settings,
         {
           globalPrompt: args.globalPrompt,
-          projectStylePrompt,
           // 失败段补生成无单卡覆盖；按 项目 → 全局 → 内置默认 解析。
           // generateCardForSegment 只接受预解析的 stylePresetId，故在此就地合并 project/global 层。
           stylePresetId: resolveStylePresetId({
@@ -978,7 +955,6 @@ ipcMain.handle(
             {
               settings: args.settings,
               projectBindings: args.projectBindings ?? null,
-              projectStylePrompt,
               onProgress: (update) => {
                 mainWindow?.webContents.send('card-media-progress', {
                   cardId: invoke.cardId,
@@ -1038,15 +1014,9 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       const projectStylePresetId = await loadProjectStylePresetId(args.projectDir);
       return await generateSingleCardFromSubtitles(args.entries, args.draft, args.settings, {
         globalPrompt: args.globalPrompt,
-        projectStylePrompt,
         // 手动选段是新卡片，无单卡覆盖；项目级从 project.json 读取。
         projectStylePresetId,
         defaultStylePresetId: args.settings.defaultStylePresetId,
@@ -1094,15 +1064,9 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       const projectStylePresetId = await loadProjectStylePresetId(args.projectDir);
       return await regenerateCoverPrompt(args.entries, args.settings, {
         globalPrompt: args.globalPrompt,
-        projectStylePrompt,
         // 项目级默认风格：从 project.json 读取，缺省时为 undefined（下游回退全局/内置默认）。
         projectStylePresetId,
         defaultStylePresetId: args.settings.defaultStylePresetId,
@@ -1146,17 +1110,10 @@ ipcMain.handle(
     if (!binding.imageProvider || !binding.imageModel) {
       throw new Error('cover.regeneration 未绑定 ImageProvider/Model');
     }
-    const userDataPath = app.getPath('userData');
-    const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-      userDataPath,
-      projectDir: args.projectDir,
-    });
-    // image 生成不走 stylePresetId 解析路径，仅复用 projectStylePrompt
-    const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
     const coverSuffix = (args.settings.globalCoverImagePrompt ?? '').trim();
     const mergedPrompts = args.prompts.map((prompt) => {
       const withCoverSuffix = coverSuffix ? `${prompt.trim()}\n${coverSuffix}` : prompt;
-      return appendProjectStylePrompt(withCoverSuffix, projectStylePrompt);
+      return withCoverSuffix;
     });
     const total = mergedPrompts.length;
     const coverProgressCtx = {
@@ -1216,17 +1173,9 @@ ipcMain.handle(
     const ac = new AbortController();
     cardMediaAbortMap.set(args.cardId, ac);
     try {
-      const userDataPath = app.getPath('userData');
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      // image 生成不走 stylePresetId 解析路径，仅复用 projectStylePrompt
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       return await handleGenerateCardImage(args, {
         settings: args.settings,
         projectBindings: args.projectBindings ?? null,
-        projectStylePrompt,
         signal: ac.signal,
         onProgress: (u) => {
           mainWindow?.webContents.send('card-media-progress', {
@@ -1260,16 +1209,9 @@ ipcMain.handle(
     const ac = new AbortController();
     cardMediaAbortMap.set(args.cardId, ac);
     try {
-      const userDataPath = app.getPath('userData');
-      const projectStyleTemplate = await loadEffectivePromptTemplate('project.style', {
-        userDataPath,
-        projectDir: args.projectDir,
-      });
-      const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       return await handleGenerateCardVideo(args, {
         settings: args.settings,
         projectBindings: args.projectBindings ?? null,
-        projectStylePrompt,
         signal: ac.signal,
         onProgress: (u) => {
           mainWindow?.webContents.send('card-media-progress', {
