@@ -13,6 +13,7 @@ import { loadGlobalSettingsFile, updateGlobalSettingsFile } from '../lib/global-
 import {
   DEFAULT_CARD_STYLE,
   DEFAULT_JIMENG_MODEL,
+  DEFAULT_STYLE_PRESET_ID,
   getDefaultTemplate,
   type AIAnalysisResult,
   type AICard,
@@ -166,7 +167,7 @@ function normalizeConcurrency(value: unknown): number {
   return n >= 1 ? n : 2;
 }
 
-function buildDefaultAISettings(): AISettings {
+export function buildDefaultAISettings(): AISettings {
   return {
     llmProviders: [],
     defaultProviderId: null,
@@ -198,6 +199,7 @@ function buildDefaultAISettings(): AISettings {
     defaultVideoModel: null,
     promptBindings: {},
     cardGenerationConcurrency: 2,
+    defaultStylePresetId: DEFAULT_STYLE_PRESET_ID,
   };
 }
 
@@ -814,6 +816,11 @@ export async function loadAISettings(): Promise<AISettings | null> {
           cardGenerationConcurrency: normalizeConcurrency(
             file.aiSettings.cardGenerationConcurrency,
           ),
+          defaultStylePresetId:
+            typeof file.aiSettings.defaultStylePresetId === 'string' &&
+            file.aiSettings.defaultStylePresetId.trim()
+              ? file.aiSettings.defaultStylePresetId
+              : DEFAULT_STYLE_PRESET_ID,
         };
         const providerMigrated = migrateToProviders(settings);
         const imageMigrated = migrateImageProviders(providerMigrated);
@@ -868,6 +875,10 @@ export async function loadAISettings(): Promise<AISettings | null> {
           defaultVideoModel: parsed.defaultVideoModel ?? null,
           promptBindings: parsed.promptBindings ?? {},
           cardGenerationConcurrency: normalizeConcurrency(parsed.cardGenerationConcurrency),
+          defaultStylePresetId:
+            typeof parsed.defaultStylePresetId === 'string' && parsed.defaultStylePresetId.trim()
+              ? parsed.defaultStylePresetId
+              : DEFAULT_STYLE_PRESET_ID,
         };
         const providerMigrated = migrateToProviders(raw);
         const settings = normalizeTTSSettings(migrateImageProviders(providerMigrated));

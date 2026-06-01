@@ -61,3 +61,11 @@ describe('getStylePresetById / getStyleFacetBlock 回退', () => {
     expect(getStyleFacetBlock('nope', 'motion')).toBe(getStyleFacetBlock('editorial-eink', 'motion'));
   });
 });
+
+import { buildDefaultAISettings } from '../src/store/ai';
+
+describe('AISettings 默认风格', () => {
+  it('buildDefaultAISettings 给出默认风格 id', () => {
+    expect(buildDefaultAISettings().defaultStylePresetId).toBe(DEFAULT_STYLE_PRESET_ID);
+  });
+});
