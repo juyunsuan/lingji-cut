@@ -60,6 +60,8 @@ import type {
   VideoProvider,
 } from '../../types/ai';
 import { PromptBindingBar } from './PromptBindingBar';
+import { StyleLibraryPanel } from '../StyleLibraryPanel';
+import { resolveStylePresetId } from '../../lib/card-style';
 import styles from './PromptsConfigTab.module.css';
 
 type EditableScope = 'global' | 'project';
@@ -69,7 +71,8 @@ type EditableScope = 'global' | 'project';
  */
 type ActiveSelection =
   | { type: 'kind'; kind: PromptKind }
-  | { type: 'user-entry'; category: PromptCategory; entryId: string };
+  | { type: 'user-entry'; category: PromptCategory; entryId: string }
+  | { type: 'style' };
 
 interface OverviewItem {
   kind: PromptKind;
@@ -191,6 +194,27 @@ export function PromptsConfigTab() {
   const loadProjectBindings = useAIStore((s) => s.loadProjectBindings);
   const setProjectBinding = useAIStore((s) => s.setProjectBinding);
   const setGlobalBinding = useAIStore((s) => s.setGlobalBinding);
+
+  // ─── 项目统一风格（风格模板选择器）────────────────
+  const projectStylePresetId = useAIStore((s) => s.projectStylePresetId);
+  const setProjectStylePresetId = useAIStore((s) => s.setProjectStylePresetId);
+
+  /** 写入全局默认风格：复用 StyleLibraryTab 的 load/save 模式，并同步本地 aiSettings */
+  const persistGlobalStyle = useCallback(
+    async (id: string) => {
+      try {
+        const current = await loadAISettings();
+        if (!current) return;
+        const next: AISettings = { ...current, defaultStylePresetId: id };
+        await saveAISettings(next);
+        setAiSettings(next);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        showToast(message, { title: '保存全局风格失败', type: 'error', duration: 4000 });
+      }
+    },
+    [showToast],
+  );
 
   // ─── 用户自定义条目（口播模板等）────────────────
   const userPromptEntries = useAIStore((s) => s.userPromptEntries);
@@ -748,6 +772,39 @@ export function PromptsConfigTab() {
                   );
                 })}
 
+                {/* 项目统一风格：合成条目，挂在 "project" 大组下 */}
+                {group === 'project' && (
+                  <div className={styles.kindRow}>
+                    <Button
+                      type="button"
+                      variant={active.type === 'style' ? 'secondary' : 'ghost'}
+                      size="sm"
+                      className={styles.kindButton}
+                      onClick={() => setActive({ type: 'style' })}
+                    >
+                      <span>项目统一风格</span>
+                      <span className={styles.kindBadges}>
+                        <Badge
+                          variant={
+                            scope === 'project'
+                              ? projectStylePresetId
+                                ? 'success'
+                                : 'secondary'
+                              : 'info'
+                          }
+                          size="xs"
+                        >
+                          {scope === 'project'
+                            ? projectStylePresetId
+                              ? '项目'
+                              : '继承'
+                            : '全局'}
+                        </Badge>
+                      </span>
+                    </Button>
+                  </div>
+                )}
+
                 {/* 口播模板子分区挂在 "script" 大组下 */}
                 {group === 'script' && (
                   <div className={styles.subGroup}>
@@ -1171,6 +1228,73 @@ export function PromptsConfigTab() {
                 </Button>
               )}
             </CardFooter>
+          </Card>
+        ) : null}
+
+        {active.type === 'style' ? (
+          <Card className={styles.editorCard}>
+            <CardHeader className={styles.editorHeader}>
+              <div className={styles.editorHeaderText}>
+                <CardTitle>项目统一风格</CardTitle>
+                <CardDescription>
+                  选择项目统一视觉风格；全局为默认，当前项目可覆盖。
+                </CardDescription>
+              </div>
+              <Tabs
+                value={scope}
+                onValueChange={(next) => setScope(next as EditableScope)}
+              >
+                <TabsList>
+                  <TabsTrigger value="global">全局</TabsTrigger>
+                  <TabsTrigger value="project" disabled={!hasProject}>
+                    当前项目
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </CardHeader>
+
+            <CardContent className={styles.editorBody}>
+              {scope === 'project' && !hasProject ? (
+                <Alert
+                  variant="info"
+                  description="未打开项目，无法设置项目级风格。打开项目后可单独覆盖全局默认风格。"
+                />
+              ) : (
+                <>
+                  {scope === 'project' && (
+                    <div className={styles.statusBar}>
+                      <Button
+                        type="button"
+                        variant={!projectStylePresetId ? 'secondary' : 'ghost'}
+                        size="sm"
+                        onClick={() => {
+                          void setProjectStylePresetId(undefined);
+                        }}
+                      >
+                        跟随全局默认
+                      </Button>
+                      <span>
+                        {projectStylePresetId
+                          ? '当前项目已覆盖全局默认风格'
+                          : '当前项目跟随全局默认风格'}
+                      </span>
+                    </div>
+                  )}
+                  <StyleLibraryPanel
+                    facetHint="motion"
+                    value={
+                      scope === 'project'
+                        ? projectStylePresetId ?? ''
+                        : resolveStylePresetId({ global: aiSettings?.defaultStylePresetId })
+                    }
+                    onChange={(id) => {
+                      if (scope === 'project') void setProjectStylePresetId(id);
+                      else void persistGlobalStyle(id);
+                    }}
+                  />
+                </>
+              )}
+            </CardContent>
           </Card>
         ) : null}
       </div>
