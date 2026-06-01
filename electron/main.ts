@@ -1151,6 +1151,7 @@ ipcMain.handle(
       userDataPath,
       projectDir: args.projectDir,
     });
+    // image 生成不走 stylePresetId 解析路径，仅复用 projectStylePrompt
     const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
     const coverSuffix = (args.settings.globalCoverImagePrompt ?? '').trim();
     const mergedPrompts = args.prompts.map((prompt) => {
@@ -1220,6 +1221,7 @@ ipcMain.handle(
         userDataPath,
         projectDir: args.projectDir,
       });
+      // image 生成不走 stylePresetId 解析路径，仅复用 projectStylePrompt
       const projectStylePrompt = getProjectStylePromptFromTemplate(projectStyleTemplate);
       return await handleGenerateCardImage(args, {
         settings: args.settings,

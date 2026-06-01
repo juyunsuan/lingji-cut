@@ -346,6 +346,7 @@ export const useAIStore = create<AIStore>((set, get) => ({
       await window.electronAPI.saveProjectSection(
         projectDir,
         'stylePresetId',
+        // undefined 传给 JSON.stringify 会得到 undefined（非 "null"），故先归一为 null 再持久化
         JSON.stringify(id ?? null),
       );
     } catch (error) {
@@ -421,9 +422,9 @@ export const useAIStore = create<AIStore>((set, get) => ({
     }
   },
   loadProjectBindings: async (projectDir) => {
-    // 切换为无项目状态时，清空内存快照
+    // 切换为无项目状态时，清空内存快照（包含项目级风格预设，避免跨项目污染）
     if (!projectDir) {
-      set({ projectBindings: {}, currentProjectDir: null });
+      set({ projectBindings: {}, currentProjectDir: null, projectStylePresetId: undefined });
       return;
     }
     // 非 Electron 环境（如测试渲染环境）不做任何 IO，只更新 projectDir
