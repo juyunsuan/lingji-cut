@@ -21,8 +21,6 @@ import {
 } from '../types/ai';
 import { AICardList, type AICardPlacement } from './AICardList';
 import { AppIcon } from './AppIcon';
-import { StyleLibraryPanel } from './StyleLibraryPanel';
-import { getStylePresetById } from '../lib/card-style';
 import { AICoverPanel } from './AICoverPanel';
 import { CoverEditorModal } from './CoverEditorModal';
 import { SubtitleCardDialog } from './SubtitleCardDialog';
@@ -49,14 +47,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '../ui/components/dropdown-menu';
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '../ui/components/dialog';
 import styles from './AIPanel.module.css';
 
 interface AIPanelProps {
@@ -106,11 +96,7 @@ export function AIPanel({
   setGeneratingCovers,
   setActiveTab,
 } = useAIStore();
-  const projectStylePresetId = useAIStore((s) => s.projectStylePresetId);
-  const setProjectStylePresetId = useAIStore((s) => s.setProjectStylePresetId);
-
   const [activeTab, setActiveTabLocal] = useState<AITabKey>(storeActiveTab);
-  const [isStyleDialogOpen, setIsStyleDialogOpen] = useState(false);
   const [manualMediaDialogInitial, setManualMediaDialogInitial] = useState<{
     text: string;
     startMs: number;
@@ -799,10 +785,6 @@ export function AIPanel({
     [],
   );
 
-  const projectStyleName = projectStylePresetId
-    ? getStylePresetById(projectStylePresetId).name
-    : null;
-
   const hasSrtEntries = srtEntries.length > 0;
   const analyzeButtonDisabled = !hasSrtEntries || isAnalyzing;
   const hasGeneratedCards = (analysisResult?.cards.length ?? 0) > 0;
@@ -920,29 +902,6 @@ export function AIPanel({
                   resize="none"
                   className={styles.promptTextarea}
                 />
-              </div>
-            </section>
-
-            <section className={styles.promptSection}>
-              <label className={styles.promptLabel}>卡片风格</label>
-              <div className={styles.styleRow}>
-                <div className={styles.styleRowValue}>
-                  <span className={styles.styleRowName}>
-                    {projectStyleName ?? '跟随全局默认'}
-                  </span>
-                  <span className={styles.styleRowHint}>
-                    {projectStyleName
-                      ? '应用于本项目的信息卡 / 封面 / 图片生成'
-                      : '使用系统设置中的全局默认风格'}
-                  </span>
-                </div>
-                <Button
-                  variant="secondary"
-                  size="xs"
-                  onClick={() => setIsStyleDialogOpen(true)}
-                >
-                  更改
-                </Button>
               </div>
             </section>
 
@@ -1213,32 +1172,6 @@ export function AIPanel({
           onSaveRequested={handleCoverEditSave}
         />
       ) : null}
-      <Dialog open={isStyleDialogOpen} onOpenChange={setIsStyleDialogOpen}>
-        <DialogContent size="full" className="max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>项目卡片风格</DialogTitle>
-            <DialogDescription>
-              选择本项目的卡片视觉风格，应用于段落信息卡、封面图与图片卡的生成；单卡可在 Inspector 中单独覆盖。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className={styles.styleDialogContent}>
-            <Button
-              variant={projectStylePresetId ? 'secondary' : 'accent'}
-              size="xs"
-              className={styles.styleDialogFollowGlobal}
-              onClick={() => void setProjectStylePresetId(undefined)}
-            >
-              跟随全局默认
-            </Button>
-            <StyleLibraryPanel
-              value={projectStylePresetId ?? ''}
-              onChange={(id) => void setProjectStylePresetId(id)}
-              facetHint="motion"
-            />
-          </DialogBody>
-        </DialogContent>
-      </Dialog>
-
       <SubtitleCardDialog
         open={Boolean(manualMediaDialogInitial)}
         onOpenChange={(open) => {
