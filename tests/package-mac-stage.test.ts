@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const {
-  HYPERFRAMES_ASAR_UNPACK_DIRS,
+  RENDER_RUNTIME_ASAR_UNPACK_DIRS,
   buildReleaseManifest,
   shouldStageProjectPath,
   shouldStageNodeModulePath,
@@ -51,10 +51,13 @@ describe('package mac staging helpers', () => {
   });
 
   it('drops caches and renderer-only packages from staged node_modules', () => {
-    expect(shouldStageNodeModulePath('hyperframes/dist/cli.js')).toBe(true);
-    expect(shouldStageNodeModulePath('@hyperframes/player/dist/index.js')).toBe(true);
+    expect(shouldStageNodeModulePath('remotion/dist/index.js')).toBe(true);
+    expect(shouldStageNodeModulePath('@remotion/renderer/dist/index.js')).toBe(true);
     expect(shouldStageNodeModulePath('@langchain/core/messages.js')).toBe(true);
     expect(shouldStageNodeModulePath('react/index.js')).toBe(true);
+    // HyperFrames 已移除，不再 stage
+    expect(shouldStageNodeModulePath('hyperframes/dist/cli.js')).toBe(false);
+    expect(shouldStageNodeModulePath('@hyperframes/player/dist/index.js')).toBe(false);
 
     expect(shouldStageNodeModulePath('.cache/webpack/index.pack')).toBe(false);
     expect(shouldStageNodeModulePath('lucide-react/dist/lucide-react.js')).toBe(false);
@@ -67,9 +70,9 @@ describe('package mac staging helpers', () => {
     expect(shouldStageNodeModulePath('@langchain/google-genai/dist/index.js')).toBe(true);
   });
 
-  it('unpacks HyperFrames runtime artifacts from app.asar for packaged exports', () => {
-    expect(HYPERFRAMES_ASAR_UNPACK_DIRS).toBe(
-      '{vendor/ffmpeg,node_modules/hyperframes,node_modules/@hyperframes,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/gsap,node_modules/ffmpeg-static,node_modules/ffprobe-static}',
+  it('unpacks Remotion runtime artifacts from app.asar for packaged exports', () => {
+    expect(RENDER_RUNTIME_ASAR_UNPACK_DIRS).toBe(
+      '{vendor/ffmpeg,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static}',
     );
   });
 });

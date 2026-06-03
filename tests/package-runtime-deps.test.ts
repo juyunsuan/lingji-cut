@@ -4,16 +4,21 @@ import path from 'node:path';
 import packageJson from '../package.json';
 
 describe('package runtime dependencies', () => {
-  it('keeps HyperFrames runtime dependencies in dependencies for Electron packaging', () => {
+  it('keeps Remotion runtime dependencies in dependencies for Electron packaging', () => {
     expect(packageJson.dependencies?.react).toBeTruthy();
     expect(packageJson.dependencies?.['react-dom']).toBeTruthy();
     expect(packageJson.dependencies?.chokidar).toBeTruthy();
-    expect(packageJson.dependencies?.hyperframes).toBeTruthy();
-    expect(packageJson.dependencies?.['@hyperframes/player']).toBeTruthy();
-    expect(packageJson.dependencies?.gsap).toBeTruthy();
+    expect(packageJson.dependencies?.remotion).toBeTruthy();
+    expect(packageJson.dependencies?.['@remotion/player']).toBeTruthy();
+    expect(packageJson.dependencies?.['@remotion/bundler']).toBeTruthy();
+    expect(packageJson.dependencies?.['@remotion/renderer']).toBeTruthy();
+    expect(packageJson.dependencies?.esbuild).toBeTruthy();
     expect(packageJson.dependencies?.['@ffmpeg-installer/ffmpeg']).toBeTruthy();
     expect(packageJson.dependencies?.['ffmpeg-static']).toBeTruthy();
     expect(packageJson.dependencies?.['ffprobe-static']).toBeTruthy();
+    // HyperFrames 已移除
+    expect(packageJson.dependencies?.hyperframes).toBeUndefined();
+    expect(packageJson.dependencies?.['@hyperframes/player']).toBeUndefined();
   });
 
   it('keeps China-friendly binary mirrors in project npm config', () => {

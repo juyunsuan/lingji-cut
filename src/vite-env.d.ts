@@ -14,20 +14,3 @@ declare module '*?raw' {
   const source: string;
   export default source;
 }
-
-declare namespace JSX {
-  interface IntrinsicElements {
-    'hyperframes-player': {
-        src?: string;
-        srcdoc?: string;
-        srcDoc?: string;
-        width?: number;
-        height?: number;
-        controls?: boolean;
-        muted?: boolean;
-        volume?: number;
-        style?: Record<string, string | number>;
-        ref?: unknown;
-      };
-  }
-}

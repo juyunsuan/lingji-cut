@@ -3,7 +3,7 @@ const fsp = require('node:fs/promises');
 const path = require('node:path');
 const { packager } = require('@electron/packager');
 const {
-  HYPERFRAMES_ASAR_UNPACK_DIRS,
+  RENDER_RUNTIME_ASAR_UNPACK_DIRS,
   RUNTIME_ROOT_PACKAGES,
   buildReleaseManifest,
   shouldStageProjectPath,
@@ -163,7 +163,7 @@ async function main() {
       platform: 'darwin',
       prune: false,
       asar: {
-        unpackDir: HYPERFRAMES_ASAR_UNPACK_DIRS,
+        unpackDir: RENDER_RUNTIME_ASAR_UNPACK_DIRS,
       },
     });
 
