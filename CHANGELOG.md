@@ -2,6 +2,18 @@
 
 本项目所有显著变更将记录在此文件。格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### Changed
+- **渲染引擎从 HyperFrames 切换为 Remotion**：预览改用 `@remotion/player`，导出改用 `@remotion/bundler` + `@remotion/renderer`（自带 Chrome Headless Shell + ffmpeg）。`TimelineData` 仍是唯一数据源，经 `buildRenderPlan` 编译为 Remotion 组件树（`src/remotion/`、`electron/remotion/`）。
+- **AI Motion Card 改为自由 Remotion TSX**：LLM 产出 `motionCard.tsx`（default export 函数组件），主进程用 esbuild 编译为 CJS，经 `inputProps.compiledCards` 注入，由 `CardHost` 在 Remotion 上下文内求值；预览与导出共用同一份编译产物。`motion.*` 提示词同步改版为帧驱动（useCurrentFrame/interpolate/spring）。
+
+### Removed
+- 移除 `hyperframes` / `@hyperframes/player` 依赖与相关代码（`src/hyperframes/composition.ts`、`HyperframesPreviewPlayer`、`electron/hyperframes-cli.ts`、`electron/hyperframes-runtime-preflight.ts`、`hyperframes-runtime-preflight` IPC）。
+
+### Migration
+- 旧工程的 `motionCard.html`（HTML+GSAP）加载时降级为占位并标记 `needsRegeneration`，不崩溃；Inspector 提示重新生成为 Remotion 卡片。
+
 ## [1.0.1] - 2026-05-27
 
 ### Added
