@@ -4,6 +4,7 @@ import {
   buildCoverPromptRegenerationPrompt,
   buildSegmentCardPrompt,
   buildSegmentPlanningPrompt,
+  buildPlainTranscriptRange,
   buildSrtText,
   generateCardForSegment,
   planTranscriptSegments,
@@ -74,13 +75,13 @@ const baseCard: AICard = {
   cardPrompt: '做成更像商业海报',
 };
 
-/** 一段能被 HyperFrames 直接插入并同步注册 GSAP timeline 的 Motion Card HTML */
-const VALID_MOTION_HTML = `<div class="motion-card"><span>摘要卡</span><script>
-  const local = gsap.timeline({ paused: true });
-  local.from(document.currentScript.parentElement, { opacity: 0, duration: 0.4 }, 0);
-  window.__lingjiMotionTimelines = window.__lingjiMotionTimelines || [];
-  window.__lingjiMotionTimelines.push(local);
-</script></div>`;
+/** 一段可被 Remotion 渲染的 Motion Card TSX（default export 函数组件） */
+const VALID_MOTION_TSX = `import { AbsoluteFill, interpolate, useCurrentFrame } from 'remotion';
+export default function MotionCard() {
+  const frame = useCurrentFrame();
+  const opacity = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: 'clamp' });
+  return <AbsoluteFill style={{ opacity }}>摘要卡</AbsoluteFill>;
+}`;
 
 const makeLongEntries = () =>
   Array.from({ length: 18 }, (_, index) =>
@@ -116,6 +117,34 @@ describe('buildSrtText', () => {
     expect(text).toContain('欢迎收听本期节目');
     expect(text).toContain('[00:03.000 --> 00:07.000]');
     expect(text).toContain('重点分析工作流拆分与卡片生成方式');
+  });
+});
+
+describe('buildPlainTranscriptRange', () => {
+  it('returns only the verbatim text of entries overlapping the exact range, without timecodes', () => {
+    const text = buildPlainTranscriptRange(baseEntries, 0, 3_000);
+
+    expect(text).toBe('欢迎收听本期节目，我们先聊 AI 视频生产的背景。');
+    expect(text).not.toContain('-->');
+    expect(text).not.toContain('[00:');
+  });
+
+  it('joins multiple overlapping entries with newlines in time order', () => {
+    const text = buildPlainTranscriptRange(baseEntries, 0, 7_000);
+
+    expect(text).toBe(
+      '欢迎收听本期节目，我们先聊 AI 视频生产的背景。\n接下来进入第二部分，重点分析工作流拆分与卡片生成方式。',
+    );
+  });
+
+  it('does not include neighbour entries outside the range (no padding)', () => {
+    const text = buildPlainTranscriptRange(baseEntries, 0, 3_000);
+
+    expect(text).not.toContain('第二部分');
+  });
+
+  it('returns an empty string when no subtitle overlaps the range', () => {
+    expect(buildPlainTranscriptRange(baseEntries, 8_000, 9_000)).toBe('');
   });
 });
 
@@ -245,7 +274,7 @@ describe('generateCardForSegment', () => {
       enabled: true,
       renderMode: 'motion-card',
       motionCard: {
-        html: VALID_MOTION_HTML,
+        tsx: VALID_MOTION_TSX,
       },
       style: {
         primaryColor: '#79c4ff',
@@ -276,11 +305,108 @@ describe('generateCardForSegment', () => {
     expect(result.segmentId).toBe('seg-1');
     expect(result.title).toBe('新标题');
     expect(result.renderMode).toBe('motion-card');
-    expect(result.motionCard?.html).toContain('gsap.timeline');
-    expect(result.motionCard?.html).toContain('__lingjiMotionTimelines.push(local)');
+    expect(result.motionCard?.tsx).toContain('export default');
+    expect(result.motionCard?.tsx).toContain('useCurrentFrame');
     expect(modelCaller).toHaveBeenCalledTimes(1);
     expect(modelCaller.mock.calls[0]?.[2]).toBe(fullTranscript);
     expect(modelCaller.mock.calls[0]?.[1]).toContain('AI 视频生产背景');
+  });
+
+  it('overrides text-card content with the verbatim segment subtitle text', async () => {
+    const modelCaller = vi.fn<typeof generateStructuredData>().mockResolvedValue({
+      id: 'generated-card-1',
+      type: 'summary',
+      title: '新标题',
+      content: 'AI 改写后可能丢字的内容',
+      startMs: 100,
+      endMs: 2_900,
+      displayDurationMs: 5_500,
+      displayMode: 'fullscreen',
+      template: 'summary-default',
+      enabled: true,
+      renderMode: 'motion-card',
+      motionCard: { tsx: VALID_MOTION_TSX },
+      style: { primaryColor: '#79c4ff', backgroundColor: '#151922', fontSize: 48 },
+    });
+
+    const result = await generateCardForSegment(
+      baseEntries,
+      { segments: [baseSegment], coverPrompts: [], summary: '', keywords: [] },
+      baseSegment,
+      settings,
+      { generateStructuredData: modelCaller },
+    );
+
+    expect(result.content).toBe('欢迎收听本期节目，我们先聊 AI 视频生产的背景。');
+  });
+
+  it('leaves DataContent untouched for data cards', async () => {
+    const dataContent = {
+      chartType: 'bar' as const,
+      items: [
+        { label: '2024', value: 10 },
+        { label: '2025', value: 20, highlight: true },
+      ],
+    };
+    const modelCaller = vi.fn<typeof generateStructuredData>().mockResolvedValue({
+      id: 'generated-data-card',
+      type: 'data',
+      title: '数据卡',
+      content: dataContent,
+      startMs: 0,
+      endMs: 3_000,
+      displayDurationMs: 5_000,
+      displayMode: 'fullscreen',
+      template: 'data-default',
+      enabled: true,
+      renderMode: 'motion-card',
+      motionCard: { tsx: VALID_MOTION_TSX },
+      style: { primaryColor: '#79c4ff', backgroundColor: '#151922', fontSize: 48 },
+    });
+
+    const result = await generateCardForSegment(
+      baseEntries,
+      { segments: [baseSegment], coverPrompts: [], summary: '', keywords: [] },
+      baseSegment,
+      settings,
+      { generateStructuredData: modelCaller },
+    );
+
+    expect(result.content).toEqual(dataContent);
+  });
+
+  it('keeps the AI content when the segment range has no subtitle text', async () => {
+    const offRangeSegment: AISegment = {
+      ...baseSegment,
+      id: 'seg-off',
+      startMs: 8_000,
+      endMs: 9_000,
+    };
+    const modelCaller = vi.fn<typeof generateStructuredData>().mockResolvedValue({
+      id: 'generated-card-empty',
+      type: 'summary',
+      title: '兜底标题',
+      content: '没有字幕时保留的 AI 内容',
+      startMs: 8_000,
+      endMs: 9_000,
+      displayDurationMs: 5_000,
+      displayMode: 'fullscreen',
+      template: 'summary-default',
+      enabled: true,
+      renderMode: 'motion-card',
+      motionCard: { tsx: VALID_MOTION_TSX },
+      style: { primaryColor: '#79c4ff', backgroundColor: '#151922', fontSize: 48 },
+    });
+
+    const result = await generateCardForSegment(
+      baseEntries,
+      { segments: [offRangeSegment], coverPrompts: [], summary: '', keywords: [] },
+      offRangeSegment,
+      settings,
+      { generateStructuredData: modelCaller },
+    );
+
+    expect(result.content).toBe('没有字幕时保留的 AI 内容');
   });
 
   it('throws a regenerate-hinted error when motion html cannot compile', async () => {
@@ -373,7 +499,7 @@ describe('analyzeSrt', () => {
         template: 'summary-default',
         enabled: true,
         renderMode: 'motion-card',
-        motionCard: { html: VALID_MOTION_HTML },
+        motionCard: { tsx: VALID_MOTION_TSX },
         style: {
           primaryColor: '#79c4ff',
           backgroundColor: '#151922',
@@ -393,7 +519,7 @@ describe('analyzeSrt', () => {
         enabled: true,
         renderMode: 'motion-card',
         cardPrompt: '做一个粒子聚合动画',
-        motionCard: { html: VALID_MOTION_HTML },
+        motionCard: { tsx: VALID_MOTION_TSX },
         style: {
           primaryColor: '#7df9ff',
           backgroundColor: '#151922',
@@ -415,8 +541,8 @@ describe('analyzeSrt', () => {
     expect(result.cards).toHaveLength(2);
     expect(result.cards.map((card) => card.segmentId)).toEqual(['seg-1', 'seg-2']);
     expect(result.cards[0]?.renderMode).toBe('motion-card');
-    expect(result.cards[0]?.motionCard?.html).toContain('gsap.timeline');
-    expect(result.cards[1]?.motionCard?.html).toContain('gsap.timeline');
+    expect(result.cards[0]?.motionCard?.tsx).toContain('export default');
+    expect(result.cards[1]?.motionCard?.tsx).toContain('export default');
     expect(result.coverPrompts).toEqual(['封面提示词']);
   });
 
@@ -448,7 +574,7 @@ describe('analyzeSrt', () => {
         template: 'summary-default',
         enabled: true,
         renderMode: 'motion-card',
-        motionCard: { html: VALID_MOTION_HTML },
+        motionCard: { tsx: VALID_MOTION_TSX },
         style: { primaryColor: '#79c4ff', backgroundColor: '#151922', fontSize: 48 },
       };
     });
@@ -495,7 +621,7 @@ describe('analyzeSrt', () => {
         template: 'summary-default',
         enabled: true,
         renderMode: 'motion-card',
-        motionCard: { html: VALID_MOTION_HTML },
+        motionCard: { tsx: VALID_MOTION_TSX },
         style: { primaryColor: '#79c4ff', backgroundColor: '#151922', fontSize: 48 },
       };
     });
@@ -551,7 +677,7 @@ describe('regenerateAICard', () => {
       enabled: true,
       renderMode: 'motion-card',
       cardPrompt: '做成粒子聚合',
-      motionCard: { html: VALID_MOTION_HTML },
+      motionCard: { tsx: VALID_MOTION_TSX },
       style: {
         primaryColor: '#79c4ff',
         backgroundColor: '#151922',
@@ -575,7 +701,7 @@ describe('regenerateAICard', () => {
     expect(result.title).toBe('新标题');
     expect(result.displayDurationMs).toBe(6_000);
     expect(result.renderMode).toBe('motion-card');
-    expect(result.motionCard?.html).toContain('gsap.timeline');
+    expect(result.motionCard?.tsx).toContain('export default');
   });
 
   it('fails fast when segment is missing', async () => {

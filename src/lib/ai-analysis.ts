@@ -185,19 +185,25 @@ function buildMotionCardPayloadStrict(
     throw new Error('LLM 未返回 motionCard；请重新生成');
   }
 
-  const candidate = value as { html?: unknown };
-  const htmlSource = stripSourceCodeFences(typeof candidate.html === 'string' ? candidate.html : '');
-  if (!htmlSource) {
-    throw new Error('LLM 未返回 motionCard.html；请重新生成');
+  const candidate = value as { tsx?: unknown; html?: unknown };
+  const rawSource =
+    typeof candidate.tsx === 'string' && candidate.tsx.trim()
+      ? candidate.tsx
+      : typeof candidate.html === 'string'
+        ? candidate.html
+        : '';
+  const tsxSource = stripSourceCodeFences(rawSource);
+  if (!tsxSource) {
+    throw new Error('LLM 未返回 motionCard.tsx；请重新生成');
   }
 
-  const compiled = compileMotionSource(htmlSource);
+  const compiled = compileMotionSource(tsxSource);
   if (!compiled.success) {
     throw new Error(`Motion Card 源码编译失败：${compiled.error}；请重新生成`);
   }
 
   return {
-    html: compiled.html,
+    tsx: compiled.tsx,
     compiledAt: Date.now(),
     prompt: promptFallback,
     retryCount: 0,
@@ -642,6 +648,20 @@ export function buildSrtTextRange(
   return buildSrtText(sliced);
 }
 
+// 仅取与 [startMs, endMs] 精确重叠的字幕条目，逐句拼接其原文（换行分隔，无时间码、无 padding）。
+// 用于卡片内容确定性来源：直接还原该段落字幕原文，避免依赖 LLM 改写而丢字/漏句。
+export function buildPlainTranscriptRange(
+  entries: SrtEntry[],
+  startMs: number,
+  endMs: number,
+): string {
+  return entries
+    .filter((entry) => entry.endMs > startMs && entry.startMs < endMs)
+    .map((entry) => entry.text.trim())
+    .filter((text) => text.length > 0)
+    .join('\n');
+}
+
 // 节目级浓缩上下文：只给定位用，不复述全文
 function buildProgramContext(params: {
   programSummary?: string;
@@ -1067,6 +1087,16 @@ export async function generateCardForSegment(
       segmentId: segment.id,
       cardPrompt: cardPrompt?.trim() || parsed.cardPrompt,
     };
+
+    // 文本类卡片（content 为字符串）的内容直接用本段字幕原文覆盖 LLM 返回值，
+    // 杜绝 AI 改写带来的丢字/漏句。data（DataContent）、image/video（MediaCardContent）不受影响。
+    // 字幕为空时保留 LLM 内容兜底，避免出现空卡片。
+    if (typeof finalCard.content === 'string') {
+      const verbatim = buildPlainTranscriptRange(entries, segment.startMs, segment.endMs);
+      if (verbatim) {
+        finalCard = { ...finalCard, content: verbatim };
+      }
+    }
   }
 
   // image 卡片：cards.segment 不再直接产 prompt，这里追加一次 card.image LLM 调用，
@@ -1259,13 +1289,15 @@ export async function analyzeSrt(
 
   // 并发池：同时跑 N 个段的卡片生成；进度按"完成顺序"累加
   // 单段失败不阻塞其它段——失败段记入 cardErrors，UI 可引导用户对该段单独重生成
-  // 并发数从 settings.cardGenerationConcurrency 读取（默认 2，必须 >= 1）；
-  // image 卡片的图像 Provider 调用嵌套在 worker 内，所以该值也决定信息图并行度
+  // 并发数从 settings.cardGenerationConcurrency 读取（默认 4，必须 >= 1）；
+  // image 卡片的图像 Provider 调用嵌套在 worker 内，所以该值也决定信息图并行度。
+  // 默认值从 2 提到 4：卡片生成是云端 LLM 请求（如 DeepSeek），主要瓶颈是单请求延迟，
+  // 提高并发能近似线性缩短总时长；用户可在「提示词配置」里按 Provider 限流情况微调。
   const rawConcurrency = settings.cardGenerationConcurrency;
   const CARD_CONCURRENCY =
     typeof rawConcurrency === 'number' && Number.isFinite(rawConcurrency)
       ? Math.max(1, Math.floor(rawConcurrency))
-      : 2;
+      : 4;
   const cardSlots: (AICard | null)[] = new Array(planning.segments.length).fill(null);
   const cardErrors: AIAnalysisCardError[] = [];
   let done = 0;
