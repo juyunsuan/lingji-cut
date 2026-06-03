@@ -60,8 +60,8 @@ export async function generateAndInsertSingleCardFromSubtitles(
       projectBindings: aiState.projectBindings,
     });
 
-    if (card.renderMode !== 'motion-card' || !card.motionCard?.html) {
-      throw new Error('生成结果不是可用的 HyperFrames motion-card，请重新生成');
+    if (card.renderMode !== 'motion-card' || !card.motionCard?.tsx?.trim()) {
+      throw new Error('生成结果不是可用的 Remotion motion-card，请重新生成');
     }
 
     taskStore.updateTask(taskId, { phase: '写入项目配置' });

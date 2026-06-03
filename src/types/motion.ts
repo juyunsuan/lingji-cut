@@ -1,6 +1,18 @@
 export interface MotionCardPayload {
-  /** HyperFrames 片段：HTML + CSS + GSAP 脚本，直接插入卡片容器。 */
-  html: string;
+  /**
+   * Remotion 卡片源码：单文件 React/Remotion 函数组件（default export）。
+   * 迁移期内可能为空，旧项目的 HTML 会被保留在 legacyHtml 并标记 needsRegeneration。
+   */
+  tsx?: string;
+  /**
+   * @deprecated 旧 HyperFrames 片段（HTML + CSS + GSAP）。仅用于旧项目加载兼容，
+   * 迁移完成后移除。新卡片请使用 tsx。
+   */
+  html?: string;
+  /** 旧项目原始 HTML 备份，便于提示「需重新生成」。 */
+  legacyHtml?: string;
+  /** 旧 HTML 卡片加载后置 true，表示需要重新生成为 Remotion 卡片。 */
+  needsRegeneration?: boolean;
   compiledAt: number;
   compileError?: string;
   prompt: string;
@@ -36,7 +48,8 @@ export interface MotionCanvasSize {
 
 export interface MotionCompileSuccess {
   success: true;
-  html: string;
+  /** Remotion 卡片 TSX 源码。 */
+  tsx: string;
 }
 
 export interface MotionCompileFailure {
