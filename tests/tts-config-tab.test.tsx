@@ -9,15 +9,28 @@ vi.mock('../src/store/ai', () => ({
 }));
 
 describe('TTSConfigTab', () => {
-  it('renders voice id as text input with MiniMax TTS configuration fields', () => {
+  it('renders the multi-provider / voice-clone TTS configuration UI', () => {
     const html = renderToStaticMarkup(<TTSConfigTab />);
 
-    expect(html).toContain('音色 ID');
-    expect(html).toContain('placeholder="例如：male-qn-qingse"');
-    // 音色 ID 字段使用 text input
-    expect(html).toContain('type="text"');
-    // 模型和情绪字段使用 select
-    expect(html).toContain('speech-2.8-hd');
+    // 页面标题
     expect(html).toContain('TTS 语音合成配置');
+
+    // 多 Provider 区块：Provider 列表与默认 Provider 选择器
+    expect(html).toContain('TTS Providers');
+    expect(html).toContain('默认 TTS Provider');
+
+    // 音色库区块：音色列表与默认音色选择器
+    expect(html).toContain('音色库');
+    expect(html).toContain('默认音色');
+
+    // 空状态文案（初始 SSR 无 Provider / 音色）
+    expect(html).toContain('暂无 TTS Provider');
+    expect(html).toContain('暂无音色');
+
+    // MiMo 智能语气打标开关
+    expect(html).toContain('MiMo 智能语气打标');
+
+    // 保存按钮
+    expect(html).toContain('保存 TTS 配置');
   });
 });
