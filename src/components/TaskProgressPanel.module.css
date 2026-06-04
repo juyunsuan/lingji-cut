@@ -112,3 +112,17 @@
   text-overflow: ellipsis;
   max-width: 160px;
 }
+
+.childRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0 2px 24px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #8e8e93);
+}
+.childDot { width: 14px; text-align: center; }
+.childDotActive { color: var(--color-system-blue, #0A84FF); }
+.childDotDone { color: var(--color-success, #32D74B); }
+.childDotError { color: var(--color-danger, #FF453A); }
+.childLabel { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

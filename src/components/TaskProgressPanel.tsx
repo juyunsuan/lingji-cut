@@ -85,6 +85,29 @@ function TaskRow({ task }: { task: TaskProgressItem }) {
   );
 }
 
+function CardChildRow({ task }: { task: TaskProgressItem }) {
+  const dot =
+    task.status === 'completed' ? '✓'
+      : task.status === 'error' ? '✗'
+      : '◉';
+  const dotClass =
+    task.status === 'completed' ? styles.childDotDone
+      : task.status === 'error' ? styles.childDotError
+      : styles.childDotActive;
+  return (
+    <div className={styles.childRow}>
+      <span className={`${styles.childDot} ${dotClass}`}>{dot}</span>
+      <span className={styles.childLabel}>{task.label}</span>
+      {task.status === 'active' && task.phase && (
+        <span className={styles.taskPhase}>{task.phase}</span>
+      )}
+      {task.status === 'error' && task.error && (
+        <span className={styles.errorText} title={task.error}>{task.error}</span>
+      )}
+    </div>
+  );
+}
+
 export function TaskProgressPanel() {
   const panelOpen = useTaskProgressStore((s) => s.panelOpen);
   const setPanelOpen = useTaskProgressStore((s) => s.setPanelOpen);
@@ -92,14 +115,26 @@ export function TaskProgressPanel() {
 
   if (!panelOpen || tasks.size === 0) return null;
 
-  const sorted = Array.from(tasks.values()).sort((a, b) => b.startedAt - a.startedAt);
+  const all = Array.from(tasks.values());
+  const topLevel = all
+    .filter((t) => !t.parentId)
+    .sort((a, b) => b.startedAt - a.startedAt);
+  const childrenOf = (parentId: string) =>
+    all
+      .filter((t) => t.parentId === parentId)
+      .sort((a, b) => a.startedAt - b.startedAt);
 
   return (
     <>
       <div className={styles.overlay} onClick={() => setPanelOpen(false)} />
       <div className={styles.panel}>
-        {sorted.map((task) => (
-          <TaskRow key={task.id} task={task} />
+        {topLevel.map((task) => (
+          <div key={task.id}>
+            <TaskRow task={task} />
+            {childrenOf(task.id).map((child) => (
+              <CardChildRow key={child.id} task={child} />
+            ))}
+          </div>
         ))}
       </div>
     </>
