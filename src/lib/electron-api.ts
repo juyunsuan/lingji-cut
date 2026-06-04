@@ -391,6 +391,14 @@ export interface ElectronAPI {
       message?: string;
       cardIndex?: number;
       cardTotal?: number;
+      card?: {
+        segmentIndex: number;
+        segmentId: string;
+        title?: string;
+        visualType?: string;
+        status: 'start' | 'generating-image' | 'done' | 'failed';
+        error?: string;
+      };
     }) => void,
   ) => () => void;
   onCoverProgress: (

@@ -22,7 +22,7 @@ import {
   type PromptBindingMap,
 } from '../types/ai';
 import type { MotionCardPayload } from '../types/motion';
-import { generateStructuredData, generateText } from './llm';
+import { generateMotionCardSource, generateStructuredData, generateText } from './llm';
 import { resolvePromptBinding } from './llm/binding-resolver';
 import type { TelemetryHook } from './telemetry/auto-run';
 import type { PromptKind } from './prompts/types';
@@ -34,12 +34,29 @@ import {
 import { getStyleFacetBlock, resolveStylePresetId } from './card-style';
 import { compileMotionSource } from './motion-compiler';
 
+export type AnalyzeCardSubStage = 'start' | 'generating-image' | 'done' | 'failed';
+
+export interface AnalyzeCardProgress {
+  segmentIndex: number;
+  segmentId: string;
+  title?: string;
+  visualType?: string;
+  status: AnalyzeCardSubStage;
+  error?: string;
+}
+
 export interface AnalyzeSrtProgress {
   phase: 'planning' | 'cards' | 'done';
   percent: number;
   message?: string;
   cardIndex?: number;
   cardTotal?: number;
+  card?: AnalyzeCardProgress;
+}
+
+/** 把卡片生命周期事件包装成 cards 阶段进度（父进度百分比沿用 30，子任务靠 card 字段驱动）。 */
+export function buildCardProgress(card: AnalyzeCardProgress): AnalyzeSrtProgress {
+  return { phase: 'cards', percent: 30, card };
 }
 
 /**
@@ -62,6 +79,10 @@ interface AnalyzeSrtOptions {
   maxTokens?: number;
   generateStructuredData?: typeof generateStructuredData;
   generateText?: typeof generateText;
+  /** Motion Card 自由 TSX 源码生成（不走 json_object）；缺省用内置实现。 */
+  generateMotionSource?: typeof generateMotionCardSource;
+  /** 生成期 Motion Card 冒烟渲染校验；抛错触发重生成。仅主进程注入。 */
+  validateMotionSource?: (tsx: string) => void | Promise<void>;
   generateCardImage?: GenerateCardImageFn;
   globalPrompt?: string;
   /** 项目级视觉风格预设 ID；注入各 build 函数的 styleSystemBlock。 */
@@ -92,6 +113,9 @@ interface AnalyzeSrtOptions {
 interface RegenerateCardOptions {
   generateStructuredData?: typeof generateStructuredData;
   generateText?: typeof generateText;
+  generateMotionSource?: typeof generateMotionCardSource;
+  /** 生成期 Motion Card 冒烟渲染校验；抛错触发重生成。仅主进程注入。 */
+  validateMotionSource?: (tsx: string) => void | Promise<void>;
   globalPrompt?: string;
   projectStylePresetId?: string;
   defaultStylePresetId?: string;
@@ -338,6 +362,49 @@ function buildImageCardShell(params: {
     cardPrompt: cardPrompt?.trim() || undefined,
     content: placeholderContent,
     renderMode: 'legacy',
+  };
+}
+
+/**
+ * 用模型产出的 Remotion TSX 源码 + segment 元信息合成一张 Motion Card。
+ * 新版 cards.segment 只让模型输出 TSX 代码块，type / title / 时间 / 样式等不再由 LLM 决定，
+ * 而是从 segment（重生成时叠加 currentCard）合成，规避"模型必须严格产出 JSON"的高失败路径。
+ * TSX 编译失败时 buildMotionCardPayloadStrict 抛 "请重新生成"，由上层提示用户重试。
+ */
+function buildMotionCardShell(params: {
+  segment: AISegment;
+  tsx: string;
+  cardPrompt?: string;
+  currentCard?: AICard;
+  content?: string;
+}): AICard {
+  const { segment, tsx, cardPrompt, currentCard, content } = params;
+  // 沿用既有卡片的语义类型（重生成保持一致）；新卡片默认 'motion'。image/video 不属于 motion 流程。
+  const type: AICardType =
+    currentCard && currentCard.type !== 'image' && currentCard.type !== 'video'
+      ? currentCard.type
+      : 'motion';
+  const displayMode: 'fullscreen' | 'pip' =
+    currentCard?.displayMode === 'pip' ? 'pip' : 'fullscreen';
+  const title = currentCard?.title?.trim() || segment.title?.trim() || `卡片 ${segment.id}`;
+  const motionCard = buildMotionCardPayloadStrict({ tsx }, cardPrompt?.trim() ?? '');
+
+  return {
+    id: currentCard?.id ?? `${segment.id}-card-1`,
+    segmentId: segment.id,
+    type,
+    title,
+    startMs: segment.startMs,
+    endMs: segment.endMs,
+    displayDurationMs: currentCard?.displayDurationMs ?? DEFAULT_CARD_DURATION_MS,
+    displayMode,
+    template: currentCard?.template ?? getDefaultTemplate(type),
+    enabled: currentCard?.enabled !== false,
+    style: currentCard?.style ?? getDefaultCardStyle(type),
+    cardPrompt: cardPrompt?.trim() || currentCard?.cardPrompt,
+    content: content ?? '',
+    renderMode: 'motion-card',
+    motionCard,
   };
 }
 
@@ -990,6 +1057,9 @@ export async function generateCardForSegment(
   options: {
     generateStructuredData?: typeof generateStructuredData;
     generateText?: typeof generateText;
+    generateMotionSource?: typeof generateMotionCardSource;
+    /** 生成期 Motion Card 冒烟渲染校验；抛错触发重生成。仅主进程注入（需 esbuild/react-dom）。 */
+    validateMotionSource?: (tsx: string) => void | Promise<void>;
     globalPrompt?: string;
     /** 已解析的视觉风格预设 ID（含单卡 / 项目 / 全局优先级）；注入 build 函数的 styleSystemBlock。 */
     stylePresetId?: string;
@@ -1009,6 +1079,8 @@ export async function generateCardForSegment(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     generateText: requestText = generateText,
+    generateMotionSource: requestMotionSource = generateMotionCardSource,
+    validateMotionSource,
     globalPrompt,
     stylePresetId,
     cardPrompt,
@@ -1057,7 +1129,9 @@ export async function generateCardForSegment(
       typeof segmentIndex === 'number' && typeof totalSegments === 'number'
         ? `cards.segment#${segmentIndex + 1}/${totalSegments}（${segment.id}）`
         : `cards.segment（${segment.id}）`;
-    const payload = await requestStructuredData(
+    // Motion Card 不再要求模型把 TSX 内嵌进 JSON 字符串（转义极易失败、对中小模型几乎不可用）；
+    // 改为让模型自由输出一个 ```tsx 代码块，这里抽取并编译，其余元信息从 segment 合成。
+    const tsx = await requestMotionSource(
       settings,
       buildSegmentCardPrompt(
         {
@@ -1075,28 +1149,18 @@ export async function generateCardForSegment(
       ),
       segmentTranscript,
       binding,
-      { label: positionLabel, telemetry },
+      { label: positionLabel, telemetry, validate: validateMotionSource },
     );
-    const parsed = normalizeCard(payload, 0, segment.id, cardPrompt, visualType);
-    if (!parsed) {
-      throw new Error('LLM 未返回有效的卡片结果');
-    }
 
-    finalCard = {
-      ...parsed,
-      segmentId: segment.id,
-      cardPrompt: cardPrompt?.trim() || parsed.cardPrompt,
-    };
-
-    // 文本类卡片（content 为字符串）的内容直接用本段字幕原文覆盖 LLM 返回值，
-    // 杜绝 AI 改写带来的丢字/漏句。data（DataContent）、image/video（MediaCardContent）不受影响。
-    // 字幕为空时保留 LLM 内容兜底，避免出现空卡片。
-    if (typeof finalCard.content === 'string') {
-      const verbatim = buildPlainTranscriptRange(entries, segment.startMs, segment.endMs);
-      if (verbatim) {
-        finalCard = { ...finalCard, content: verbatim };
-      }
-    }
+    // 文案忠于字幕：content 用本段字幕原文（无字幕时退回段落摘要），杜绝 AI 改写丢字。
+    const verbatim = buildPlainTranscriptRange(entries, segment.startMs, segment.endMs);
+    finalCard = buildMotionCardShell({
+      segment,
+      tsx,
+      cardPrompt,
+      currentCard,
+      content: verbatim || segment.summary,
+    });
   }
 
   // image 卡片：cards.segment 不再直接产 prompt，这里追加一次 card.image LLM 调用，
@@ -1168,6 +1232,8 @@ export async function analyzeSrt(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     generateText: requestText = generateText,
+    generateMotionSource: requestMotionSource = generateMotionCardSource,
+    validateMotionSource,
     generateCardImage,
     globalPrompt,
     projectStylePresetId,
@@ -1318,10 +1384,19 @@ export async function analyzeSrt(
         segmentId: segment.id,
         visualType,
       });
+      onProgress?.(buildCardProgress({
+        segmentIndex: i,
+        segmentId: segment.id,
+        title: segment.title,
+        visualType,
+        status: 'start',
+      }));
       try {
         let card = await generateCardForSegment(entries, planning, segment, settings, {
           generateStructuredData: requestStructuredData,
           generateText: requestText,
+          generateMotionSource: requestMotionSource,
+          validateMotionSource,
           globalPrompt: planning.globalPrompt,
           stylePresetId: resolvedStylePresetId,
           cardTemplate,
@@ -1341,6 +1416,13 @@ export async function analyzeSrt(
             throw new Error('image 卡片需要 generateCardImage 注入（主进程未提供）');
           }
           telemetry?.emit('card.image.start', { segmentIndex: i, segmentId: segment.id });
+          onProgress?.(buildCardProgress({
+            segmentIndex: i,
+            segmentId: segment.id,
+            title: segment.title,
+            visualType,
+            status: 'generating-image',
+          }));
           card = await materializeImageCard(card, generateCardImage);
           telemetry?.emit('card.image.end', {
             segmentIndex: i,
@@ -1357,6 +1439,13 @@ export async function analyzeSrt(
           ok: true,
           visualType,
         });
+        onProgress?.(buildCardProgress({
+          segmentIndex: i,
+          segmentId: segment.id,
+          title: segment.title,
+          visualType,
+          status: 'done',
+        }));
       } catch (error) {
         failed += 1;
         cardErrors.push({
@@ -1374,6 +1463,14 @@ export async function analyzeSrt(
           visualType,
           error: error instanceof Error ? error.message : String(error),
         });
+        onProgress?.(buildCardProgress({
+          segmentIndex: i,
+          segmentId: segment.id,
+          title: segment.title,
+          visualType,
+          status: 'failed',
+          error: error instanceof Error ? error.message : String(error),
+        }));
       }
       const completed = done + failed;
       const percent = Math.min(95, Math.round(30 + (completed / Math.max(1, total)) * 65));
@@ -1445,6 +1542,8 @@ export async function regenerateAICard(
   const {
     generateStructuredData: requestStructuredData = generateStructuredData,
     generateText: requestText = generateText,
+    generateMotionSource: requestMotionSource = generateMotionCardSource,
+    validateMotionSource,
     globalPrompt,
     projectStylePresetId,
     defaultStylePresetId,
@@ -1479,6 +1578,8 @@ export async function regenerateAICard(
     {
       generateStructuredData: requestStructuredData,
       generateText: requestText,
+      generateMotionSource: requestMotionSource,
+      validateMotionSource,
       globalPrompt,
       stylePresetId: resolvedStylePresetId,
       cardPrompt,
@@ -1536,6 +1637,9 @@ export async function generateSingleCardFromSubtitles(
     projectBindings?: PromptBindingMap | null;
     generateStructuredData?: typeof generateStructuredData;
     generateText?: typeof generateText;
+    generateMotionSource?: typeof generateMotionCardSource;
+    /** 生成期 Motion Card 冒烟渲染校验；抛错触发重生成。仅主进程注入。 */
+    validateMotionSource?: (tsx: string) => void | Promise<void>;
   } = {},
 ): Promise<AICard> {
   const trimmedText = draft.text.trim();
@@ -1563,6 +1667,8 @@ export async function generateSingleCardFromSubtitles(
     projectBindings,
     generateStructuredData: requestStructuredData,
     generateText: requestText,
+    generateMotionSource: requestMotionSource,
+    validateMotionSource,
   } = options;
 
   const hint = draft.promptHint?.trim();
@@ -1596,6 +1702,8 @@ export async function generateSingleCardFromSubtitles(
     {
       generateStructuredData: requestStructuredData,
       generateText: requestText,
+      generateMotionSource: requestMotionSource,
+      validateMotionSource,
       globalPrompt,
       // 手动选段是新卡片，无单卡覆盖；按 项目 → 全局 → 内置默认 解析。
       stylePresetId: resolveStylePresetId({

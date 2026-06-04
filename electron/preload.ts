@@ -272,6 +272,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
       message?: string;
       cardIndex?: number;
       cardTotal?: number;
+      card?: {
+        segmentIndex: number;
+        segmentId: string;
+        title?: string;
+        visualType?: string;
+        status: 'start' | 'generating-image' | 'done' | 'failed';
+        error?: string;
+      };
     }) => void,
   ) => {
     const handler = (
@@ -282,6 +290,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
         message?: string;
         cardIndex?: number;
         cardTotal?: number;
+        card?: {
+          segmentIndex: number;
+          segmentId: string;
+          title?: string;
+          visualType?: string;
+          status: 'start' | 'generating-image' | 'done' | 'failed';
+          error?: string;
+        };
       },
     ) => callback(progress);
     ipcRenderer.on('analyze-progress', handler);
