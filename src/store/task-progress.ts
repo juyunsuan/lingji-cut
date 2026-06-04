@@ -32,6 +32,7 @@ export interface TaskProgressItem {
   status: 'active' | 'completed' | 'error';
   error?: string;
   completionAction?: TaskCompletionAction;
+  parentId?: string;
 }
 
 type StartTaskInput = Omit<TaskProgressItem, 'startedAt' | 'status'>;
@@ -50,6 +51,7 @@ interface TaskProgressStore {
 
   setPanelOpen: (open: boolean) => void;
   startTask: (task: StartTaskInput) => void;
+  startChildTask: (parentId: string, task: StartTaskInput) => void;
   updateTask: (id: string, patch: UpdateTaskPatch) => void;
   completeTask: (id: string, action?: TaskCompletionAction) => void;
   failTask: (id: string, error: string) => void;
@@ -62,6 +64,7 @@ function derivePrimaryTask(tasks: Map<string, TaskProgressItem>): TaskProgressIt
   let bestIndex = -1;
   let index = 0;
   for (const t of tasks.values()) {
+    if (t.parentId) { index++; continue; }
     if (t.status === 'active') {
       if (
         !best ||
@@ -92,7 +95,7 @@ function derivePrimaryTask(tasks: Map<string, TaskProgressItem>): TaskProgressIt
 function deriveActiveCount(tasks: Map<string, TaskProgressItem>): number {
   let count = 0;
   for (const t of tasks.values()) {
-    if (t.status === 'active') count++;
+    if (t.status === 'active' && !t.parentId) count++;
   }
   return count;
 }
@@ -139,6 +142,10 @@ export const useTaskProgressStore = create<TaskProgressStore>((set, get) => ({
     });
   },
 
+  startChildTask: (parentId, input) => {
+    get().startTask({ ...input, parentId, level: 1 });
+  },
+
   updateTask: (id, patch) => {
     const tasks = get().tasks;
     const existing = tasks.get(id);
@@ -156,15 +163,28 @@ export const useTaskProgressStore = create<TaskProgressStore>((set, get) => ({
     const tasks = get().tasks;
     const existing = tasks.get(id);
     if (!existing) return;
-    const updated: TaskProgressItem = {
+    const next = new Map(tasks);
+    next.set(id, {
       ...existing,
       status: 'completed',
       progress: 100,
       completedAt: Date.now(),
       completionAction: action,
-    };
-    const next = new Map(tasks);
-    next.set(id, updated);
+    });
+    // 父任务完成：把仍 active 的子任务一并收尾
+    if (!existing.parentId) {
+      for (const child of next.values()) {
+        if (child.parentId === id && child.status === 'active') {
+          next.set(child.id, {
+            ...child,
+            status: 'completed',
+            progress: 100,
+            completedAt: Date.now(),
+          });
+          scheduleRemoval(child.id, 5000);
+        }
+      }
+    }
     set({
       tasks: next,
       primaryTask: derivePrimaryTask(next),
@@ -177,14 +197,21 @@ export const useTaskProgressStore = create<TaskProgressStore>((set, get) => ({
     const tasks = get().tasks;
     const existing = tasks.get(id);
     if (!existing) return;
-    const updated: TaskProgressItem = {
-      ...existing,
-      status: 'error',
-      error,
-      completedAt: Date.now(),
-    };
     const next = new Map(tasks);
-    next.set(id, updated);
+    next.set(id, { ...existing, status: 'error', error, completedAt: Date.now() });
+    if (!existing.parentId) {
+      for (const child of next.values()) {
+        if (child.parentId === id && child.status === 'active') {
+          next.set(child.id, {
+            ...child,
+            status: 'error',
+            error,
+            completedAt: Date.now(),
+          });
+          scheduleRemoval(child.id, 10000);
+        }
+      }
+    }
     set({
       tasks: next,
       primaryTask: derivePrimaryTask(next),
@@ -197,6 +224,12 @@ export const useTaskProgressStore = create<TaskProgressStore>((set, get) => ({
     clearRemovalTimer(id);
     const next = new Map(get().tasks);
     next.delete(id);
+    for (const child of [...next.values()]) {
+      if (child.parentId === id) {
+        clearRemovalTimer(child.id);
+        next.delete(child.id);
+      }
+    }
     set({
       tasks: next,
       primaryTask: derivePrimaryTask(next),
