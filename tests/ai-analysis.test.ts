@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   analyzeSrt,
+  anchorSegmentsToTranscript,
   buildCoverPromptRegenerationPrompt,
   buildSegmentCardPrompt,
   buildSegmentPlanningPrompt,
@@ -12,7 +13,7 @@ import {
   regenerateCoverPrompt,
 } from '../src/lib/ai-analysis';
 import type { SrtEntry } from '../src/types';
-import type { AICard, AISegment, AISettings } from '../src/types/ai';
+import type { AICard, AISegment, AISegmentAnalysis, AISettings } from '../src/types/ai';
 import { generateMotionCardSource, generateStructuredData } from '../src/lib/llm';
 
 const makeSrtEntry = (index: number, startMs: number, endMs: number, text: string): SrtEntry => ({
@@ -573,5 +574,74 @@ describe('regenerateAICard', () => {
         },
       ),
     ).rejects.toThrow('缺少卡片对应的段落信息');
+  });
+});
+
+describe('anchorSegmentsToTranscript', () => {
+  const entries: SrtEntry[] = [
+    { index: 1, startMs: 0, endMs: 5_000, text: '大家好，今天聊比亚迪的底层逻辑。' },
+    { index: 2, startMs: 5_000, endMs: 10_000, text: '第二个话题，是成本控制力。' },
+    { index: 3, startMs: 10_000, endMs: 15_000, text: '最后总结一下，谢谢大家。' },
+  ];
+  const seg = (over: Partial<AISegmentAnalysis>): AISegmentAnalysis => ({
+    id: 'x',
+    title: 't',
+    summary: 's',
+    startMs: 0,
+    endMs: 1,
+    semanticType: 'explanation',
+    complexityLevel: 'medium',
+    visualizationScore: 50,
+    pacingNeed: 'steady',
+    keywords: [],
+    entities: [],
+    visualType: 'motion',
+    ...over,
+  });
+
+  it('用 transcriptExcerpt 把漂移的 startMs 重锚定到 SRT 真实时间，并按下一段定 endMs', () => {
+    const out = anchorSegmentsToTranscript(
+      [
+        seg({ id: 'a', startMs: 0, endMs: 9_999, transcriptExcerpt: '大家好今天聊比亚迪' }),
+        seg({ id: 'b', startMs: 99_999, endMs: 199_999, transcriptExcerpt: '第二个话题是成本控制力' }),
+        seg({ id: 'c', startMs: 999_999, endMs: 1_999_999, transcriptExcerpt: '最后总结一下谢谢大家' }),
+      ],
+      entries,
+    );
+    expect(out.map((s) => [s.id, s.startMs, s.endMs])).toEqual([
+      ['a', 0, 5_000],
+      ['b', 5_000, 10_000],
+      ['c', 10_000, 15_000],
+    ]);
+  });
+
+  it('丢弃超出字幕末尾的溢出段落', () => {
+    const out = anchorSegmentsToTranscript(
+      [
+        seg({ id: 'a', startMs: 0, transcriptExcerpt: '大家好今天聊比亚迪' }),
+        seg({ id: 'overflow', startMs: 5_000_000, endMs: 6_000_000, transcriptExcerpt: '完全不存在的内容片段' }),
+      ],
+      entries,
+    );
+    expect(out.map((s) => s.id)).toEqual(['a']);
+    expect(out[0]!.endMs).toBe(15_000);
+  });
+
+  it('单调匹配避免错配到更早的重复短语', () => {
+    const dup: SrtEntry[] = [
+      { index: 1, startMs: 0, endMs: 5_000, text: '关键指标很重要。' },
+      { index: 2, startMs: 5_000, endMs: 10_000, text: '我们先讲别的内容。' },
+      { index: 3, startMs: 10_000, endMs: 15_000, text: '关键指标再次出现这里。' },
+    ];
+    const out = anchorSegmentsToTranscript(
+      [
+        seg({ id: 'first', startMs: 0, transcriptExcerpt: '关键指标很重要' }),
+        seg({ id: 'mid', startMs: 5_000, transcriptExcerpt: '我们先讲别的内容' }),
+        seg({ id: 'later', startMs: 10_000, transcriptExcerpt: '关键指标再次出现这里' }),
+      ],
+      dup,
+    );
+    // later 段虽含"关键指标"，但单调游标保证它锚到第 3 条（10_000）而非第 1 条
+    expect(out.find((s) => s.id === 'later')!.startMs).toBe(10_000);
   });
 });

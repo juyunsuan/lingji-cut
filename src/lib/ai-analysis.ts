@@ -713,6 +713,69 @@ export function buildSrtText(entries: SrtEntry[]): string {
     .join('\n');
 }
 
+const ANCHOR_PREFIX_LENS = [24, 18, 14, 10, 8, 6];
+
+function normalizeForAnchor(text: string): string {
+  return text.replace(/[\s，。、！？,.!?"'：:；;（）()…—\-]/g, '');
+}
+
+/**
+ * 把 LLM 规划出的段落时间重锚定到字幕真实时间轴。
+ *
+ * 背景：planning.segment 即便拿到带时间码的 SRT，部分模型仍会按自估语速虚构 startMs/endMs，
+ * 导致时间整体漂移、甚至排到音频结束之后（卡片错位 + 时间轴大量空白/溢出）。
+ * 这里用每段的 transcriptExcerpt 在真实字幕全文里做「单调前缀匹配」（游标只前进，避免错配到
+ * 更早出现的重复短语），命中即把该段 startMs 钉到对应字幕条目的真实起点；endMs 由下一段起点决定，
+ * 末段收尾到字幕末尾。匹配不到则保留模型原值并钳制到 [prevStart, lastEnd]。
+ * 起点已越过字幕末尾的「溢出段落」直接丢弃。
+ */
+export function anchorSegmentsToTranscript(
+  segments: AISegmentAnalysis[],
+  entries: SrtEntry[],
+): AISegmentAnalysis[] {
+  if (entries.length === 0 || segments.length === 0) return segments;
+  const lastEnd = entries.reduce((max, e) => Math.max(max, Math.round(e.endMs)), 0);
+
+  // 归一化全文 + 字符位置 → 字幕条目 startMs 映射
+  let big = '';
+  const pos2ms: number[] = [];
+  for (const entry of entries) {
+    const n = normalizeForAnchor(entry.text);
+    const startMs = Math.round(entry.startMs);
+    for (let i = 0; i < n.length; i += 1) pos2ms.push(startMs);
+    big += n;
+  }
+
+  let cursorChar = 0;
+  let prevStart = 0;
+  const anchored: AISegmentAnalysis[] = [];
+  for (const seg of segments) {
+    const excerpt = normalizeForAnchor(seg.transcriptExcerpt ?? '');
+    let start: number | null = null;
+    for (const len of ANCHOR_PREFIX_LENS) {
+      if (excerpt.length < len) continue;
+      const idx = big.indexOf(excerpt.slice(0, len), cursorChar);
+      if (idx >= 0) {
+        start = pos2ms[idx];
+        cursorChar = idx + len;
+        break;
+      }
+    }
+    if (start === null) {
+      start = Math.min(Math.max(Math.round(seg.startMs), prevStart), lastEnd);
+    }
+    if (start >= lastEnd) continue; // 溢出字幕末尾：丢弃
+    anchored.push({ ...seg, startMs: start });
+    prevStart = start;
+  }
+
+  anchored.sort((a, b) => a.startMs - b.startMs);
+  return anchored.map((seg, index) => ({
+    ...seg,
+    endMs: index + 1 < anchored.length ? anchored[index + 1].startMs : lastEnd,
+  }));
+}
+
 function truncatePromptValue(value: string, maxLength: number): string {
   const normalized = value.replace(/\s+/g, ' ').trim();
   if (normalized.length <= maxLength) {
@@ -1047,7 +1110,13 @@ export async function planTranscriptSegments(
   if (!parsed) {
     throw new Error('LLM 未返回有效的段落规划结果');
   }
-  const planned = enforceSegmentDurationBudget(parsed, entries);
+  // 先把模型可能漂移/虚构的段落时间重锚定到字幕真实时间轴，再按时长预算拆分长段，
+  // 避免段落（及其卡片）整体偏移或排到音频之后。
+  const anchored: SegmentPlanningResult = {
+    ...parsed,
+    segments: anchorSegmentsToTranscript(parsed.segments, entries),
+  };
+  const planned = enforceSegmentDurationBudget(anchored, entries);
 
   // 观测分流健康度：统计 planning 阶段每段的 visualType（缺失视为 motion 默认）
   const total = planned.segments.length;
