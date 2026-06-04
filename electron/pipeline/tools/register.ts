@@ -9,22 +9,17 @@ import {
 } from './project-tools';
 import { buildTaskTools } from './task-tools';
 
-interface ToolResult {
-  content: Array<{ type: 'text'; text: string }>;
-  isError?: boolean;
-}
-
-function jsonResult(data: unknown): ToolResult {
+function jsonResult(data: unknown) {
   return {
-    content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(data, null, 2) }],
   };
 }
 
-function errorResult(message: string, code?: string): ToolResult {
+function errorResult(message: string, code?: string) {
   const payload: Record<string, unknown> = { error: message };
   if (code) payload.code = code;
   return {
-    content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
+    content: [{ type: 'text' as const, text: JSON.stringify(payload, null, 2) }],
     isError: true,
   };
 }
@@ -60,7 +55,7 @@ export function registerPipelineMcpTools(
         options: z
           .object({
             name: z.string().optional(),
-            meta: z.record(z.unknown()).optional(),
+            meta: z.record(z.string(), z.unknown()).optional(),
           })
           .optional(),
       },
