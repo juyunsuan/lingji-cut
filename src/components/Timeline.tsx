@@ -482,6 +482,20 @@ export function Timeline({
         return;
       }
 
+      if (action === 'convert-to-motion') {
+        if (!options.overlayId) {
+          return;
+        }
+        const overlay = useTimelineStore
+          .getState()
+          .timeline.overlays.find((o) => o.id === options.overlayId);
+        const sourceCardId = overlay?.aiCardData?.sourceCardId;
+        if (overlay?.overlayType === 'ai-card' && sourceCardId) {
+          void useAIStore.getState().convertCardToMotion(sourceCardId);
+        }
+        return;
+      }
+
       if (!options.overlayId) {
         return;
       }
@@ -1496,9 +1510,13 @@ export function Timeline({
                             );
                           }
 
+                          const overlayCardType = overlay.aiCardData?.cardType;
                           const overlayMenuItems = getTimelineContextMenuItems({
                             target: 'overlay',
                             canPaste: canPasteOverlay,
+                            convertibleToMotion:
+                              overlay.overlayType === 'ai-card' &&
+                              (overlayCardType === 'image' || overlayCardType === 'video'),
                           });
                           const overlayMenuStartMs =
                             contextTarget?.kind === 'overlay' &&
