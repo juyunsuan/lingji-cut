@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from 'vitest';
 import { useAIStore } from '../src/store/ai';
+import { useTimelineStore } from '../src/store/timeline';
 import type { AIAnalysisResult, MediaCardContent } from '../src/types/ai';
 
 function makeAnalysis(): AIAnalysisResult {
@@ -273,5 +274,150 @@ describe('AI store: media card actions', () => {
     });
     const result = await useAIStore.getState().convertCardToMotion('m1');
     expect(result).toBeNull();
+  });
+
+  it('convertCardToMotion: 生成失败 → 返回 null 且原卡片不被破坏', async () => {
+    const originalCard = {
+      id: 'card-fail',
+      segmentId: 'seg-1',
+      type: 'image' as const,
+      title: '原图卡',
+      content: {
+        mediaType: 'image' as const,
+        assetPath: 'ai-cards/c/i.png',
+        aspectRatio: '16:9' as const,
+        prompt: 'p',
+        providerId: null,
+        model: null,
+        generationStatus: 'ready' as const,
+      },
+      startMs: 0,
+      endMs: 1000,
+      displayDurationMs: 1000,
+      displayMode: 'fullscreen' as const,
+      template: 'image',
+      enabled: true,
+      style: {} as never,
+      renderMode: 'legacy' as const,
+    };
+    useAIStore.setState({
+      analysisResult: {
+        segments: [{ id: 'seg-1', title: 't', summary: 's', startMs: 0, endMs: 1000 }],
+        cards: [originalCard],
+        coverPrompts: [],
+        summary: '',
+        keywords: [],
+      },
+      currentProjectDir: '/tmp/proj',
+      projectBindings: null,
+    });
+
+    vi.stubGlobal('window', {
+      electronAPI: {
+        loadGlobalSettings: async () =>
+          JSON.stringify({
+            aiSettings: {
+              llmProviders: [{ id: 'p1', name: 'p', type: 'openai', baseUrl: 'x', apiKey: 'k', models: ['m'] }],
+              defaultProviderId: 'p1',
+              defaultModel: 'm',
+            },
+          }),
+        regenerateAICard: async () => {
+          throw new Error('TSX 编译失败');
+        },
+        saveProjectSection: async () => undefined,
+      },
+    });
+
+    const result = await useAIStore.getState().convertCardToMotion('card-fail');
+    expect(result).toBeNull();
+    const stored = useAIStore.getState().analysisResult!.cards.find((c) => c.id === 'card-fail')!;
+    expect(stored.type).toBe('image'); // 原卡片保持不变
+    expect(stored.renderMode).toBe('legacy');
+    expect(useAIStore.getState().analysisError).toContain('TSX 编译失败');
+  });
+
+  it('convertCardToMotion: 卡片已上轨 → 触发 addAICardsToTimeline 刷新 overlay', async () => {
+    useAIStore.setState({
+      analysisResult: {
+        segments: [{ id: 'seg-1', title: 't', summary: 's', startMs: 0, endMs: 1000 }],
+        cards: [
+          {
+            id: 'placed-1',
+            segmentId: 'seg-1',
+            type: 'image',
+            title: '上轨卡',
+            content: {
+              mediaType: 'image',
+              assetPath: 'ai-cards/c/i.png',
+              aspectRatio: '16:9',
+              prompt: 'p',
+              providerId: null,
+              model: null,
+              generationStatus: 'ready',
+            },
+            startMs: 0,
+            endMs: 1000,
+            displayDurationMs: 1000,
+            displayMode: 'fullscreen',
+            template: 'image',
+            enabled: true,
+            style: {} as never,
+            renderMode: 'legacy',
+          },
+        ],
+        coverPrompts: [],
+        summary: '',
+        keywords: [],
+      },
+      currentProjectDir: '/tmp/proj',
+      projectBindings: null,
+    });
+
+    const addSpy = vi.fn();
+    const prevTimeline = useTimelineStore.getState().timeline;
+    useTimelineStore.setState({
+      addAICardsToTimeline: addSpy,
+      timeline: {
+        ...prevTimeline,
+        overlays: [
+          {
+            id: 'ov-1',
+            overlayType: 'ai-card',
+            aiCardData: { sourceCardId: 'placed-1' },
+          } as never,
+        ],
+      },
+    });
+
+    vi.stubGlobal('window', {
+      electronAPI: {
+        loadGlobalSettings: async () =>
+          JSON.stringify({
+            aiSettings: {
+              llmProviders: [{ id: 'p1', name: 'p', type: 'openai', baseUrl: 'x', apiKey: 'k', models: ['m'] }],
+              defaultProviderId: 'p1',
+              defaultModel: 'm',
+            },
+          }),
+        regenerateAICard: async (args: { card: { id: string } }) => ({
+          ...args.card,
+          type: 'motion',
+          content: '逐字稿',
+          renderMode: 'motion-card',
+          motionCard: { tsx: 'export default () => null', compiledAt: 0, prompt: '', retryCount: 0 },
+        }),
+        saveProjectSection: async () => undefined,
+      },
+    });
+
+    const result = await useAIStore.getState().convertCardToMotion('placed-1');
+    expect(result?.type).toBe('motion');
+    expect(addSpy).toHaveBeenCalledTimes(1);
+    const draftArg = addSpy.mock.calls[0][0];
+    expect(Array.isArray(draftArg)).toBe(true);
+    expect(draftArg[0].sourceCardId).toBe('placed-1');
+
+    useTimelineStore.setState({ timeline: prevTimeline });
   });
 });
