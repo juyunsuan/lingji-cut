@@ -11,6 +11,11 @@ import {
   runCoversHeadless,
 } from './runs/cover-run';
 import { runExportHeadless } from './runs/export-run';
+import {
+  runRegenerateCard,
+  runRegenerateCardMedia,
+  runConvertCard,
+} from './runs/card-run';
 
 const PROJECT_UPDATED_CHANNEL = 'pipeline:project-updated';
 
@@ -156,5 +161,38 @@ export function registerGenerationTools(
     sections: [],
     extraInput: { out: z.string().optional().describe('输出文件名或绝对路径，默认 export.mp4') },
     run: (ctx) => runExportHeadless(ctx, { out: ctx.params?.out as string | undefined }),
+  });
+
+  registerGenerationTool(server, getMainWindow, getUserDataPath, {
+    name: 'lingji_regenerate_card',
+    title: '重新生成卡片',
+    description: '按 cardId 重新生成整卡（复用分析卡片生成逻辑）。返回 taskId。',
+    kind: 'generate_cards',
+    sections: ['aiAnalysis'],
+    extraInput: { cardId: z.string().describe('卡片 id') },
+    run: (ctx) => runRegenerateCard(ctx),
+  });
+
+  registerGenerationTool(server, getMainWindow, getUserDataPath, {
+    name: 'lingji_regenerate_card_media',
+    title: '重新生成卡片媒体',
+    description: '仅重新生成 image/video 卡的媒体素材（复用卡片现有 prompt/aspectRatio/provider/model）。返回 taskId。',
+    kind: 'generate_cards',
+    sections: ['aiAnalysis'],
+    extraInput: { cardId: z.string().describe('卡片 id') },
+    run: (ctx) => runRegenerateCardMedia(ctx),
+  });
+
+  registerGenerationTool(server, getMainWindow, getUserDataPath, {
+    name: 'lingji_convert_card',
+    title: '转换卡片类型',
+    description: '将卡片转换为 image/video（本地重写空 idle media，随后可 regen-media）或 motion（生成+合并）。返回 taskId。',
+    kind: 'generate_motion',
+    sections: ['aiAnalysis'],
+    extraInput: {
+      cardId: z.string().describe('卡片 id'),
+      to: z.enum(['image', 'video', 'motion']).describe('目标类型'),
+    },
+    run: (ctx) => runConvertCard(ctx),
   });
 }
