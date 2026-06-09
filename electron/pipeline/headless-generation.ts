@@ -109,7 +109,7 @@ export function registerGenerationTools(
     name: 'lingji_generate_audio',
     title: '生成口播音频(TTS)',
     description:
-      '读取项目 script.md，用应用已配置的 MiniMax TTS 生成 podcast-audio.mp3 与 podcast-subtitles.srt；返回 taskId（fire-and-poll）。',
+      '读取项目 script.md，用应用已配置的 MiniMax TTS 生成 podcast-audio.mp3 与 podcast-subtitles.srt，并把 podcast 指针写回 project.json 的 timeline 节（已打开项目会自动刷新）；返回 taskId（fire-and-poll）。',
     kind: 'tts',
     sections: ['timeline'],
     run: (ctx) => runTtsHeadless(ctx),

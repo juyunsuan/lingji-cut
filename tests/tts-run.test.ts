@@ -43,6 +43,16 @@ describe('runTtsHeadless', () => {
       expect(readFileSync(res.audioPath).toString()).toBe('FAKEAUDIO');
       expect(existsSync(path.join(project, 'podcast-subtitles.srt'))).toBe(true);
       expect(existsSync(path.join(project, 'podcast-subtitles.original.srt'))).toBe(true);
+      // 写回 project.json 的 timeline.podcast 指针，使已打开项目 UI 刷新生效
+      const projectJsonPath = path.join(project, 'project.json');
+      expect(existsSync(projectJsonPath)).toBe(true);
+      const projectJson = JSON.parse(readFileSync(projectJsonPath, 'utf-8'));
+      expect(projectJson.timeline).toBeTruthy();
+      expect(projectJson.timeline.podcast).toEqual({
+        audioPath: res.audioPath,
+        srtPath: res.srtPath,
+        durationMs: 1000,
+      });
     } finally {
       rmSync(userData, { recursive: true, force: true });
       rmSync(project, { recursive: true, force: true });

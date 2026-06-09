@@ -3,6 +3,9 @@ import { join } from 'node:path';
 import { runTTSProvider, type TTSRunnerOptions, type TTSRunnerResult } from '../../tts-provider-runner';
 import { loadHeadlessTTSConfig } from '../headless-settings';
 import { GenerationError } from '../generation-error';
+import { HeadlessProjectContext } from '../context';
+import { loadProjectFile } from '../../project-file';
+import { createDefaultTimeline } from '../../../src/types';
 import type { GenerationRunCtx } from '../headless-generation';
 
 export interface TtsRunResult {
@@ -60,6 +63,18 @@ export async function runTtsHeadless(
   const originalSrtPath = join(projectPath, 'podcast-subtitles.original.srt');
   await writeFile(srtPath, srtText, 'utf-8');
   await writeFile(originalSrtPath, srtText, 'utf-8');
+
+  // 写回 project.json 的 timeline.podcast 指针，使已打开项目的 UI 刷新
+  // （App.tsx reloadProjectSections('timeline')）能 surface 新生成的音频/字幕。
+  // 形状与 store setPodcast 一致：{ audioPath, srtPath, durationMs }。
+  handle.update({ phase: '写入工程', percent: 90 });
+  const headless = new HeadlessProjectContext(projectPath);
+  const existing = (await loadProjectFile(projectPath)).timeline;
+  const base = existing ?? createDefaultTimeline();
+  await headless.saveSection('timeline', {
+    ...base,
+    podcast: { audioPath, srtPath, durationMs },
+  });
 
   handle.update({ phase: '完成', percent: 100 });
   return { audioPath, srtPath, durationMs };
