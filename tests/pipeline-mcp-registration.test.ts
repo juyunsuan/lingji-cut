@@ -24,11 +24,13 @@ describe('registerPipelineMcpTools', () => {
       'lingji_get_task_status',
       'lingji_cancel_task',
       'lingji_list_tasks',
+      'lingji_get_active_project',
+      'lingji_list_recent_projects',
     ];
     for (const name of expected) {
       expect(server.tools.has(name)).toBe(true);
     }
-    expect(server.tools.size).toBeGreaterThanOrEqual(7);
+    expect(server.tools.size).toBeGreaterThanOrEqual(9);
   });
 
   it('lingji_create_project handler returns success result for fresh dir', async () => {
