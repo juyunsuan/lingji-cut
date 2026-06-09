@@ -489,6 +489,50 @@ export default function App() {
     ],
   );
 
+  // headless 任务写回 project.json 后，若该项目正在打开，则刷新对应节
+  const reloadProjectSections = useCallback(
+    async (projectDir: string, sections: string[]) => {
+      try {
+        const raw = await window.electronAPI.loadProject(projectDir);
+        const projectData = JSON.parse(raw) as ProjectData;
+        if (sections.includes('timeline')) {
+          if (projectData.timeline) setTimeline(projectData.timeline);
+          const srtPath = projectData.timeline?.podcast?.srtPath;
+          if (srtPath) {
+            try {
+              const { entries } = await window.electronAPI.parseSrtFile(srtPath);
+              setSrtEntries(entries);
+            } catch {
+              setSrtEntries([]);
+            }
+          }
+        }
+        if (sections.includes('aiAnalysis')) {
+          if (projectData.aiAnalysis?.analysisResult) {
+            setAIAnalysisResult(projectData.aiAnalysis.analysisResult);
+            setCoverCandidates(projectData.aiAnalysis.coverCandidates ?? []);
+          } else {
+            clearAIAnalysis();
+            setCoverCandidates(projectData.aiAnalysis?.coverCandidates ?? []);
+          }
+        }
+      } catch (err) {
+        console.error('[project-updated] 刷新失败:', err);
+      }
+    },
+    [setTimeline, setSrtEntries, setAIAnalysisResult, setCoverCandidates, clearAIAnalysis],
+  );
+
+  useEffect(() => {
+    if (!window.electronAPI?.onProjectUpdated) return;
+    const unsubscribe = window.electronAPI.onProjectUpdated((payload) => {
+      if (payload.projectPath === getCurrentProjectDir()) {
+        void reloadProjectSections(payload.projectPath, payload.sections);
+      }
+    });
+    return unsubscribe;
+  }, [reloadProjectSections]);
+
   useEffect(() => {
     void syncWorkspaceState();
   }, [syncWorkspaceState]);
