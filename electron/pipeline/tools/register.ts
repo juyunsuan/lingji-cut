@@ -8,6 +8,7 @@ import {
   getSettings,
 } from './project-tools';
 import { buildTaskTools } from './task-tools';
+import { getActiveProjectPath } from '../context';
 
 function jsonResult(data: unknown) {
   return {
@@ -164,6 +165,22 @@ export function registerPipelineMcpTools(
     async ({ projectPath }) => {
       try {
         return jsonResult(await taskTools.listTasks({ projectPath }));
+      } catch (err) {
+        return errorResult(pipelineErrorMessage(err), pipelineErrorCode(err));
+      }
+    },
+  );
+
+  server.registerTool(
+    'lingji_get_active_project',
+    {
+      title: '查询当前活动项目',
+      description:
+        '返回应用当前打开/活动的项目目录路径（由渲染进程 load-project 设置）；无活动项目时返回 null。CLI 默认项目即取此值。',
+    },
+    async () => {
+      try {
+        return jsonResult({ projectPath: getActiveProjectPath() });
       } catch (err) {
         return errorResult(pipelineErrorMessage(err), pipelineErrorCode(err));
       }
