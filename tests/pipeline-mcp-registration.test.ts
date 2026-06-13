@@ -68,6 +68,60 @@ describe('registerPipelineMcpTools', () => {
     }
   });
 
+  it('lingji_open_project switches the live window to the validated project', async () => {
+    const server = new FakeMcpServer();
+    const sent: Array<{ channel: string; payload: unknown }> = [];
+    const fakeWin = {
+      isDestroyed: () => false,
+      webContents: { send: (channel: string, payload: unknown) => sent.push({ channel, payload }) },
+    };
+    registerPipelineMcpTools(
+      server as unknown as Parameters<typeof registerPipelineMcpTools>[0],
+      () => fakeWin as unknown as import('electron').BrowserWindow,
+      () => '/tmp/fake-user-data',
+    );
+    const createHandler = server.tools.get('lingji_create_project')!.handler;
+    const openHandler = server.tools.get('lingji_open_project')!.handler;
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const root = mkdtempSync(path.join(os.tmpdir(), 'lingji-open-'));
+    try {
+      const target = path.join(root, 'p');
+      await createHandler({ path: target });
+      const result = (await openHandler({ path: target })) as { content: { text: string }[] };
+      expect(JSON.parse(result.content[0].text)).toMatchObject({ ok: true });
+      expect(sent).toContainEqual({
+        channel: 'menu-action',
+        payload: { type: 'open-recent-project', projectDir: target },
+      });
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('lingji_open_project does not send a window event for an invalid project', async () => {
+    const server = new FakeMcpServer();
+    const sent: Array<{ channel: string; payload: unknown }> = [];
+    const fakeWin = {
+      isDestroyed: () => false,
+      webContents: { send: (channel: string, payload: unknown) => sent.push({ channel, payload }) },
+    };
+    registerPipelineMcpTools(
+      server as unknown as Parameters<typeof registerPipelineMcpTools>[0],
+      () => fakeWin as unknown as import('electron').BrowserWindow,
+      () => '/tmp/fake-user-data',
+    );
+    const openHandler = server.tools.get('lingji_open_project')!.handler;
+    const path = await import('node:path');
+    const os = await import('node:os');
+    const result = (await openHandler({ path: path.join(os.tmpdir(), 'lingji-missing-xyz') })) as {
+      isError?: boolean;
+    };
+    expect(result.isError).toBe(true);
+    expect(sent).toHaveLength(0);
+  });
+
   it('returns structured error with code when create_project rejects', async () => {
     const server = new FakeMcpServer();
     registerPipelineMcpTools(

@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getPipelineService } from '..';
@@ -77,12 +78,24 @@ export function registerPipelineMcpTools(
     'lingji_open_project',
     {
       title: '打开工程',
-      description: '校验项目目录是否合法。可选调用，主要用于活动项目识别。',
+      description:
+        '校验项目目录是否合法；若应用窗口在运行，则切换到该项目（复用最近项目打开路径）。',
       inputSchema: { path: z.string().describe('项目目录路径') },
     },
     async ({ path: p }) => {
       try {
-        return jsonResult(await openProject({ path: p }));
+        const result = await openProject({ path: p });
+        // 校验通过后，通知运行中的窗口切换到该项目。
+        // 复用原生「打开最近项目」走的 menu-action 通道，让 Renderer 走完整的 openProject 流程
+        // （loadProject 会 setActiveProjectPath，UI 也会导航到对应页面）。
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+          win.webContents.send('menu-action', {
+            type: 'open-recent-project',
+            projectDir: path.resolve(p),
+          });
+        }
+        return jsonResult(result);
       } catch (err) {
         return errorResult(pipelineErrorMessage(err), pipelineErrorCode(err));
       }

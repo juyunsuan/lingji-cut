@@ -19,7 +19,9 @@
     "dist:dmg:mac": "npm run dist:mac && npm run dmg:mac",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build:cli": "node scripts/build-cli.cjs"
+    "build:cli": "node scripts/build-cli.cjs",
+    "install:cli": "npm run build:cli && npm link",
+    "uninstall:cli": "npm unlink -g lingjijianying"
   },
   "keywords": [],
   "author": "",

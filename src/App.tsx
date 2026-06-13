@@ -20,6 +20,7 @@ import { Settings } from './pages/Settings';
 import { Setup } from './pages/Setup';
 import { AutoRunController } from './components/AutoRunController';
 import { ImportProjectDialog } from './components/ImportProjectDialog';
+import { AppErrorBoundary } from './components/AppErrorBoundary';
 import type { ImportProjectResult } from './lib/project-import-types';
 import { prefersReducedMotion } from './ui/lib/animation-config';
 import { WorkspaceTabs } from './components/WorkspaceTabs';
@@ -56,6 +57,11 @@ export default function App() {
   const setPage = useCallback(
     (next: AppPage, reason: PageTransitionReason = 'default') => {
       setPageRaw((current) => {
+        // 目标与当前页相同时不改动过渡状态：否则 contentKey 会从
+        // `crossfade:X->script-workbench` 变成退化的 `crossfade:script-workbench->script-workbench`，
+        // AnimatePresence mode="wait" 会对同一页面做「退出再进入」并卡住成空白。
+        // 典型触发：项目已停在写稿页时，openProject 切到另一个项目仍会 setPage('script-workbench')。
+        if (next === current) return current;
         setPreviousPage(current);
         setPageTransitionReason(reason);
         return next;
@@ -1119,6 +1125,8 @@ export default function App() {
       )}
       <div style={{ minHeight: 0, display: 'flex', overflow: 'hidden' }}>
         <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', position: 'relative' }}>
+          {/* 页面渲染崩溃时显示错误信息 + 恢复入口，避免整窗黑屏（如项目切换时的中间不一致渲染抛错） */}
+          <AppErrorBoundary onReset={() => resetToSetup()}>
           {/* LayoutGroup 让 setup → editor 的 layoutId 共享元素(Hero ② audio thumb)能跨 AnimatePresence morph */}
           <LayoutGroup id="page-shared-elements">
           <AnimatePresence mode="wait" initial={false}>
@@ -1175,6 +1183,7 @@ export default function App() {
             </m.div>
           </AnimatePresence>
           </LayoutGroup>
+          </AppErrorBoundary>
         </div>
         <AnimatePresence initial={false}>
           {agentSidebarOpen && <AgentSidebar />}

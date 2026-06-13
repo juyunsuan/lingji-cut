@@ -119,7 +119,51 @@ npm run package:mac  # Package macOS .app
 npm run dist:mac     # Build + package macOS .app
 npm test             # Run Vitest
 npm run test:watch   # Run Vitest in watch mode
+npm run build:cli    # Bundle the lingji CLI into dist-cli/lingji.mjs
+npm run install:cli  # Build the CLI and link `lingji` globally
+npm run uninstall:cli # Remove the global `lingji` command
 ```
+
+## 命令行工具 (lingji CLI)
+
+除桌面端外，仓库还提供一个无头命令行工具 `lingji`，用于在终端里驱动项目流水线（音频、字幕分析、卡片、封面、导出等）。它通过 MCP 服务地址与运行中的灵机剪影桌面端通信，因此使用前需保证桌面端在跑（或用 `--server` 指定服务地址）。
+
+### 全局安装
+
+```bash
+npm run install:cli
+```
+
+该脚本会先用 esbuild 把 `cli/src/index.ts` 打包为 `dist-cli/lingji.mjs`，再通过 `npm link` 注册到全局，之后任意目录都能直接使用 `lingji`：
+
+```bash
+lingji --help
+```
+
+> `npm link` 是软链到本仓库的构建产物。以后改了 CLI 源码，只需重新 `npm run build:cli` 即可生效，无需再次 link。
+>
+> CLI 安装在「当前 Node 版本」的全局 bin 下。若使用 nvm 切换到别的 Node 版本，需要在该版本里重新执行一次 `npm run install:cli`。
+
+卸载全局命令：
+
+```bash
+npm run uninstall:cli
+```
+
+### 常用子命令
+
+```bash
+lingji project current                    # 显示应用当前活动项目
+lingji project list                       # 列出最近项目
+lingji audio gen [--project <p>] --wait   # 生成口播音频 (TTS)
+lingji subtitle analyze --wait            # 字幕分析 + 卡片生成
+lingji cards list|show|update|regenerate|regen-media|convert|delete
+lingji cover prompt|image|gen --wait      # 封面提示词 / 出图 / 一次性
+lingji export [--out <file>] --wait       # 导出 MP4
+lingji task status|list|cancel|wait <id>  # 任务查询与控制
+```
+
+全局开关：`--json`（JSON 输出）、`--server <url>`（覆盖 MCP 服务地址）。
 
 ## Typical Workflow
 
