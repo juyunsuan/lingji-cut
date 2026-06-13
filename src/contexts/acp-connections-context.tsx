@@ -13,7 +13,7 @@ import { useAgentStore } from '../store/agent';
 
 type ConnectionsMap = Record<number, ConversationConnectionState>;
 
-const DEFAULT_AGENT_TYPE = 'claude-acp';
+const DEFAULT_AGENT_TYPE = 'claude';
 
 function createEmptyConnectionState(conversationId: number, agentType = DEFAULT_AGENT_TYPE): ConversationConnectionState {
   return {

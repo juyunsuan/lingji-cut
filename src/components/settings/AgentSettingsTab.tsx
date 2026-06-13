@@ -8,10 +8,10 @@ import type {
   PermissionPolicy,
 } from '../../../electron/acp/types';
 import {
-  getAgentProfile,
-  listAgentProfiles,
+  getAgentPresentation,
+  listAgentPresentations,
   DEFAULT_AGENT_ID,
-} from '../../../electron/acp/agent-profiles';
+} from '../../lib/agent-presentation';
 import {
   Badge,
   Button,
@@ -40,15 +40,15 @@ const PERMISSION_POLICIES: PillGroupItem<PermissionPolicy>[] = [
   { value: 'always_ask', label: '每次操作都需确认' },
 ];
 
-const AGENT_PROFILES = listAgentProfiles();
+const AGENT_PRESENTATIONS = listAgentPresentations();
 
-const AGENT_ITEMS: PillGroupItem<string>[] = AGENT_PROFILES.map((profile) => ({
-  value: profile.id,
-  label: profile.displayName,
+const AGENT_ITEMS: PillGroupItem<string>[] = AGENT_PRESENTATIONS.map((presentation) => ({
+  value: presentation.id,
+  label: presentation.displayName,
 }));
 
-function makeDefaultEntry(profileId: string): AgentEntry {
-  const profile = getAgentProfile(profileId);
+function makeDefaultEntry(agentId: string): AgentEntry {
+  const profile = getAgentPresentation(agentId);
   return {
     enabled: profile.id === DEFAULT_AGENT_ID,
     authMode: 'custom_api',
@@ -74,7 +74,7 @@ export function AgentSettingsTab() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
 
-  const profile = getAgentProfile(selectedAgentId);
+  const profile = getAgentPresentation(selectedAgentId);
   const agent = config?.agents?.[selectedAgentId] ?? makeDefaultEntry(selectedAgentId);
 
   useEffect(() => {

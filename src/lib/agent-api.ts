@@ -120,10 +120,10 @@ declare global {
 
 /**
  * 从 agent 配置中解析出当前应连接的 agentType。
- * 选取 sortOrder 最小的已启用 agent；若无启用项则回退到 claude-acp，保证不回归。
+ * 选取 sortOrder 最小的已启用 agent；若无启用项则回退到 claude，保证不回归。
  */
 export function resolvePreferredAgentType(config: AgentConfigData | null | undefined): string {
-  const fallback = 'claude-acp';
+  const fallback = 'claude';
   if (!config?.agents) return fallback;
   const enabled = Object.entries(config.agents)
     .filter(([, entry]) => entry?.enabled)
@@ -134,12 +134,12 @@ export function resolvePreferredAgentType(config: AgentConfigData | null | undef
 /** 读取配置并解析当前应连接的 agentType（renderer 侧）。 */
 export async function getPreferredAgentType(): Promise<string> {
   if (typeof window === 'undefined' || typeof window.agentAPI === 'undefined') {
-    return 'claude-acp';
+    return 'claude';
   }
   try {
     const config = await window.agentAPI.getConfig();
     return resolvePreferredAgentType(config);
   } catch {
-    return 'claude-acp';
+    return 'claude';
   }
 }

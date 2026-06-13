@@ -6,7 +6,7 @@ import {
   openConversation,
 } from './conversation-api';
 
-const DEFAULT_AGENT_TYPE = 'claude-acp';
+const DEFAULT_AGENT_TYPE = 'claude';
 export const QUICK_ACTION_CONVERSATION_EVENT = 'conversation:activate';
 
 interface ConversationActivationDetail {
