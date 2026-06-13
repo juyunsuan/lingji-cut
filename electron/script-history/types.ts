@@ -1,6 +1,6 @@
 // electron/script-history/types.ts
 
-export type VersionSource = 'ai_generate' | 'ai_review' | 'ai_rewrite' | 'manual';
+export type VersionSource = 'ai_generate' | 'ai_review' | 'ai_rewrite' | 'manual' | 'external';
 
 export interface ScriptVersionEntity {
   id: number;

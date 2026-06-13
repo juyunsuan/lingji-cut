@@ -155,7 +155,7 @@ export class ScriptHistoryRepository {
         `
         SELECT id
         FROM script_version
-        WHERE project_id = ? AND file_name = ? AND source = 'manual'
+        WHERE project_id = ? AND file_name = ? AND source IN ('manual', 'external')
         ORDER BY created_at ASC, id ASC
         LIMIT ?
         `,

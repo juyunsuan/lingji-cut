@@ -100,6 +100,55 @@ describe('ScriptHistoryService', () => {
     expect(aiVersions).toHaveLength(3);
   });
 
+  it('evicts oldest external versions alongside manual when exceeding max', () => {
+    const { tempDir, db, svc } = createTestService();
+    cleanups.push({ db, tempDir });
+
+    // 设置 maxVersions = 5
+    (svc as unknown as { maxVersions: number }).maxVersions = 5;
+
+    // 插入 2 条 AI 版本（不应被淘汰）
+    for (let i = 0; i < 2; i++) {
+      svc.createVersion({
+        projectId: 'proj-evict-ext',
+        fileName: 'script.md',
+        content: `ai content ${i}`,
+        source: 'ai_generate',
+      });
+    }
+
+    // 插入 2 条 external 版本（最旧，应优先被淘汰）
+    for (let i = 0; i < 2; i++) {
+      svc.createVersion({
+        projectId: 'proj-evict-ext',
+        fileName: 'script.md',
+        content: `external content ${i}`,
+        source: 'external',
+      });
+    }
+
+    // 插入 3 条 manual 版本（合计 7 条，超过 maxVersions=5，需淘汰 2 条）
+    for (let i = 0; i < 3; i++) {
+      svc.createVersion({
+        projectId: 'proj-evict-ext',
+        fileName: 'script.md',
+        content: `manual content ${i}`,
+        source: 'manual',
+      });
+    }
+
+    const remaining = svc.listVersions('proj-evict-ext', 'script.md');
+    expect(remaining).toHaveLength(5);
+
+    // 所有 2 条 AI 版本必须保留
+    const aiVersions = remaining.filter((v) => v.source === 'ai_generate');
+    expect(aiVersions).toHaveLength(2);
+
+    // external 版本（最旧）应已被淘汰（共 2 条，恰好是淘汰数量）
+    const externalVersions = remaining.filter((v) => v.source === 'external');
+    expect(externalVersions).toHaveLength(0);
+  });
+
   it('prepareRollback saves current content and returns rollback target', () => {
     const { tempDir, db, svc } = createTestService();
     cleanups.push({ db, tempDir });
