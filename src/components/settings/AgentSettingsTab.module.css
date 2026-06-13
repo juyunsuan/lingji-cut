@@ -70,6 +70,13 @@
   font-family: var(--font-mono);
 }
 
+.guideText {
+  margin: 0;
+  color: var(--color-text-secondary-strong);
+  font-size: var(--font-size-md);
+  line-height: 1.6;
+}
+
 .spinning {
   animation: spin 1s linear infinite;
 }

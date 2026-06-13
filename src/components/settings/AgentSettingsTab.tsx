@@ -8,6 +8,11 @@ import type {
   PermissionPolicy,
 } from '../../../electron/acp/types';
 import {
+  getAgentProfile,
+  listAgentProfiles,
+  DEFAULT_AGENT_ID,
+} from '../../../electron/acp/agent-profiles';
+import {
   Badge,
   Button,
   Checkbox,
@@ -35,20 +40,31 @@ const PERMISSION_POLICIES: PillGroupItem<PermissionPolicy>[] = [
   { value: 'always_ask', label: '每次操作都需确认' },
 ];
 
-const DEFAULT_AGENT_ENTRY = {
-  enabled: true,
-  authMode: 'custom_api' as const,
-  apiKey: '',
-  apiBaseUrl: 'https://api.anthropic.com',
-  model: 'claude-sonnet-4-20250514',
-  envText: '',
-  configJson: '{}',
-  version: '0.25.0',
-  sortOrder: 0,
-};
+const AGENT_PROFILES = listAgentProfiles();
+
+const AGENT_ITEMS: PillGroupItem<string>[] = AGENT_PROFILES.map((profile) => ({
+  value: profile.id,
+  label: profile.displayName,
+}));
+
+function makeDefaultEntry(profileId: string): AgentEntry {
+  const profile = getAgentProfile(profileId);
+  return {
+    enabled: profile.id === DEFAULT_AGENT_ID,
+    authMode: 'custom_api',
+    apiKey: '',
+    apiBaseUrl: 'https://api.anthropic.com',
+    model: 'claude-sonnet-4-20250514',
+    envText: '',
+    configJson: '{}',
+    version: profile.defaultVersion ?? '0.25.0',
+    sortOrder: 0,
+  };
+}
 
 export function AgentSettingsTab() {
   const [config, setConfig] = useState<AgentConfigData | null>(null);
+  const [selectedAgentId, setSelectedAgentId] = useState<string>(DEFAULT_AGENT_ID);
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
   const [checks, setChecks] = useState<PreflightCheck[]>([]);
@@ -58,29 +74,38 @@ export function AgentSettingsTab() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [uninstallDialogOpen, setUninstallDialogOpen] = useState(false);
 
-  const agent = config?.agents?.['claude-acp'] ?? DEFAULT_AGENT_ENTRY;
+  const profile = getAgentProfile(selectedAgentId);
+  const agent = config?.agents?.[selectedAgentId] ?? makeDefaultEntry(selectedAgentId);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.agentAPI === 'undefined') return;
-    void loadConfig();
-    void runChecks();
+    void loadConfig(DEFAULT_AGENT_ID);
+    void runChecks(DEFAULT_AGENT_ID);
   }, []);
 
-  const loadConfig = async () => {
+  const loadConfig = async (agentId: string) => {
     if (typeof window.agentAPI === 'undefined') return;
     const data = await window.agentAPI.getConfig();
     setConfig(data);
-    const key = await window.agentAPI.getApiKey('claude-acp');
+    const key = await window.agentAPI.getApiKey(agentId);
     setApiKey(key);
   };
 
-  const runChecks = async () => {
+  const runChecks = async (agentId: string) => {
     if (typeof window.agentAPI === 'undefined') return;
     setChecking(true);
-    const results = await window.agentAPI.runPreflight();
+    const results = await window.agentAPI.runPreflight(agentId);
     setChecks(results);
     setChecking(false);
   };
+
+  const handleSelectAgent = useCallback((agentId: string) => {
+    setSelectedAgentId(agentId);
+    setShowKey(false);
+    if (typeof window.agentAPI === 'undefined') return;
+    void window.agentAPI.getApiKey(agentId).then(setApiKey);
+    void runChecks(agentId);
+  }, []);
 
   const updateAgent = useCallback(
     (patch: Partial<AgentEntry>) => {
@@ -89,19 +114,20 @@ export function AgentSettingsTab() {
         ...config,
         agents: {
           ...config.agents,
-          'claude-acp': { ...agent, ...patch },
+          [selectedAgentId]: { ...agent, ...patch },
         },
       });
     },
-    [agent, config],
+    [agent, config, selectedAgentId],
   );
 
   const handleSave = async () => {
     if (!config) return;
     setSaving(true);
     await window.agentAPI.saveConfig(config);
-    if (apiKey) {
-      await window.agentAPI.setApiKey('claude-acp', apiKey);
+    // 仅托管型 agent（含 apiKeyEnvVar）才注入 API Key；pi 等无凭证代管。
+    if (profile.apiKeyEnvVar && apiKey) {
+      await window.agentAPI.setApiKey(selectedAgentId, apiKey);
     }
     setSaving(false);
     setSaved(true);
@@ -112,25 +138,28 @@ export function AgentSettingsTab() {
     setBusyAction('install');
     await window.agentAPI.installAgent(agent.version);
     setBusyAction(null);
-    await runChecks();
+    await runChecks(selectedAgentId);
   };
 
   const handleUninstall = async () => {
     setBusyAction('uninstall');
     await window.agentAPI.uninstallAgent();
     setBusyAction(null);
-    await runChecks();
+    await runChecks(selectedAgentId);
   };
 
   if (!config) {
     return <div className={styles.loading}>加载中...</div>;
   }
 
+  // pi 等非托管 agent 忽略 install fixAction（无 npm 托管），仅 managed 显示安装/升级动作。
+  const allowInstallAction = profile.managed;
+
   return (
     <div className={styles.container}>
       <SettingsPageHeader
-        title="Claude Code"
-        description="ACP 适配器 · npx"
+        title="AI Agent"
+        description="ACP 适配器配置"
         leading={<Bot size={24} className={styles.agentIcon} />}
         actions={
           <Checkbox
@@ -142,6 +171,13 @@ export function AgentSettingsTab() {
         }
       />
 
+      <PillGroup<string>
+        items={AGENT_ITEMS}
+        value={selectedAgentId}
+        size="sm"
+        onChange={handleSelectAgent}
+      />
+
       <section>
         <div className={styles.statusHeader}>
           <h3 className={styles.sectionTitle}>状态检查</h3>
@@ -149,7 +185,7 @@ export function AgentSettingsTab() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={runChecks}
+            onClick={() => runChecks(selectedAgentId)}
             disabled={checking}
             aria-label="刷新状态检查"
           >
@@ -163,63 +199,77 @@ export function AgentSettingsTab() {
               <Badge variant={getStatusVariant(check.status)}>{getStatusLabel(check.status)}</Badge>
               <span className={styles.statusLabel}>{check.label}</span>
               <span className={styles.statusMessage}>{check.message}</span>
-              {renderFixAction(check, busyAction, handleInstall)}
+              {allowInstallAction ? renderFixAction(check, busyAction, handleInstall) : null}
             </div>
           ))}
         </div>
       </section>
 
-      <Divider label="认证配置" />
-      <PillGroup<AuthMode>
-        items={AUTH_MODES}
-        value={agent.authMode as AuthMode}
-        size="sm"
-        onChange={(mode) => updateAgent({ authMode: mode })}
-      />
+      {profile.managed ? (
+        <>
+          <Divider label="认证配置" />
+          <PillGroup<AuthMode>
+            items={AUTH_MODES}
+            value={agent.authMode as AuthMode}
+            size="sm"
+            onChange={(mode) => updateAgent({ authMode: mode })}
+          />
 
-      {agent.authMode === 'custom_api' ? (
-        <div className={commonStyles.formStack}>
-          <Field label="API Key">
-            <div className={styles.apiKeyRow}>
-              <Input
-                variant={showKey ? 'text' : 'password'}
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="sk-ant-..."
-                size="sm"
-                wrapperClassName={styles.apiKeyInput}
-              />
-              <Button.Icon
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowKey((state) => !state)}
-                aria-label={showKey ? '隐藏 API Key' : '显示 API Key'}
-              >
-                {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-              </Button.Icon>
+          {agent.authMode === 'custom_api' ? (
+            <div className={commonStyles.formStack}>
+              <Field label="API Key">
+                <div className={styles.apiKeyRow}>
+                  <Input
+                    variant={showKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-ant-..."
+                    size="sm"
+                    wrapperClassName={styles.apiKeyInput}
+                  />
+                  <Button.Icon
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowKey((state) => !state)}
+                    aria-label={showKey ? '隐藏 API Key' : '显示 API Key'}
+                  >
+                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </Button.Icon>
+                </div>
+              </Field>
+
+              <Field label="API Base URL">
+                <Input
+                  value={agent.apiBaseUrl}
+                  onChange={(e) => updateAgent({ apiBaseUrl: e.target.value })}
+                  placeholder="https://api.anthropic.com"
+                  size="sm"
+                />
+              </Field>
+
+              <Field label="Model">
+                <Input
+                  value={agent.model}
+                  onChange={(e) => updateAgent({ model: e.target.value })}
+                  placeholder="claude-sonnet-4-20250514"
+                  size="sm"
+                />
+              </Field>
             </div>
-          </Field>
-
-          <Field label="API Base URL">
-            <Input
-              value={agent.apiBaseUrl}
-              onChange={(e) => updateAgent({ apiBaseUrl: e.target.value })}
-              placeholder="https://api.anthropic.com"
-              size="sm"
-            />
-          </Field>
-
-          <Field label="Model">
-            <Input
-              value={agent.model}
-              onChange={(e) => updateAgent({ model: e.target.value })}
-              placeholder="claude-sonnet-4-20250514"
-              size="sm"
-            />
-          </Field>
-        </div>
-      ) : null}
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Divider label="安装与凭证" />
+          {profile.installGuide ? (
+            <p className={styles.guideText}>{profile.installGuide}</p>
+          ) : null}
+          <p className={styles.guideText}>
+            {profile.displayName} 的模型 provider 凭证在 {profile.requiredBinary ?? 'agent'} 侧配置，本应用不代管。
+          </p>
+        </>
+      )}
 
       <Divider label="高级配置" />
       <Field label="环境变量" hint="KEY=VALUE（每行一条）">
@@ -248,15 +298,17 @@ export function AgentSettingsTab() {
       />
 
       <div className={styles.actionsRow}>
-        <Button
-          type="button"
-          variant="destructive"
-          leftIcon={<Trash2 size={14} />}
-          onClick={() => setUninstallDialogOpen(true)}
-          disabled={busyAction !== null}
-        >
-          {busyAction === 'uninstall' ? '卸载中...' : '卸载'}
-        </Button>
+        {profile.managed ? (
+          <Button
+            type="button"
+            variant="destructive"
+            leftIcon={<Trash2 size={14} />}
+            onClick={() => setUninstallDialogOpen(true)}
+            disabled={busyAction !== null}
+          >
+            {busyAction === 'uninstall' ? '卸载中...' : '卸载'}
+          </Button>
+        ) : null}
         <div className={styles.actionsSpacer} />
         <SaveButton
           onClick={handleSave}

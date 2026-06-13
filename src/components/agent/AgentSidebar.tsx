@@ -4,6 +4,7 @@ import { springs, durations, easings } from '../../ui/lib/motion';
 import { useScriptStore } from '../../store/script';
 import { getCurrentProjectDir } from '../../store/timeline';
 import { useConversationList } from '../../hooks/use-conversation-list';
+import { getPreferredAgentType } from '../../lib/agent-api';
 import { AgentHeader } from './AgentHeader';
 import { ConversationToolbar } from './ConversationToolbar';
 import { SessionListPane } from './SessionListPane';
@@ -67,8 +68,9 @@ function SidebarWorkspaceShell({ projectDir }: { projectDir: string }) {
   }, [explicitConversationId, activeConversationId]);
 
   async function handleCreateConversation() {
+    const agentType = await getPreferredAgentType();
     const created = await createConversation({
-      agentType: 'claude-acp',
+      agentType,
     });
     setExplicitConversationId(created.id);
   }

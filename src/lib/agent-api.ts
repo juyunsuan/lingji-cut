@@ -117,3 +117,29 @@ declare global {
     agentAPI: AgentAPI;
   }
 }
+
+/**
+ * 从 agent 配置中解析出当前应连接的 agentType。
+ * 选取 sortOrder 最小的已启用 agent；若无启用项则回退到 claude-acp，保证不回归。
+ */
+export function resolvePreferredAgentType(config: AgentConfigData | null | undefined): string {
+  const fallback = 'claude-acp';
+  if (!config?.agents) return fallback;
+  const enabled = Object.entries(config.agents)
+    .filter(([, entry]) => entry?.enabled)
+    .sort((a, b) => (a[1].sortOrder ?? 0) - (b[1].sortOrder ?? 0));
+  return enabled[0]?.[0] ?? fallback;
+}
+
+/** 读取配置并解析当前应连接的 agentType（renderer 侧）。 */
+export async function getPreferredAgentType(): Promise<string> {
+  if (typeof window === 'undefined' || typeof window.agentAPI === 'undefined') {
+    return 'claude-acp';
+  }
+  try {
+    const config = await window.agentAPI.getConfig();
+    return resolvePreferredAgentType(config);
+  } catch {
+    return 'claude-acp';
+  }
+}
