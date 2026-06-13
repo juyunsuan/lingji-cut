@@ -9,6 +9,7 @@ import { runPreflight } from './preflight';
 import { McpConfigManager } from '../mcp/config-manager';
 import { getMcpServerStatus } from '../mcp/server';
 import type { PermissionPolicy } from './types';
+import { ensureProjectAgentContracts } from './contract-sync';
 
 const CONFIG_PATH = path.join(os.homedir(), '.lingji', 'agent-config.json');
 
@@ -45,6 +46,9 @@ export function registerAgentIpc(getMainWindow: () => BrowserWindow | null): voi
 
     // 在项目目录写入 CLAUDE.md，引导 Claude Code 使用 MCP 工具
     await ensureProjectClaudeMd(payload.projectDir);
+
+    // 同步 file-first 编辑契约要点到 CLAUDE/AGENTS/GEMINI.md（多 agent 通用，独立 marker）
+    await ensureProjectAgentContracts(payload.projectDir);
 
     // 构建 env
     const env: Record<string, string> = {};
