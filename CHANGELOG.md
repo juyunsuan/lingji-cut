@@ -5,6 +5,7 @@
 ## [Unreleased]
 
 ### Added
+- **内置 Pi agent（ACP 接入）**：在原有 Claude Code ACP 之外，新增内置 [Pi coding agent](https://pi.dev) 接入，通过 `npx -y pi-acp` 适配器零安装启动（内部 `pi --mode rpc`）。Agent 设置页可在 Claude Code / Pi 间切换并分别配置/预检；新建会话按"已启用 agent"选择连接目标。引入 `AgentProfile` 注册表把原硬编码 `claude-acp` 的连接/预检参数化（`electron/acp/agent-profiles.ts`）；Pi 走"预检提示、不代管"模式——应用只管 pi-acp 适配器，`pi` 本体与模型 provider 凭证由用户在 pi 侧配置（预检检测 `pi` 是否在 PATH）。
 - **AI File-First 编辑 + 实时热重载**：外部 CLI agent（Claude Code / Codex / Gemini 等）现在可直接编辑项目文件来改视频与文稿，编辑器实时把改动热重载到预览，形成「AI 改文件 → 编辑器实时反映」闭环。
   - **Motion Card 源码外置**：卡片 TSX 源码从 `project.json` 内嵌字符串外置为独立文件 `ai-cards/<overlayId>/motionCard.tsx`，`project.json` 只存 `tsxPath` 引用；内存态始终带源码、仅落盘时剥离（编译/渲染管线零改动），老项目首次加载自动迁移（`src/lib/motion-card-externalize.ts`）。
   - **文件信号会话锁**：AI 编辑前写 `.lingji/edit-lock.json`（带 `heartbeat`/`ttlMs`），编辑器据此暂停自动保存、状态栏显示「AI 正在编辑」，避免内存态覆盖外部改动；忘记解锁时按 TTL 自动释放（`electron/ai-edit/`）。
