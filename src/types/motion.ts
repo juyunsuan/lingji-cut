@@ -1,9 +1,14 @@
 export interface MotionCardPayload {
   /**
    * Remotion 卡片源码：单文件 React/Remotion 函数组件（default export）。
-   * 迁移期内可能为空，旧项目的 HTML 会被保留在 legacyHtml 并标记 needsRegeneration。
+   * 内存态始终填充；落盘时被剥离并写入 tsxPath 指向的独立文件。
    */
   tsx?: string;
+  /**
+   * 卡片源码外置文件相对路径（相对 projectDir），例：'ai-cards/<overlayId>/motionCard.tsx'。
+   * 仅存在于磁盘 project.json；加载时据此读回 tsx。
+   */
+  tsxPath?: string;
   /**
    * @deprecated 旧 HyperFrames 片段（HTML + CSS + GSAP）。仅用于旧项目加载兼容，
    * 迁移完成后移除。新卡片请使用 tsx。
