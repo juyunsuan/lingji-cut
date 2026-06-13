@@ -29,6 +29,24 @@
   gap: 12px;
 }
 
+/* AI 编辑锁定指示（file-first：外部 agent 正在改项目文件） */
+.aiEditLock {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: default;
+  color: var(--color-system-blue);
+}
+
+.aiEditLockDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-system-blue);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
 /* 上下文窗口用量 — 沿用 Button.Ghost 基础样式，仅调整布局与去除内边距 */
 .contextUsage {
   gap: 4px !important;

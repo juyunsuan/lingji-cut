@@ -29,6 +29,8 @@ import { createDefaultTimeline } from './types';
 import type { AICard, AIAnalysisResult } from './types/ai';
 import { getCurrentAISaveStatus, loadAISettings, subscribeToAISaveStatus, useAIStore, type AutoWorkflowParams } from './store/ai';
 import type { ProjectData } from './lib/project-persistence';
+import { handleExternalEdit } from './lib/external-edit-sync';
+import { useAiEditStore } from './store/ai-edit';
 import { useScriptStore } from './store/script';
 import { getRoleById } from './lib/script-templates';
 import { SCRIPT_TEMPLATE_SEEDS } from './lib/prompts/script-template-defaults';
@@ -538,6 +540,39 @@ export default function App() {
     });
     return unsubscribe;
   }, [reloadProjectSections]);
+
+  // AI file-first：订阅外部文件变更（file-changed）与会话锁态（ai-edit-lock-changed）。
+  // - project.json 变更 → 重载并替换 timeline
+  // - motionCard.tsx 变更 → 替换该卡内存源码触发预览重编译
+  // - script.md / original.md → 留钩子给后续脚本灌回（Task 12）
+  // - 锁态 → 更新 useAiEditStore（锁定期间 timeline 自动保存会暂停，避免覆盖外部改动）
+  // 注意：ScriptWorkbench 另有一个独立的 onFileChanged 订阅（脚本工作台冲突检测），
+  // preload 用 ipcRenderer.on 注册，多处订阅互不覆盖，各自返回独立 cleanup。
+  useEffect(() => {
+    if (!currentProjectDir) return;
+    const offEdit = window.electronAPI?.onFileChanged?.((data) => {
+      void handleExternalEdit(data, {
+        loadProject: async (dir) => {
+          const raw = await window.electronAPI.loadProject(dir);
+          const project = JSON.parse(raw) as ProjectData;
+          return { timeline: project.timeline ?? null };
+        },
+        projectDir: currentProjectDir,
+        applyCardSource: (id, tsx) =>
+          useTimelineStore.getState().applyExternalCardSource(id, tsx),
+        onScriptChanged: () => {
+          /* Task 12 接入 script/original 灌回 + 版本历史；本任务留空钩子 */
+        },
+      });
+    });
+    const offLock = window.electronAPI?.onAiEditLockChanged?.((change) => {
+      useAiEditStore.getState().setLock({ active: change.active, scope: change.scope });
+    });
+    return () => {
+      offEdit?.();
+      offLock?.();
+    };
+  }, [currentProjectDir]);
 
   useEffect(() => {
     void syncWorkspaceState();

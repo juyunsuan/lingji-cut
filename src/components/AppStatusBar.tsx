@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAgentStore } from '../store/agent';
+import { useAiEditStore } from '../store/ai-edit';
 import { useScriptStore } from '../store/script';
 import { getOriginalStats, getGeneratedScriptStats, getAnnotationSummary } from '../lib/script-utils';
 import { Button, Popover, PopoverContent, PopoverTrigger, Tooltip, TooltipContent, TooltipTrigger } from '../ui';
@@ -171,12 +172,27 @@ function WorkbenchStatsIndicator() {
 }
 
 // ─── 主组件 ────────────────────────────────────────────────
+// ─── AI 编辑锁定指示 ─────────────────────────────────────────
+function AiEditLockIndicator() {
+  const locked = useAiEditStore((s) => s.locked);
+  const scope = useAiEditStore((s) => s.scope);
+  if (!locked) return null;
+  const scopeLabel = scope === 'video' ? '视频' : scope === 'script' ? '脚本' : null;
+  return (
+    <span className={styles.aiEditLock}>
+      <span className={styles.aiEditLockDot} />
+      <span>AI 正在编辑此项目（已锁定{scopeLabel ? ` · ${scopeLabel}` : ''}）</span>
+    </span>
+  );
+}
+
 export function AppStatusBar() {
   return (
     <div className={styles.statusBar}>
       <StatusBarProgressLine />
       <TaskProgressPanel />
       <div className={styles.left}>
+        <AiEditLockIndicator />
         <WorkbenchStatsIndicator />
         <StatusBarTaskSummary />
       </div>

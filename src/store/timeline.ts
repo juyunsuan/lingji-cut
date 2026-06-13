@@ -54,6 +54,10 @@ export interface TimelineStore {
   setSubtitleSelection: (indices: number[]) => void;
   clearSubtitleSelection: () => void;
   setTimeline: (timeline: TimelineData) => void;
+  /** 整体替换 timeline（外部 project.json 变更热重载用，不进 undo 历史） */
+  applyExternalTimeline: (timeline: TimelineData) => void;
+  /** 外部 motionCard.tsx 变更：更新对应 overlay 的内存源码并清除旧编译错误，触发预览重编译 */
+  applyExternalCardSource: (overlayId: string, tsx: string) => void;
   setSrtEntries: (entries: SrtEntry[]) => void;
   setSubtitleHighlights: (highlights: SubtitleHighlight[]) => void;
   clearSubtitleHighlights: () => void;
@@ -496,6 +500,30 @@ export const useTimelineStore = create<TimelineStore>((set, get) => ({
         canRedo: false,
         subtitleSelection: [],
       };
+    }),
+  applyExternalTimeline: (timeline) =>
+    set(() => {
+      const normalizedTimeline = normalizeTimeline(timeline);
+      return {
+        timeline: normalizedTimeline,
+        assets: syncAssetsWithTimeline([], normalizedTimeline),
+      };
+    }),
+  applyExternalCardSource: (overlayId, tsx) =>
+    set((state) => {
+      if (!state.timeline) return state;
+      const overlays = state.timeline.overlays.map((ov) =>
+        ov.id === overlayId && ov.aiCardData?.motionCard
+          ? {
+              ...ov,
+              aiCardData: {
+                ...ov.aiCardData,
+                motionCard: { ...ov.aiCardData.motionCard, tsx, compileError: undefined },
+              },
+            }
+          : ov,
+      );
+      return { timeline: { ...state.timeline, overlays } };
     }),
   setSrtEntries: (entries) =>
     set((state) => {
