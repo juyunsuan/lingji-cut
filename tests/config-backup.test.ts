@@ -39,7 +39,9 @@ describe('collectBackup', () => {
     expect(backup.appVersion).toBe('1.0.0');
     expect(backup.platform).toBe(process.platform);
     expect(backup.globalSettings).toBeDefined();
-    expect(backup.agent.config.agents).toEqual({});
+    // 首次使用时 load() 会注入默认的 claude-acp / pi-acp 条目
+    expect(backup.agent.config.agents['claude-acp']).toBeDefined();
+    expect(backup.agent.config.agents['pi-acp']).toBeDefined();
     expect(backup.agent.apiKeys).toEqual({});
   });
 

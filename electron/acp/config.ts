@@ -1,12 +1,48 @@
 import { safeStorage } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { AgentConfigData } from './types';
+import type { AgentConfigData, AgentEntry } from './types';
 
 const DEFAULT_CONFIG: AgentConfigData = {
   agents: {},
   permissionPolicy: 'tiered',
 };
+
+const CLAUDE_ACP_DEFAULT_ENTRY: AgentEntry = {
+  enabled: false,
+  authMode: 'subscription',
+  apiKey: '',
+  apiBaseUrl: '',
+  model: '',
+  envText: '',
+  configJson: '',
+  version: '',
+  sortOrder: 0,
+};
+
+const PI_ACP_DEFAULT_ENTRY: AgentEntry = {
+  enabled: false,
+  authMode: 'subscription',
+  apiKey: '',
+  apiBaseUrl: '',
+  model: '',
+  envText: '',
+  configJson: '',
+  version: '',
+  sortOrder: 1,
+};
+
+/**
+ * 确保 agents 记录中包含必需的默认条目（claude-acp、pi-acp）。
+ * 只在对应 key 缺失时补入，不覆盖用户已有配置。
+ */
+export function ensureDefaultAgents(agents: Record<string, AgentEntry>): Record<string, AgentEntry> {
+  return {
+    'claude-acp': CLAUDE_ACP_DEFAULT_ENTRY,
+    'pi-acp': PI_ACP_DEFAULT_ENTRY,
+    ...agents,
+  };
+}
 
 export class AgentConfig {
   constructor(private configPath: string) {}
@@ -17,10 +53,13 @@ export class AgentConfig {
       const parsed = JSON.parse(raw) as Partial<AgentConfigData>;
       return {
         permissionPolicy: parsed.permissionPolicy ?? DEFAULT_CONFIG.permissionPolicy,
-        agents: parsed.agents ?? {},
+        agents: ensureDefaultAgents(parsed.agents ?? {}),
       };
     } catch {
-      return { ...DEFAULT_CONFIG, agents: {} };
+      return {
+        ...DEFAULT_CONFIG,
+        agents: ensureDefaultAgents({}),
+      };
     }
   }
 
