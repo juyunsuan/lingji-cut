@@ -4,6 +4,12 @@
 
 ## [Unreleased]
 
+### Changed
+- **Agent 底层重构为多协议 Runtime（Claude / Codex / Pi）**：参考 open-design 的声明式 agent 架构，把原 ACP-only 的 agent 连接层重写为多协议 runtime（`electron/agent-runtime/`）。新增/切换 agent 只需一个声明式 `RuntimeAgentDef` 文件 + 注册一行。
+  - **声明式注册表 + 协议多态**：`RuntimeAgentDef` 注册表（claude/codex/pi）+ 按 `streamFormat` 分发的解析器（`claude-stream-json` / `codex-json-event` / `pi-rpc`）+ 公用 JSON 行/部分聚合切分器，三种协议归一化成统一 `AgentStreamEvent` 事件流，映射到现有会话事件管线与 SQLite 持久化（保留 Zustand + SQLite，不换状态底座）。
+  - **可替换底层**：`AgentSession`（spawn + 接 parser + 生命周期/resume）+ `RuntimeRegistry`（多会话 + 归一化转发）取代旧 ACP `connection-registry`/`session`/`client`；IPC 通道契约不变。agent id 从 `claude-acp`/`pi-acp` 迁移为 `claude`/`codex`/`pi`（带旧配置兼容迁移，不丢用户数据）。preflight 改为按 def 探测 CLI 是否在 PATH。
+- **AI 对话界面全面重构（对齐 open-design）**：`ConversationDetailPane` 重构为 `ChatPane`（ChatHeader + `MessageList` + `ChatComposer`）；新增 `AssistantMessage`（按 block 分发渲染 + agent 身份头 + 权限卡）、`AgentPicker`（新建会话时显式选 Claude/Codex/Pi，未装的 agent 置灰并给指引）、`AgentIcon`；会话列表支持搜索/重命名/agent 图标。会话 turn 记录 `agentId`/`agentName`，支持同一会话混合 agent 历史展示。修复了此前"按启用顺序隐式选 agent"的限制。
+
 ### Added
 - **内置 Pi agent（ACP 接入）**：在原有 Claude Code ACP 之外，新增内置 [Pi coding agent](https://pi.dev) 接入，通过 `npx -y pi-acp` 适配器零安装启动（内部 `pi --mode rpc`）。Agent 设置页可在 Claude Code / Pi 间切换并分别配置/预检；新建会话按"已启用 agent"选择连接目标。引入 `AgentProfile` 注册表把原硬编码 `claude-acp` 的连接/预检参数化（`electron/acp/agent-profiles.ts`）；Pi 走"预检提示、不代管"模式——应用只管 pi-acp 适配器，`pi` 本体与模型 provider 凭证由用户在 pi 侧配置（预检检测 `pi` 是否在 PATH）。
 - **AI File-First 编辑 + 实时热重载**：外部 CLI agent（Claude Code / Codex / Gemini 等）现在可直接编辑项目文件来改视频与文稿，编辑器实时把改动热重载到预览，形成「AI 改文件 → 编辑器实时反映」闭环。
