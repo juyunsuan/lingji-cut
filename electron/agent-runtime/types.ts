@@ -8,6 +8,11 @@ export interface BuildArgsCtx {
   isResuming?: boolean;
 }
 
+export interface AgentModel {
+  id: string;
+  label: string;
+}
+
 export interface RuntimeAgentDef {
   id: string; // 'claude' | 'codex' | 'pi'
   name: string;
@@ -20,4 +25,6 @@ export interface RuntimeAgentDef {
   resumesSessionViaCli?: boolean;
   env?: Record<string, string>;
   defaultModel?: string;
+  /** Static model list for UI selectors (settings + composer chip). */
+  models?: AgentModel[];
 }

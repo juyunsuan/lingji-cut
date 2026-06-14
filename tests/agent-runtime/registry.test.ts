@@ -147,4 +147,61 @@ describe('agent-runtime registry', () => {
       expect(unique.size).toBe(ids.length);
     });
   });
+
+  describe('models list', () => {
+    it('claude def has non-empty models list', () => {
+      const def = getAgentDef('claude')!;
+      expect(def.models).toBeDefined();
+      expect(def.models!.length).toBeGreaterThan(0);
+    });
+
+    it('claude models have id and label strings', () => {
+      const def = getAgentDef('claude')!;
+      for (const m of def.models!) {
+        expect(typeof m.id).toBe('string');
+        expect(m.id.length).toBeGreaterThan(0);
+        expect(typeof m.label).toBe('string');
+        expect(m.label.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('claude defaultModel is present in models list', () => {
+      const def = getAgentDef('claude')!;
+      expect(def.defaultModel).toBeDefined();
+      const ids = def.models!.map((m) => m.id);
+      expect(ids).toContain(def.defaultModel);
+    });
+
+    it('codex def has non-empty models list', () => {
+      const def = getAgentDef('codex')!;
+      expect(def.models).toBeDefined();
+      expect(def.models!.length).toBeGreaterThan(0);
+    });
+
+    it('codex models have id and label strings', () => {
+      const def = getAgentDef('codex')!;
+      for (const m of def.models!) {
+        expect(typeof m.id).toBe('string');
+        expect(m.id.length).toBeGreaterThan(0);
+        expect(typeof m.label).toBe('string');
+        expect(m.label.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('pi def has non-empty models list', () => {
+      const def = getAgentDef('pi')!;
+      expect(def.models).toBeDefined();
+      expect(def.models!.length).toBeGreaterThan(0);
+    });
+
+    it('pi models have id and label strings', () => {
+      const def = getAgentDef('pi')!;
+      for (const m of def.models!) {
+        expect(typeof m.id).toBe('string');
+        expect(m.id.length).toBeGreaterThan(0);
+        expect(typeof m.label).toBe('string');
+        expect(m.label.length).toBeGreaterThan(0);
+      }
+    });
+  });
 });

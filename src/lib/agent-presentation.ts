@@ -14,6 +14,7 @@
  * 届时统一收敛展示元数据来源。
  */
 
+import type { AgentModel } from '../../electron/agent-runtime/types';
 import { listAgentDefs } from '../../electron/agent-runtime/registry';
 
 /** 默认 agent id（claude）。旧 'claude-acp' 由 ipc/config 的 normalizeAgentId 兼容。 */
@@ -59,6 +60,10 @@ const DEFAULT_UI_META: AgentUiMeta = { managed: false };
 export interface AgentPresentation extends AgentUiMeta {
   id: string;
   displayName: string;
+  /** Static model list from runtime def, for UI model selectors. */
+  models?: AgentModel[];
+  /** Default model id (from runtime def). */
+  defaultModel?: string;
 }
 
 function uiMetaFor(id: string): AgentUiMeta {
@@ -70,6 +75,8 @@ export function listAgentPresentations(): AgentPresentation[] {
   return listAgentDefs().map((def) => ({
     id: def.id,
     displayName: def.name,
+    models: def.models,
+    defaultModel: def.defaultModel,
     ...uiMetaFor(def.id),
   }));
 }
@@ -81,6 +88,8 @@ export function getAgentPresentation(id: string | undefined | null): AgentPresen
   return {
     id: def.id,
     displayName: def.name,
+    models: def.models,
+    defaultModel: def.defaultModel,
     ...uiMetaFor(def.id),
   };
 }
