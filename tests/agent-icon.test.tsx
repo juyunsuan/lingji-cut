@@ -53,6 +53,12 @@ describe('AgentIcon', () => {
     expect(html).toContain('aria-label="Agent"');
   });
 
+  it('undefined / null id — 回退默认，不崩（修复对话面板黑屏）', () => {
+    expect(() => renderToStaticMarkup(<AgentIcon agentId={undefined} />)).not.toThrow();
+    expect(() => renderToStaticMarkup(<AgentIcon agentId={null} />)).not.toThrow();
+    expect(renderToStaticMarkup(<AgentIcon agentId={undefined} />)).toContain('aria-label="Agent"');
+  });
+
   it('size prop 影响渲染宽高', () => {
     const html24 = renderToStaticMarkup(<AgentIcon agentId="claude" size={24} />);
     const html16 = renderToStaticMarkup(<AgentIcon agentId="claude" size={16} />);

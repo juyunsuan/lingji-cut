@@ -116,9 +116,9 @@ function DefaultSVG({ size }: { size: number }) {
   );
 }
 
-/** agentId → 配置映射，支持带/不带 "-acp" 后缀 */
-function resolveConfig(agentId: string): AgentIconConfig {
-  const normalized = agentId.toLowerCase().replace(/-acp$/, '');
+/** agentId → 配置映射，支持带/不带 "-acp" 后缀；agentId 缺省时回退默认 */
+function resolveConfig(agentId: string | null | undefined): AgentIconConfig {
+  const normalized = (agentId ?? '').toLowerCase().replace(/-acp$/, '');
   switch (normalized) {
     case 'claude':
       return { label: 'Claude', content: (size: number) => <ClaudeSVG size={size} /> };
@@ -135,7 +135,7 @@ export function AgentIcon({
   agentId,
   size = 16,
 }: {
-  agentId: string;
+  agentId?: string | null;
   size?: number;
 }): React.ReactElement {
   const config = resolveConfig(agentId);
