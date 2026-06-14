@@ -5,6 +5,13 @@
 ## [Unreleased]
 
 ### Changed
+- **AI 对话界面重做（对齐 open-design）**：
+  - 移除左侧会话列表，改为顶部 icon 弹 **ConversationDropdown**（搜索 / 切换 / 新建 / 重命名 / 删除会话）。
+  - Agent 切换收敛到设置中心，**全局只激活一个 agent**（`activeAgentId`）；对话顶部仅只读标记当前 agent，点击直达设置的 Agent 配置页。
+  - 新增 **ModelPicker** 模型选择芯片：手动切换当前 agent 使用的模型（或用默认），所选模型经发送链路透传到 runtime（`sendPrompt` → `buildArgs(ctx.model)`）；设置中心模型配置由文本输入改为下拉。
+  - 工具调用渲染重做为 op-card 风格（状态徽章 + 折叠 input/output），连续同名工具调用聚合为可折叠 **tool-group**（"Edit ×3"）。
+  - 移除对话工具栏顶部多余的 "Claude Code" 标题与 MCP 服务运行状态展示。
+  - 对话侧边栏纳入独立错误边界：渲染异常只关闭面板而非整窗黑屏。
 - **Agent 底层重构为多协议 Runtime（Claude / Codex / Pi）**：参考 open-design 的声明式 agent 架构，把原 ACP-only 的 agent 连接层重写为多协议 runtime（`electron/agent-runtime/`）。新增/切换 agent 只需一个声明式 `RuntimeAgentDef` 文件 + 注册一行。
   - **声明式注册表 + 协议多态**：`RuntimeAgentDef` 注册表（claude/codex/pi）+ 按 `streamFormat` 分发的解析器（`claude-stream-json` / `codex-json-event` / `pi-rpc`）+ 公用 JSON 行/部分聚合切分器，三种协议归一化成统一 `AgentStreamEvent` 事件流，映射到现有会话事件管线与 SQLite 持久化（保留 Zustand + SQLite，不换状态底座）。
   - **可替换底层**：`AgentSession`（spawn + 接 parser + 生命周期/resume）+ `RuntimeRegistry`（多会话 + 归一化转发）取代旧 ACP `connection-registry`/`session`/`client`；IPC 通道契约不变。agent id 从 `claude-acp`/`pi-acp` 迁移为 `claude`/`codex`/`pi`（带旧配置兼容迁移，不丢用户数据）。preflight 改为按 def 探测 CLI 是否在 PATH。

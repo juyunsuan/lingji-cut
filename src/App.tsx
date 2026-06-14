@@ -1227,7 +1227,12 @@ export default function App() {
           </AppErrorBoundary>
         </div>
         <AnimatePresence initial={false}>
-          {agentSidebarOpen && <AgentSidebar onOpenAgentSettings={handleOpenAgentSettings} />}
+          {agentSidebarOpen && (
+            // 对话侧边栏独立纳入错误边界：任一渲染异常只关闭面板，不整窗黑屏
+            <AppErrorBoundary onReset={() => useAgentStore.getState().toggleSidebar()}>
+              <AgentSidebar onOpenAgentSettings={handleOpenAgentSettings} />
+            </AppErrorBoundary>
+          )}
         </AnimatePresence>
       </div>
       <AppStatusBar />
