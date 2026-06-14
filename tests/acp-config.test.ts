@@ -58,6 +58,50 @@ describe('AgentConfig', () => {
     expect(loaded.agents.claude.model).toBe('claude-sonnet-4-20250514');
   });
 
+  it('defaults activeAgentId to claude when missing on disk', async () => {
+    const { AgentConfig } = await import('../electron/acp/config');
+    const config = new AgentConfig(path.join(tmpDir, 'agent-config.json'));
+    // 缺失文件 → 默认激活 claude
+    const fresh = await config.load();
+    expect(fresh.activeAgentId).toBe('claude');
+
+    // 旧数据（无 activeAgentId 字段）→ 回退默认，不报错
+    const configPath = path.join(tmpDir, 'legacy.json');
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({ permissionPolicy: 'tiered', agents: {} }),
+      'utf-8',
+    );
+    const legacy = new AgentConfig(configPath);
+    const loaded = await legacy.load();
+    expect(loaded.activeAgentId).toBe('claude');
+  });
+
+  it('persists and reloads activeAgentId (global single active)', async () => {
+    const { AgentConfig } = await import('../electron/acp/config');
+    const config = new AgentConfig(path.join(tmpDir, 'agent-config.json'));
+    await config.save({
+      permissionPolicy: 'tiered',
+      activeAgentId: 'codex',
+      agents: {},
+    });
+    const loaded = await config.load();
+    expect(loaded.activeAgentId).toBe('codex');
+  });
+
+  it('normalizes legacy activeAgentId on load', async () => {
+    const { AgentConfig } = await import('../electron/acp/config');
+    const configPath = path.join(tmpDir, 'legacy-active.json');
+    await fs.writeFile(
+      configPath,
+      JSON.stringify({ permissionPolicy: 'tiered', agents: {}, activeAgentId: 'claude-acp' }),
+      'utf-8',
+    );
+    const config = new AgentConfig(configPath);
+    const loaded = await config.load();
+    expect(loaded.activeAgentId).toBe('claude');
+  });
+
   it('encrypts and decrypts API key', async () => {
     const { AgentConfig } = await import('../electron/acp/config');
     const config = new AgentConfig(path.join(tmpDir, 'agent-config.json'));

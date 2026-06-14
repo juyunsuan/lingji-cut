@@ -20,6 +20,13 @@
   margin-bottom: var(--space-4);
 }
 
+.agentSelectRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .sectionTitle {
   margin: 0;
   color: var(--color-text-primary);

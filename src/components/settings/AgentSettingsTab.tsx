@@ -15,16 +15,17 @@ import {
 import {
   Badge,
   Button,
-  Checkbox,
   ConfirmDialog,
   Divider,
   Field,
   Input,
   PillGroup,
   SaveButton,
+  Select,
   SettingsPageHeader,
   Textarea,
 } from '../../ui';
+import type { SelectOption } from '../../ui';
 import type { PillGroupItem } from '../../ui/patterns/PillGroup';
 import commonStyles from './SettingsCommon.module.css';
 import styles from './AgentSettingsTab.module.css';
@@ -77,6 +78,22 @@ export function AgentSettingsTab() {
   const profile = getAgentPresentation(selectedAgentId);
   const agent = config?.agents?.[selectedAgentId] ?? makeDefaultEntry(selectedAgentId);
 
+  // 全局当前激活 agent（单选）；缺省回退默认。
+  const activeAgentId = config?.activeAgentId ?? DEFAULT_AGENT_ID;
+  const isSelectedActive = selectedAgentId === activeAgentId;
+  const activeProfile = getAgentPresentation(activeAgentId);
+
+  // Model 下拉选项：来自当前所选 agent 的展示模型列表。
+  const modelOptions: SelectOption[] = (profile.models ?? []).map((m) => ({
+    value: m.id,
+    label: m.label,
+  }));
+  // 写回值缺省取 presentation.defaultModel；空列表时仍提供默认占位，保证下拉非空。
+  const modelValue = agent.model || profile.defaultModel || modelOptions[0]?.value || '';
+  if (modelValue && !modelOptions.some((o) => o.value === modelValue)) {
+    modelOptions.unshift({ value: modelValue, label: modelValue });
+  }
+
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.agentAPI === 'undefined') return;
     void loadConfig(DEFAULT_AGENT_ID);
@@ -121,6 +138,12 @@ export function AgentSettingsTab() {
     [agent, config, selectedAgentId],
   );
 
+  // 将当前所选 agent 设为全局激活（单选）。
+  const handleSetActive = useCallback(() => {
+    if (!config) return;
+    setConfig({ ...config, activeAgentId: selectedAgentId });
+  }, [config, selectedAgentId]);
+
   const handleSave = async () => {
     if (!config) return;
     setSaving(true);
@@ -162,21 +185,26 @@ export function AgentSettingsTab() {
         description="ACP 适配器配置"
         leading={<Bot size={24} className={styles.agentIcon} />}
         actions={
-          <Checkbox
-            label="启用"
-            checked={agent.enabled}
-            onChange={(checked) => updateAgent({ enabled: checked })}
-            size="sm"
-          />
+          <Badge variant="secondary">当前使用：{activeProfile.displayName}</Badge>
         }
       />
 
-      <PillGroup<string>
-        items={AGENT_ITEMS}
-        value={selectedAgentId}
-        size="sm"
-        onChange={handleSelectAgent}
-      />
+      <div className={styles.agentSelectRow}>
+        <PillGroup<string>
+          items={AGENT_ITEMS}
+          value={selectedAgentId}
+          size="sm"
+          onChange={handleSelectAgent}
+        />
+        {isSelectedActive ? (
+          <Badge variant="success">已激活</Badge>
+        ) : (
+          <Button type="button" size="sm" variant="secondary" onClick={handleSetActive}>
+            设为当前
+          </Button>
+        )}
+      </div>
+      <p className={styles.guideText}>全局只使用一个 agent，新建会话将使用「当前使用」的 agent。</p>
 
       <section>
         <div className={styles.statusHeader}>
@@ -249,11 +277,11 @@ export function AgentSettingsTab() {
               </Field>
 
               <Field label="Model">
-                <Input
-                  value={agent.model}
+                <Select
+                  options={modelOptions}
+                  value={modelValue}
+                  placeholder="选择模型"
                   onChange={(e) => updateAgent({ model: e.target.value })}
-                  placeholder="claude-sonnet-4-20250514"
-                  size="sm"
                 />
               </Field>
             </div>

@@ -51,8 +51,9 @@ beforeEach(() => {
   createConversation.mockClear();
   getConfig.mockReset();
   runPreflight.mockReset();
-  // getPreferredAgentType → resolvePreferredAgentType：claude 启用且 sortOrder 最小。
+  // getPreferredAgentType → resolvePreferredAgentType：全局激活 agent 为 claude。
   getConfig.mockResolvedValue({
+    activeAgentId: 'claude',
     agents: { claude: { enabled: true, sortOrder: 0 } },
   });
   runPreflight.mockResolvedValue([{ label: 'CLI', status: 'pass', message: 'ok' }]);

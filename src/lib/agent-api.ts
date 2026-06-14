@@ -120,15 +120,13 @@ declare global {
 
 /**
  * 从 agent 配置中解析出当前应连接的 agentType。
- * 选取 sortOrder 最小的已启用 agent；若无启用项则回退到 claude，保证不回归。
+ *
+ * 全局单激活语义：直接返回 `config.activeAgentId`（设置中心单选的全局激活 agent）。
+ * 旧数据无 activeAgentId（或无 config）时回退到 'claude'，保证不回归。
  */
 export function resolvePreferredAgentType(config: AgentConfigData | null | undefined): string {
   const fallback = 'claude';
-  if (!config?.agents) return fallback;
-  const enabled = Object.entries(config.agents)
-    .filter(([, entry]) => entry?.enabled)
-    .sort((a, b) => (a[1].sortOrder ?? 0) - (b[1].sortOrder ?? 0));
-  return enabled[0]?.[0] ?? fallback;
+  return config?.activeAgentId ?? fallback;
 }
 
 /** 读取配置并解析当前应连接的 agentType（renderer 侧）。 */

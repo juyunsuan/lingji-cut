@@ -286,6 +286,11 @@ export type AuthMode = 'subscription' | 'custom_api';
 export interface AgentConfigData {
   agents: Record<string, AgentEntry>;
   permissionPolicy: PermissionPolicy;
+  /**
+   * 全局当前激活 / 默认 agent id（claude/codex/pi）。
+   * 全局只允许使用一个 agent；新建会话用此 id。缺省（旧数据）回退默认 'claude'。
+   */
+  activeAgentId?: string;
 }
 
 export interface AgentEntry {

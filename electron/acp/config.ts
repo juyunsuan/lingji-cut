@@ -3,9 +3,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import type { AgentConfigData, AgentEntry } from './types';
 
+/** 全局默认 agent id；无 activeAgentId 时回退到此。 */
+export const DEFAULT_AGENT_ID = 'claude';
+
 const DEFAULT_CONFIG: AgentConfigData = {
   agents: {},
   permissionPolicy: 'tiered',
+  activeAgentId: DEFAULT_AGENT_ID,
 };
 
 /**
@@ -94,6 +98,8 @@ export class AgentConfig {
       return {
         permissionPolicy: parsed.permissionPolicy ?? DEFAULT_CONFIG.permissionPolicy,
         agents: ensureDefaultAgents(parsed.agents ?? {}),
+        // 旧数据无 activeAgentId → 归一化后回退默认（不报错）
+        activeAgentId: normalizeAgentId(parsed.activeAgentId ?? DEFAULT_AGENT_ID),
       };
     } catch {
       return {
