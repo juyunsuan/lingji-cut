@@ -145,20 +145,39 @@ function useDropdownPosition(
 	return position;
 }
 
+/**
+ * 点击外部关闭。支持传入多个 ref，任一 ref 命中都不算"外部"。
+ *
+ * 设计动机：下拉通过 createPortal 挂到 document.body，下拉 DOM 不是
+ * 触发容器（trigger ref）的后代。若只检查触发容器，点击下拉选项时
+ * 会被误判为"点击外部"并提前关闭，导致 onClick→handleSelect 被卸载
+ * 掉，用户需要点两三次才能切换。这里同时检查触发容器与下拉节点。
+ */
 function useClickOutside(
-	ref: React.RefObject<HTMLElement | null>,
+	refs: Array<React.RefObject<HTMLElement | null>>,
 	open: boolean,
 	onClose: () => void,
 ) {
+	const onCloseRef = React.useRef(onClose);
 	React.useEffect(() => {
+		onCloseRef.current = onClose;
+	}, [onClose]);
+
+	React.useEffect(() => {
+		if (!open) return;
 		function handleClick(e: MouseEvent) {
-			if (ref.current && !ref.current.contains(e.target as Node)) {
-				onClose();
-			}
+			const target = e.target as Node | null;
+			if (!target) return;
+			const insideAny = refs.some(
+				(ref) => ref.current && ref.current.contains(target),
+			);
+			if (!insideAny) onCloseRef.current();
 		}
-		if (open) document.addEventListener("mousedown", handleClick);
+		document.addEventListener("mousedown", handleClick);
 		return () => document.removeEventListener("mousedown", handleClick);
-	}, [open, onClose, ref]);
+		// refs 数组里的 RefObject 是稳定的（useRef 产出），不参与依赖；
+		// 只跟 open 走，避免每次 render 重建 listener。
+	}, [open, refs]);
 }
 
 // ============================================================================
@@ -198,13 +217,21 @@ function SingleSelectInternal({
 	const buttonRef = React.useRef<HTMLButtonElement>(null);
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const triggerRef = React.useRef<HTMLDivElement>(null);
+	// portal 挂在 document.body，下拉 DOM 不是 containerRef 的后代，
+	// 单独用一个 ref 让 click-outside 同时识别它。
+	const dropdownRef = React.useRef<HTMLDivElement>(null);
 	// combobox 模式用外层包裹 div 作为定位锚；常规模式沿用 button
 	const anchorRef: React.RefObject<HTMLElement | null> = allowCustomValue
 		? triggerRef
 		: buttonRef;
 	const position = useDropdownPosition(open, anchorRef);
 
-	useClickOutside(containerRef, open, () => setOpen(false));
+	// useMemo 锁定数组引用，避免每次 render 都重建 listener
+	const clickOutsideRefs = React.useMemo(
+		() => [containerRef, dropdownRef],
+		[],
+	);
+	useClickOutside(clickOutsideRefs, open, () => setOpen(false));
 
 	// Parse options from children or props
 	const options = React.useMemo<SelectOption[]>(() => {
@@ -341,39 +368,40 @@ function SingleSelectInternal({
 		typeof window !== "undefined"
 			? createPortal(
 					<AnimatePresence>
-						{open && (
-							<m.div
-								initial={{ opacity: 0, scaleY: 0.92, y: enterOffset }}
-								animate={{
-									opacity: 1,
-									scaleY: 1,
-									y: 0,
-									transition: springs.swift,
-								}}
-								exit={{
-									opacity: 0,
-									scaleY: 0.92,
-									y: exitOffset,
-									transition: { duration: durations.fast, ease: easings.apple },
-								}}
-								style={{
-									position: "fixed",
-									top: position.top !== undefined ? `${position.top}px` : undefined,
-									bottom: position.bottom !== undefined ? `${position.bottom}px` : undefined,
-									left: `${position.left}px`,
-									minWidth: `${position.width}px`,
-									maxHeight: `${position.maxHeight}px`,
-									transformOrigin: placeUp ? "bottom center" : "top center",
-								}}
-								className={cn(
-									"z-[10000] flex min-w-32 flex-col overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
-								)}
-							>
-								<ul
-									id={listboxId}
-									role="listbox"
-									className="flex flex-col gap-0.5 overflow-y-auto overscroll-contain py-1 px-1"
+							{open && (
+								<m.div
+									ref={dropdownRef}
+									initial={{ opacity: 0, scaleY: 0.92, y: enterOffset }}
+									animate={{
+										opacity: 1,
+										scaleY: 1,
+										y: 0,
+										transition: springs.swift,
+									}}
+									exit={{
+										opacity: 0,
+										scaleY: 0.92,
+										y: exitOffset,
+										transition: { duration: durations.fast, ease: easings.apple },
+									}}
+									style={{
+										position: "fixed",
+										top: position.top !== undefined ? `${position.top}px` : undefined,
+										bottom: position.bottom !== undefined ? `${position.bottom}px` : undefined,
+										left: `${position.left}px`,
+										minWidth: `${position.width}px`,
+										maxHeight: `${position.maxHeight}px`,
+										transformOrigin: placeUp ? "bottom center" : "top center",
+									}}
+									className={cn(
+										"z-[10000] flex min-w-32 flex-col overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
+									)}
 								>
+									<ul
+										id={listboxId}
+										role="listbox"
+										className="flex flex-col gap-0.5 overflow-y-auto overscroll-contain py-1 px-1"
+									>
 									{visibleOptions.map((opt) => (
 										<li
 											key={opt.value}
@@ -550,9 +578,17 @@ function MultiSelectInternal({
 	const [open, setOpen] = React.useState(false);
 	const containerRef = React.useRef<HTMLDivElement>(null);
 	const buttonRef = React.useRef<HTMLButtonElement>(null);
+	// portal 挂在 document.body，下拉 DOM 不是 containerRef 的后代，
+	// 单独用一个 ref 让 click-outside 同时识别它。
+	const dropdownRef = React.useRef<HTMLDivElement>(null);
 	const position = useDropdownPosition(open, buttonRef);
 
-	useClickOutside(containerRef, open, () => setOpen(false));
+	// useMemo 锁定数组引用，避免每次 render 都重建 listener
+	const clickOutsideRefs = React.useMemo(
+		() => [containerRef, dropdownRef],
+		[],
+	);
+	useClickOutside(clickOutsideRefs, open, () => setOpen(false));
 
 	function toggle(val: string) {
 		const has = value.includes(val);
@@ -581,39 +617,40 @@ function MultiSelectInternal({
 	const dropdown =
 		typeof window !== "undefined"
 			? createPortal(
-					<AnimatePresence>
-						{open && (
-							<m.div
-								initial={{ opacity: 0, scaleY: 0.92, y: enterOffset }}
-								animate={{
-									opacity: 1,
-									scaleY: 1,
-									y: 0,
-									transition: springs.swift,
-								}}
-								exit={{
-									opacity: 0,
-									scaleY: 0.92,
-									y: exitOffset,
-									transition: { duration: durations.fast, ease: easings.apple },
-								}}
-								style={{
-									position: "fixed",
-									top: position.top !== undefined ? `${position.top}px` : undefined,
-									bottom: position.bottom !== undefined ? `${position.bottom}px` : undefined,
-									left: `${position.left}px`,
-									minWidth: `${position.width}px`,
-									maxHeight: `${position.maxHeight}px`,
-									transformOrigin: placeUp ? "bottom center" : "top center",
-								}}
-								className={cn(
-									"z-[10000] flex min-w-32 flex-col overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
-								)}
-							>
-								<ul
-									role="listbox"
-									className="overflow-y-auto overscroll-contain p-1"
+						<AnimatePresence>
+							{open && (
+								<m.div
+									ref={dropdownRef}
+									initial={{ opacity: 0, scaleY: 0.92, y: enterOffset }}
+									animate={{
+										opacity: 1,
+										scaleY: 1,
+										y: 0,
+										transition: springs.swift,
+									}}
+									exit={{
+										opacity: 0,
+										scaleY: 0.92,
+										y: exitOffset,
+										transition: { duration: durations.fast, ease: easings.apple },
+									}}
+									style={{
+										position: "fixed",
+										top: position.top !== undefined ? `${position.top}px` : undefined,
+										bottom: position.bottom !== undefined ? `${position.bottom}px` : undefined,
+										left: `${position.left}px`,
+										minWidth: `${position.width}px`,
+										maxHeight: `${position.maxHeight}px`,
+										transformOrigin: placeUp ? "bottom center" : "top center",
+									}}
+									className={cn(
+										"z-[10000] flex min-w-32 flex-col overflow-hidden rounded-xl border border-mac-border bg-mac-elevated shadow-[0_10px_30px_rgba(0,0,0,0.66)]",
+									)}
 								>
+									<ul
+										role="listbox"
+										className="overflow-y-auto overscroll-contain p-1"
+									>
 									{options.map((opt) => {
 										const isSelected = value.includes(opt.value);
 										return (

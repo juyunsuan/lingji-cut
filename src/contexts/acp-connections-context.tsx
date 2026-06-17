@@ -34,6 +34,23 @@ function createEmptyConnectionState(conversationId: number, agentType = DEFAULT_
   };
 }
 
+function mergeRuntimeStatus(
+  current: ConversationConnectionState,
+  status: ConnectionStatus,
+  keepPrompting = false,
+): ConversationConnectionState {
+  const hasActiveTurn = Boolean(current.liveMessage);
+  const nextStatus =
+    status === 'connected' && current.status === 'prompting' && (hasActiveTurn || keepPrompting)
+      ? 'prompting'
+      : status;
+  return {
+    ...current,
+    status: nextStatus,
+    sessionId: status === 'disconnected' ? null : current.sessionId,
+  };
+}
+
 function toMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
@@ -114,7 +131,11 @@ function updateLiveToolCall(
           type: 'tool_call',
           info: {
             ...block.info,
-            ...info,
+            toolCallId: block.info.toolCallId,
+            title: info.title ?? block.info.title,
+            kind: info.kind ?? block.info.kind,
+            status: info.status ?? block.info.status,
+            rawInput: info.rawInput ?? block.info.rawInput,
             rawOutput:
               info.rawOutputAppend && typeof info.rawOutput === 'string'
                 ? `${block.info.rawOutput ?? ''}${info.rawOutput}`
@@ -203,10 +224,12 @@ export interface AssistantTurnPersistInput {
  */
 export function buildAssistantTurnInput(
   connection: ConversationConnectionState,
-  options: { stopReason: string; sessionStatsJson?: string | null },
+  options: { stopReason: string; sessionStatsJson?: string | null; fallbackAgentType?: string },
 ): AssistantTurnPersistInput {
   const blocks = toPersistedBlocks(connection.liveMessage);
-  const agentId = connection.agentType;
+  const agentId = connection.agentType === DEFAULT_AGENT_TYPE && options.fallbackAgentType
+    ? options.fallbackAgentType
+    : connection.agentType;
   const agentName = getAgentPresentation(agentId).displayName;
   return {
     role: 'assistant',
@@ -261,6 +284,7 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const connectionsRef = useRef<ConnectionsMap>({});
   const workspaceRef = useRef(workspace);
+  const activePromptIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     workspaceRef.current = workspace;
@@ -333,6 +357,7 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
       }
     }
     if (type === 'turn_complete') {
+      activePromptIdsRef.current.delete(conversationId);
       const current = connectionsRef.current[conversationId] ?? createEmptyConnectionState(conversationId);
       const stopReason = String(payload.stopReason ?? 'end_turn');
       const usage =
@@ -341,7 +366,11 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
           : undefined;
       void persistConversationTurn(
         conversationId,
-        buildAssistantTurnInput(current, { stopReason, sessionStatsJson: usage }),
+        buildAssistantTurnInput(current, {
+          stopReason,
+          sessionStatsJson: usage,
+          fallbackAgentType: workspaceRef.current.getDetail(conversationId)?.agentType,
+        }),
       );
     }
 
@@ -351,7 +380,10 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
           return {
             ...current,
             sessionId: String(payload.sessionId ?? ''),
-            status: 'connected',
+            status:
+              current.status === 'prompting' && activePromptIdsRef.current.has(conversationId)
+                ? 'prompting'
+                : 'connected',
           };
         case 'content_delta':
         case 'text':
@@ -423,10 +455,12 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
         case 'turn_complete':
           return {
             ...current,
+            status: 'connected',
             liveMessage: null,
             pendingPermission: null,
           };
         case 'error':
+          activePromptIdsRef.current.delete(conversationId);
           return nextLiveMessageBlock(
             {
               ...current,
@@ -448,11 +482,13 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
     if (typeof window === 'undefined' || !window.agentAPI) return;
 
     const unsubStatus = window.agentAPI.onRuntimeStatusChanged(({ conversationId, status }) => {
-      updateConversationState(conversationId, (current) => ({
-        ...current,
-        status: status as ConnectionStatus,
-        sessionId: status === 'disconnected' ? null : current.sessionId,
-      }));
+      updateConversationState(conversationId, (current) =>
+        mergeRuntimeStatus(
+          current,
+          status as ConnectionStatus,
+          activePromptIdsRef.current.has(conversationId),
+        ),
+      );
     });
 
     const unsubEvent = window.agentAPI.onRuntimeEvent(({ conversationId, event }) => {
@@ -511,6 +547,7 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
 
   async function connect(input: ConnectionCommandInput): Promise<void> {
     if (!window.agentAPI) return;
+    activePromptIdsRef.current.delete(input.conversationId);
     updateConversationState(input.conversationId, (current) => ({
       ...current,
       agentType: input.agentType ?? current.agentType,
@@ -541,6 +578,7 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
 
   async function disconnect(conversationId: number): Promise<void> {
     if (!window.agentAPI) return;
+    activePromptIdsRef.current.delete(conversationId);
     await window.agentAPI.disconnectRuntime(conversationId);
     updateConversationState(conversationId, (current) => ({
       ...current,
@@ -558,6 +596,7 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
   ): Promise<void> {
     if (!window.agentAPI) return;
     setActiveConversationId(conversationId);
+    activePromptIdsRef.current.add(conversationId);
     updateConversationState(conversationId, (current) => ({
       ...current,
       status: 'prompting',
@@ -578,16 +617,27 @@ export function AcpConnectionsProvider({ children }: AcpConnectionsProviderProps
       }
     }
 
-    await persistConversationTurn(conversationId, {
-      role: 'user',
-      blocks: toConversationBlocks(contents),
-    });
-    await window.agentAPI.sendPromptToConversation(conversationId, contents, opts);
+    try {
+      await persistConversationTurn(conversationId, {
+        role: 'user',
+        blocks: toConversationBlocks(contents),
+      });
+      await window.agentAPI.sendPromptToConversation(conversationId, contents, opts);
+    } catch (error) {
+      activePromptIdsRef.current.delete(conversationId);
+      updateConversationState(conversationId, (current) => ({
+        ...current,
+        status: 'error',
+        error: toMessage(error),
+      }));
+      throw error;
+    }
   }
 
   async function cancelTurn(conversationId: number): Promise<void> {
     if (!window.agentAPI) return;
     setActiveConversationId(conversationId);
+    activePromptIdsRef.current.delete(conversationId);
     await window.agentAPI.cancelConversationTurn(conversationId);
     updateConversationState(conversationId, (current) => ({
       ...current,

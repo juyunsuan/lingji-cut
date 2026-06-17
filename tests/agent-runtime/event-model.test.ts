@@ -111,8 +111,30 @@ describe('tool_result', () => {
     expect(result).toEqual({
       type: 'tool_call_update',
       toolCallId: 'call-123',
+      title: undefined,
       status: 'completed',
+      rawInput: undefined,
       rawOutput: 'file1.ts\nfile2.ts',
+      rawOutputAppend: false,
+    });
+  });
+
+  it('maps result name/input back to tool_call_update so UI can show command details', () => {
+    const result = mapEvent({
+      type: 'tool_result',
+      toolUseId: 'call-cmd',
+      name: 'bash',
+      input: { command: 'wc -l original.md' },
+      content: '110 original.md',
+    });
+
+    expect(result).toEqual({
+      type: 'tool_call_update',
+      toolCallId: 'call-cmd',
+      title: 'bash',
+      status: 'completed',
+      rawInput: JSON.stringify({ command: 'wc -l original.md' }),
+      rawOutput: '110 original.md',
       rawOutputAppend: false,
     });
   });
@@ -127,7 +149,9 @@ describe('tool_result', () => {
     expect(result).toEqual({
       type: 'tool_call_update',
       toolCallId: 'call-456',
+      title: undefined,
       status: 'error',
+      rawInput: undefined,
       rawOutput: 'command not found',
       rawOutputAppend: false,
     });
@@ -140,6 +164,24 @@ describe('tool_result', () => {
       content: 'ok',
     });
     expect(result).toMatchObject({ status: 'completed' });
+  });
+});
+
+// ─── tool_input_delta ────────────────────────────────────────────────────────
+
+describe('tool_input_delta', () => {
+  it('maps to tool_call_update with rawInput so streamed tool args stay visible', () => {
+    const result = mapEvent({
+      type: 'tool_input_delta',
+      id: 'call-1',
+      delta: '{"command":"npm test"}',
+    });
+    expect(result).toEqual({
+      type: 'tool_call_update',
+      toolCallId: 'call-1',
+      rawInput: '{"command":"npm test"}',
+      rawOutputAppend: false,
+    });
   });
 });
 
@@ -235,10 +277,6 @@ describe('null branches (unmapped in v1)', () => {
 
   it('thinking_end → null', () => {
     expect(mapEvent({ type: 'thinking_end' })).toBeNull();
-  });
-
-  it('tool_input_delta → null', () => {
-    expect(mapEvent({ type: 'tool_input_delta', id: 'call-1', delta: '{"q' })).toBeNull();
   });
 
   it('raw → null', () => {

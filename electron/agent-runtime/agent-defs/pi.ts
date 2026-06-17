@@ -87,6 +87,9 @@ export const piAgentDef = {
   // 等模式，原样透传即可；'default' 表示跟随 CLI 配置，不传 --model。
   buildArgs: (ctx) => {
     const args = ['--mode', 'rpc'];
+    if (ctx.resumeSessionId) {
+      args.push('--session', ctx.resumeSessionId);
+    }
     if (ctx.model && ctx.model !== 'default') {
       args.push('--model', ctx.model);
     }

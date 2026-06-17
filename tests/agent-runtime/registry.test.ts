@@ -139,6 +139,14 @@ describe('agent-runtime registry', () => {
       expect(args).toContain('rpc');
     });
 
+    it('includes --session <sessionId> when resumeSessionId provided', () => {
+      const def = getAgentDef('pi')!;
+      const args = def.buildArgs({ prompt: 'hello', resumeSessionId: 'pi-session-abc' });
+      expect(args).toContain('--session');
+      const idx = args.indexOf('--session');
+      expect(args[idx + 1]).toBe('pi-session-abc');
+    });
+
     it('reasoning 非 default → 透传 --thinking', () => {
       const def = getAgentDef('pi')!;
       const args = def.buildArgs({ prompt: 'hi', reasoning: 'high' });

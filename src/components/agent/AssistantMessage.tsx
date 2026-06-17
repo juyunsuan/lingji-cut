@@ -21,9 +21,12 @@ import { ThinkingBlock } from './ThinkingBlock';
 import { ErrorBlock } from './ErrorBlock';
 import { ToolCallBlock } from './ToolCallBlock';
 import { ToolGroupBlock } from './ToolGroupBlock';
+import { FileChangedBlock } from './FileChangedBlock';
+import { describeToolCallBlock, fileChangeFromToolCall } from './tool-call-descriptor';
 import type { ConversationBlock, ConversationTurn, PendingPermission } from '../../types/conversation';
 
 type ToolCallBlockData = Extract<ConversationBlock, { type: 'tool_call' }>;
+type FileChangedBlockData = Extract<ConversationBlock, { type: 'file_changed' }>;
 
 /** 把 ConversationBlock 中的 tool_call 收窄为 ToolCallBlock 接收的形状。 */
 function toToolCallProps(block: ToolCallBlockData) {
@@ -38,14 +41,14 @@ function toToolCallProps(block: ToolCallBlockData) {
   };
 }
 
-/**
- * 渲染单元：非 tool_call block 原样分发；连续同名 tool_call 聚合。
- *  - 把 turn.blocks 切成若干段，每段要么是单个非 tool_call block，
- *    要么是一段**连续的**同名 tool_call。
- *  - 段内 1 个 tool_call → 直接渲染 <ToolCallBlock>。
- *  - 段内 ≥2 个同名 tool_call → 渲染 <ToolGroupBlock> 聚合卡。
- * 非 tool_call（text/thinking/error）打断聚合（只聚合连续同名 tool_call）。
- */
+function canGroupToolCalls(a: ToolCallBlockData, b: ToolCallBlockData): boolean {
+  const da = describeToolCallBlock(toToolCallProps(a));
+  const db = describeToolCallBlock(toToolCallProps(b));
+  if (da.category === 'command' && db.category === 'command') return true;
+  if (a.title === b.title) return true;
+  return false;
+}
+
 export function renderBlocks(
   blocks: ConversationBlock[],
   opts: { isLastAssistant?: boolean; isStreaming?: boolean } = {},
@@ -67,6 +70,18 @@ export function renderBlocks(
   while (i < blocks.length) {
     const block = blocks[i];
     if (block.type !== 'tool_call') {
+      if (block.type === 'file_changed') {
+        const group: FileChangedBlockData[] = [];
+        let j = i;
+        while (j < blocks.length && blocks[j].type === 'file_changed') {
+          group.push(blocks[j] as FileChangedBlockData);
+          j += 1;
+        }
+        out.push(<FileChangedBlock key={`files-${i}`} files={group} />);
+        i = j;
+        continue;
+      }
+
       switch (block.type) {
         case 'text':
           out.push(<TextBlock key={i} text={block.text} />);
@@ -93,13 +108,28 @@ export function renderBlocks(
       continue;
     }
 
-    // 收集从 i 起连续的同名 tool_call。
-    const groupTitle = block.title;
+    // 连续的 edit/write/delete 工具调用在最外层提升为文件变更块，避免埋在普通工具调用里。
     const group: ToolCallBlockData[] = [];
     let j = i;
+    const firstFileChange = fileChangeFromToolCall(toToolCallProps(block));
+    if (firstFileChange) {
+      const files = [];
+      while (j < blocks.length && blocks[j].type === 'tool_call') {
+        const file = fileChangeFromToolCall(toToolCallProps(blocks[j] as ToolCallBlockData));
+        if (!file) break;
+        files.push({ type: 'file_changed' as const, ...file });
+        j += 1;
+      }
+      out.push(<FileChangedBlock key={`tool-files-${i}`} files={files} />);
+      i = j;
+      continue;
+    }
+
+    group.push(block);
+    j = i + 1;
     while (j < blocks.length) {
       const b = blocks[j];
-      if (b.type !== 'tool_call' || b.title !== groupTitle) break;
+      if (b.type !== 'tool_call' || !canGroupToolCalls(group[group.length - 1], b)) break;
       group.push(b);
       j += 1;
     }
@@ -114,7 +144,6 @@ export function renderBlocks(
   return out;
 }
 
-/** 从 turn 的 text 块拼出可复制的纯文本（thinking / tool_call / error 不计入）。 */
 function copyableText(turn: ConversationTurn): string {
   return turn.blocks
     .filter((block): block is Extract<ConversationBlock, { type: 'text' }> => block.type === 'text')

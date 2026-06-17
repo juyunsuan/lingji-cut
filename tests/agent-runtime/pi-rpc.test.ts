@@ -8,6 +8,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { EventEmitter } from 'events';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { mapPiRpcEvent, createPiRpcSession } from '../../electron/agent-runtime/parsers/pi-rpc';
 import type { PiMapResult } from '../../electron/agent-runtime/parsers/pi-rpc';
 import type { AgentStreamEvent } from '../../electron/agent-runtime/event-model';
@@ -55,6 +58,53 @@ describe('mapPiRpcEvent', () => {
       });
       expect(result).toEqual({
         event: { type: 'thinking_delta', delta: 'thinking...' } satisfies AgentStreamEvent,
+      });
+    });
+  });
+
+  describe('message_update toolcall events', () => {
+    it('maps toolcall_start to tool_use with streamed arguments', () => {
+      const result = mapPiRpcEvent({
+        type: 'message_update',
+        assistantMessageEvent: {
+          type: 'toolcall_start',
+          toolCall: {
+            id: 'tc-bash',
+            name: 'bash',
+            arguments: { command: 'npm test -- --run tests/agent-runtime/pi-rpc.test.ts' },
+          },
+        },
+      });
+
+      expect(result).toEqual({
+        event: {
+          type: 'tool_use',
+          id: 'tc-bash',
+          name: 'bash',
+          input: { command: 'npm test -- --run tests/agent-runtime/pi-rpc.test.ts' },
+        } satisfies AgentStreamEvent,
+      });
+    });
+
+    it('maps partial toolcall args to tool_input_delta when JSON is incomplete', () => {
+      const result = mapPiRpcEvent({
+        type: 'message_update',
+        assistantMessageEvent: {
+          type: 'toolcall_delta',
+          toolCall: {
+            id: 'tc-bash',
+            name: 'bash',
+            partialArgs: '{"command":"npm',
+          },
+        },
+      });
+
+      expect(result).toEqual({
+        event: {
+          type: 'tool_input_delta',
+          id: 'tc-bash',
+          delta: '{"command":"npm',
+        } satisfies AgentStreamEvent,
       });
     });
   });
@@ -115,6 +165,8 @@ describe('mapPiRpcEvent', () => {
       const result = mapPiRpcEvent({
         type: 'tool_execution_end',
         toolCallId: 'tc-001',
+        toolName: 'bash',
+        args: { command: 'wc -l original.md' },
         output: 'file1.ts\nfile2.ts',
         isError: false,
       });
@@ -122,6 +174,8 @@ describe('mapPiRpcEvent', () => {
         event: {
           type: 'tool_result',
           toolUseId: 'tc-001',
+          name: 'bash',
+          input: { command: 'wc -l original.md' },
           content: 'file1.ts\nfile2.ts',
           isError: false,
         } satisfies AgentStreamEvent,
@@ -135,7 +189,7 @@ describe('mapPiRpcEvent', () => {
         result: 'ok',
       });
       expect(result).toMatchObject({
-        event: { type: 'tool_result', toolUseId: 'tc-002', content: 'ok' },
+        event: { type: 'tool_result', toolUseId: 'tc-002', content: 'ok', name: undefined, input: undefined },
       });
     });
 
@@ -208,6 +262,29 @@ describe('mapPiRpcEvent', () => {
           costUsd: undefined,
           durationMs: undefined,
         },
+      });
+    });
+
+    it('maps completed assistant text from turn_end.message when no streaming delta was emitted', () => {
+      const result = mapPiRpcEvent({
+        type: 'turn_end',
+        message: {
+          role: 'assistant',
+          content: [{ type: 'text', text: 'final answer from pi' }],
+        },
+      });
+
+      expect(result).toEqual({
+        events: [
+          { type: 'text_delta', delta: 'final answer from pi' },
+          {
+            type: 'usage',
+            inputTokens: undefined,
+            outputTokens: undefined,
+            costUsd: undefined,
+            durationMs: undefined,
+          },
+        ],
       });
     });
   });
@@ -311,7 +388,7 @@ describe('createPiRpcSession (smoke tests)', () => {
     );
   });
 
-  it('writes prompt command to stdin on startup (no parentSession)', () => {
+  it('writes get_state then prompt command to stdin on startup', () => {
     const { child, stdin } = makeFakeChild();
 
     createPiRpcSession({ child, prompt: 'test prompt', onEvent });
@@ -319,12 +396,43 @@ describe('createPiRpcSession (smoke tests)', () => {
     const writeCalls: string[] = (stdin.write as ReturnType<typeof vi.fn>).mock.calls.map(
       (args: unknown[]) => args[0] as string,
     );
-    // 只有一条 prompt 命令，真实协议形状 {id, type:'prompt', message}
-    expect(writeCalls).toHaveLength(1);
-    const cmd = JSON.parse(writeCalls[0]);
-    expect(cmd.type).toBe('prompt');
-    expect(cmd.message).toBe('test prompt');
-    expect(typeof cmd.id).toBe('number');
+    // 先请求 session state 以拿到 Pi sessionId，再发送 prompt。
+    expect(writeCalls).toHaveLength(2);
+    const stateCmd = JSON.parse(writeCalls[0]);
+    expect(stateCmd.type).toBe('get_state');
+    expect(typeof stateCmd.id).toBe('number');
+    const promptCmd = JSON.parse(writeCalls[1]);
+    expect(promptCmd.type).toBe('prompt');
+    expect(promptCmd.message).toBe('test prompt');
+    expect(typeof promptCmd.id).toBe('number');
+  });
+
+  it('emits session_started from get_state response data.sessionId', () => {
+    const { child, stdin, stdout } = makeFakeChild();
+
+    createPiRpcSession({ child, prompt: 'hello', onEvent });
+
+    const getState = JSON.parse(
+      (stdin.write as ReturnType<typeof vi.fn>).mock.calls[0][0] as string,
+    );
+    stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'response',
+          id: getState.id,
+          command: 'get_state',
+          success: true,
+          data: { sessionId: 'pi-session-123' },
+        }) + '\n',
+      ),
+    );
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: 'status',
+      label: 'connected',
+      sessionId: 'pi-session-123',
+    });
   });
 
   it('parentSession：先发 new_session，待 response 回执后才发 prompt（门控）', () => {
@@ -340,7 +448,7 @@ describe('createPiRpcSession (smoke tests)', () => {
     const writes = () =>
       (stdin.write as ReturnType<typeof vi.fn>).mock.calls.map((a: unknown[]) => JSON.parse(a[0] as string));
 
-    // 初始只写 new_session，prompt 未发
+    // 初始只写 new_session；get_state 要在新会话创建后读取，避免拿到旧 sessionId。
     let cmds = writes();
     expect(cmds).toHaveLength(1);
     expect(cmds[0].type).toBe('new_session');
@@ -353,9 +461,10 @@ describe('createPiRpcSession (smoke tests)', () => {
       Buffer.from(JSON.stringify({ type: 'response', id: newSessionId, success: true }) + '\n'),
     );
     cmds = writes();
-    expect(cmds).toHaveLength(2);
-    expect(cmds[1].type).toBe('prompt');
-    expect(cmds[1].message).toBe('resume question');
+    expect(cmds).toHaveLength(3);
+    expect(cmds[1].type).toBe('get_state');
+    expect(cmds[2].type).toBe('prompt');
+    expect(cmds[2].message).toBe('resume question');
   });
 
   it('自动应答 extension_ui_request（confirm→confirmed:true），避免 pi 阻塞', () => {
@@ -401,6 +510,132 @@ describe('createPiRpcSession (smoke tests)', () => {
     expect(onEvent).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'text_delta', delta: 'real' }),
     );
+  });
+
+  it('同一个 toolcall 多次流式更新时只创建一次工具调用，后续更新 rawInput', () => {
+    const { child, stdout } = makeFakeChild();
+    createPiRpcSession({ child, prompt: 'tool', onEvent });
+
+    stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'message_update',
+          assistantMessageEvent: {
+            type: 'toolcall_start',
+            toolCall: { id: 'tc-1', name: 'bash', arguments: { command: 'npm' } },
+          },
+        }) + '\n',
+      ),
+    );
+    stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'message_update',
+          assistantMessageEvent: {
+            type: 'toolcall_delta',
+            toolCall: { id: 'tc-1', name: 'bash', arguments: { command: 'npm test' } },
+          },
+        }) + '\n',
+      ),
+    );
+
+    const toolEvents = onEvent.mock.calls.map((c: unknown[]) => c[0] as AgentStreamEvent);
+    expect(toolEvents.filter((event) => event.type === 'tool_use')).toEqual([
+      { type: 'tool_use', id: 'tc-1', name: 'bash', input: { command: 'npm' } },
+    ]);
+    expect(toolEvents).toContainEqual({
+      type: 'tool_input_delta',
+      id: 'tc-1',
+      delta: JSON.stringify({ command: 'npm test' }),
+    });
+  });
+
+  it('tool_execution_end uses cached start input/name when end only contains output', () => {
+    const { child, stdout } = makeFakeChild();
+    createPiRpcSession({ child, prompt: 'tool', onEvent });
+
+    stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'tool_execution_start',
+          toolCallId: 'cmd-1',
+          toolName: 'bash',
+          args: { command: 'wc -l original.md' },
+        }) + '\n',
+      ),
+    );
+    stdout.emit(
+      'data',
+      Buffer.from(
+        JSON.stringify({
+          type: 'tool_execution_end',
+          toolCallId: 'cmd-1',
+          output: '110 original.md',
+        }) + '\n',
+      ),
+    );
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: 'tool_result',
+      toolUseId: 'cmd-1',
+      name: 'bash',
+      input: { command: 'wc -l original.md' },
+      content: '110 original.md',
+      isError: false,
+    });
+  });
+
+  it('file edit results include before/after snapshots when Pi only returns success text', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-edit-snapshot-'));
+    try {
+      fs.writeFileSync(path.join(tmp, 'original.md'), '原稿', 'utf-8');
+      const { child, stdout } = makeFakeChild();
+      createPiRpcSession({ child, prompt: 'tool', cwd: tmp, onEvent });
+
+      stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'tool_execution_start',
+            toolCallId: 'edit-1',
+            toolName: 'edit',
+            args: { target: 'original.md' },
+          }) + '\n',
+        ),
+      );
+
+      fs.writeFileSync(path.join(tmp, 'original.md'), '你好，原稿', 'utf-8');
+
+      stdout.emit(
+        'data',
+        Buffer.from(
+          JSON.stringify({
+            type: 'tool_execution_end',
+            toolCallId: 'edit-1',
+            output: 'Successfully replaced 1 block(s) in original.md.',
+          }) + '\n',
+        ),
+      );
+
+      expect(onEvent).toHaveBeenCalledWith({
+        type: 'tool_result',
+        toolUseId: 'edit-1',
+        name: 'edit',
+        input: {
+          target: 'original.md',
+          path: 'original.md',
+          before: '原稿',
+          after: '你好，原稿',
+        },
+        content: 'Successfully replaced 1 block(s) in original.md.',
+        isError: false,
+      });
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   it('dispose() removes stdout listeners', () => {

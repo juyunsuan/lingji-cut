@@ -72,6 +72,134 @@ describe('AssistantMessage block 分发', () => {
     // ErrorBlock（错误文案）
     expect(html).toContain('工具执行失败：超时');
   });
+
+  it('renders grouped file_changed blocks with a diff preview', () => {
+    const html = renderToStaticMarkup(
+      <AssistantMessage
+        turn={makeTurn({
+          blocks: [
+            {
+              type: 'file_changed',
+              path: 'src/index.js',
+              before: 'const a = 1;\nconst b = 2;',
+              after: 'const a = 1;\nconst b = 3;',
+            },
+            {
+              type: 'file_changed',
+              path: 'src/other.js',
+              before: 'old',
+              after: 'new',
+            },
+          ],
+        })}
+      />,
+    );
+    expect(html).toContain('编辑了 2 个文件');
+    expect(html).toContain('index.js');
+    expect(html).toContain('src/other.js');
+    expect(html).toContain('const b = 2;');
+    expect(html).toContain('const b = 3;');
+  });
+
+  it('promotes consecutive edit/write/delete tool calls into a file change block', () => {
+    const html = renderToStaticMarkup(
+      <AssistantMessage
+        turn={makeTurn({
+          blocks: [
+            {
+              type: 'tool_call',
+              toolCallId: 'edit-1',
+              title: 'edit',
+              kind: 'edit',
+              status: 'completed',
+              rawInput: '{"path":"src/a.ts","oldString":"old","newString":"new"}',
+              rawOutput: '--- a/src/a.ts\n+++ b/src/a.ts\n@@ -1 +1 @@\n-old\n+new',
+            },
+            {
+              type: 'tool_call',
+              toolCallId: 'write-1',
+              title: 'write',
+              kind: 'edit',
+              status: 'completed',
+              rawInput: '{"path":"src/b.ts","content":"hello\\nworld"}',
+              rawOutput: 'Wrote src/b.ts',
+            },
+            {
+              type: 'tool_call',
+              toolCallId: 'delete-1',
+              title: 'delete',
+              kind: 'edit',
+              status: 'completed',
+              rawInput: '{"path":"src/c.ts"}',
+              rawOutput: 'Deleted src/c.ts',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain('变更了 3 个文件');
+    expect(html).toContain('a.ts');
+    expect(html).toContain('src/b.ts');
+    expect(html).toContain('src/c.ts');
+    expect(html).not.toContain('工具调用');
+  });
+
+  it('groups consecutive command tool calls even when their titles differ', () => {
+    const html = renderToStaticMarkup(
+      <AssistantMessage
+        turn={makeTurn({
+          blocks: [
+            {
+              type: 'tool_call',
+              toolCallId: 'cmd-1',
+              title: 'bash',
+              kind: 'execute',
+              status: 'completed',
+              rawInput: '{"command":"git diff --stat"}',
+              rawOutput: '1 file changed',
+            },
+            {
+              type: 'tool_call',
+              toolCallId: 'cmd-2',
+              title: 'exec_command',
+              kind: 'execute',
+              status: 'completed',
+              rawInput: '{"cmd":"npm test -- --run tests/assistant-message.test.tsx"}',
+              rawOutput: 'passed',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain('已运行 2 条命令');
+  });
+
+  it('promotes apply_patch style tool calls into a file change block', () => {
+    const html = renderToStaticMarkup(
+      <AssistantMessage
+        turn={makeTurn({
+          blocks: [
+            {
+              type: 'tool_call',
+              toolCallId: 'patch-1',
+              title: 'apply_patch',
+              kind: 'edit',
+              status: 'completed',
+              rawInput: '*** Begin Patch\n*** Update File: src/patched.ts\n@@\n-old\n+new\n*** End Patch',
+              rawOutput: 'Success. Updated the following files:\nM src/patched.ts',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain('编辑了 1 个文件');
+    expect(html).toContain('patched.ts');
+    expect(html).toContain('old');
+    expect(html).toContain('new');
+  });
 });
 
 describe('AssistantMessage agent 头', () => {

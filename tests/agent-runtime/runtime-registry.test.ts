@@ -359,6 +359,24 @@ describe('RuntimeRegistry', () => {
     expect(c2.map((e) => e.event.text)).toEqual(['B']);
   });
 
+  it('pi resume uses CLI --session semantics and does not send RPC parentSession', async () => {
+    const { registry, sessions } = makeRegistry();
+    attachListeners(registry);
+
+    await registry.connect({
+      conversationId: 1,
+      agentType: 'pi',
+      projectDir: '/proj',
+      sessionId: 'pi-session-123',
+    });
+    await registry.sendPrompt(1, [{ type: 'text', text: 'continue' }]);
+
+    const started = sessions.find((s) => s.startCalls > 0)!;
+    expect(started.lastInput!.resumeSessionId).toBe('pi-session-123');
+    expect(started.lastInput!.isResuming).toBe(true);
+    expect(started.lastInput!.parentSession).toBeNull();
+  });
+
   it('兼容方法存在：setPermissionPolicy / setMode / setConfigOption / respondPermission 不抛', async () => {
     const { registry } = makeRegistry();
     await registry.connect({ ...baseConnect });

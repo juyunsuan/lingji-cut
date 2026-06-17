@@ -37,7 +37,7 @@ export type AgentStreamEvent =
   | { type: 'thinking_end' }
   | { type: 'tool_use'; id: string; name: string; input: unknown }
   | { type: 'tool_input_delta'; id: string; delta: string }
-  | { type: 'tool_result'; toolUseId: string; content: string; isError?: boolean }
+  | { type: 'tool_result'; toolUseId: string; content: string; isError?: boolean; name?: string; input?: unknown }
   | { type: 'usage'; inputTokens?: number; outputTokens?: number; costUsd?: number; durationMs?: number }
   | { type: 'turn_end'; stopReason?: string }
   | { type: 'error'; message: string; raw?: string }
@@ -119,7 +119,7 @@ export function classifyToolKind(name: string): string {
  * 把协议无关的 AgentStreamEvent 映射到 Renderer 侧 applyRuntimeEvent 消费的形状。
  * status：带 sessionId → session_started；不带 sessionId → null。
  * 不映射的事件类型返回 null：
- *   thinking_start / thinking_end / tool_input_delta / raw
+ *   thinking_start / thinking_end / raw
  */
 export function toRuntimeEvent(ev: AgentStreamEvent): RuntimeEventOut | null {
   switch (ev.type) {
@@ -151,8 +151,18 @@ export function toRuntimeEvent(ev: AgentStreamEvent): RuntimeEventOut | null {
       return {
         type: 'tool_call_update',
         toolCallId: ev.toolUseId,
+        title: ev.name,
         status: ev.isError ? 'error' : 'completed',
+        rawInput: ev.input !== undefined ? JSON.stringify(ev.input ?? null) : undefined,
         rawOutput: ev.content,
+        rawOutputAppend: false,
+      };
+
+    case 'tool_input_delta':
+      return {
+        type: 'tool_call_update',
+        toolCallId: ev.id,
+        rawInput: ev.delta,
         rawOutputAppend: false,
       };
 
@@ -184,7 +194,6 @@ export function toRuntimeEvent(ev: AgentStreamEvent): RuntimeEventOut | null {
     // 首版不映射，返回 null
     case 'thinking_start':
     case 'thinking_end':
-    case 'tool_input_delta':
     case 'raw':
       return null;
 

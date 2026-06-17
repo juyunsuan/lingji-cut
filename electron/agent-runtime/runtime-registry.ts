@@ -232,9 +232,8 @@ export class RuntimeRegistry extends EventEmitter {
         reasoning: entry.reasoning ?? entry.def.defaultReasoning,
         env: entry.env,
         skills: entry.skills,
-        // resume：pi 经 parentSession，claude/codex 经 resumeSessionId。
-        // TODO(A10+): 区分协议传递 resume；首版统一透传已记录 sessionId。
-        parentSession: entry.snapshot.sessionId,
+        // Pi 恢复历史会话走 CLI `--session`；RPC `new_session(parentSession)` 是新建派生会话。
+        parentSession: entry.def.id === 'pi' ? null : entry.snapshot.sessionId,
         resumeSessionId: entry.snapshot.sessionId,
         isResuming: Boolean(entry.snapshot.sessionId),
         onEvent,

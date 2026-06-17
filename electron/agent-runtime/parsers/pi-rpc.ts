@@ -22,6 +22,8 @@
  * 与参考实现 open-design 的 replyExtensionUi 一致：confirm→true，select→首项。
  */
 
+import fs from 'node:fs';
+import path from 'node:path';
 import type { AgentStreamEvent } from '../event-model';
 import { createJsonLineStream } from './line-stream';
 
@@ -31,10 +33,43 @@ function asRecord(v: unknown): Record<string, unknown> | undefined {
   return v && typeof v === 'object' ? (v as Record<string, unknown>) : undefined;
 }
 
+function recordFromUnknown(v: unknown): Record<string, unknown> | undefined {
+  const direct = asRecord(v);
+  if (direct) return direct;
+  if (typeof v !== 'string' || !v.trim().startsWith('{')) return undefined;
+  try {
+    return asRecord(JSON.parse(v));
+  } catch {
+    return undefined;
+  }
+}
+
 function firstNumber(...vals: unknown[]): number | undefined {
   for (const v of vals) if (typeof v === 'number') return v;
   return undefined;
 }
+
+function firstString(...vals: unknown[]): string | undefined {
+  for (const v of vals) if (typeof v === 'string' && v) return v;
+  return undefined;
+}
+
+const FILE_PATH_KEYS = [
+  'path',
+  'file_path',
+  'filePath',
+  'filepath',
+  'target',
+  'targetPath',
+  'target_path',
+  'uri',
+  'file',
+  'fileName',
+  'filename',
+];
+const FILE_EDIT_OLD_KEYS = ['oldString', 'old_string', 'oldText', 'old_text', 'before', 'original', 'old'];
+const FILE_EDIT_NEW_KEYS = ['newString', 'new_string', 'newText', 'new_text', 'after', 'replacement', 'replace', 'new'];
+const MAX_SNAPSHOT_BYTES = 512 * 1024;
 
 /** pi 的 fire-and-forget 扩展方法：无需应答，静默消费。 */
 const FIRE_AND_FORGET_METHODS = new Set([
@@ -61,9 +96,123 @@ function extractToolContent(r: Record<string, unknown>): string {
   return typeof rawOut === 'string' ? rawOut : JSON.stringify(rawOut ?? null);
 }
 
+function extractAssistantText(message: Record<string, unknown> | undefined): string {
+  if (!message || message['role'] !== 'assistant') return '';
+  const content = message['content'];
+  if (!Array.isArray(content)) return '';
+  return content
+    .map((c) => {
+      const item = asRecord(c);
+      return item?.['type'] === 'text' ? String(item['text'] ?? '') : '';
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
+function parseToolArgs(toolCall: Record<string, unknown>): unknown {
+  const args = toolCall['arguments'];
+  if (args && typeof args === 'object') return args;
+
+  const partialArgs = toolCall['partialArgs'];
+  if (typeof partialArgs !== 'string' || !partialArgs) return undefined;
+  try {
+    return JSON.parse(partialArgs);
+  } catch {
+    return undefined;
+  }
+}
+
+function pickStringDeep(record: Record<string, unknown> | undefined, keys: string[]): string | undefined {
+  if (!record) return undefined;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+
+  const nestedKeys = ['input', 'args', 'arguments', 'params', 'data', 'payload', 'file', 'target', 'options'];
+  for (const key of nestedKeys) {
+    const value = pickStringDeep(recordFromUnknown(record[key]), keys);
+    if (value) return value;
+  }
+
+  for (const value of Object.values(record)) {
+    const found = pickStringDeep(recordFromUnknown(value), keys);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+function isFileEditTool(name: string | undefined, input: unknown): boolean {
+  const normalized = String(name || '').toLowerCase();
+  const args = recordFromUnknown(input);
+  if (/(edit|write|create|overwrite|patch|apply|replace|delete|remove|unlink)/.test(normalized)) {
+    return true;
+  }
+  return Boolean(
+    pickStringDeep(args, FILE_PATH_KEYS) &&
+      pickStringDeep(args, [...FILE_EDIT_OLD_KEYS, ...FILE_EDIT_NEW_KEYS]),
+  );
+}
+
+function resolveSnapshotPath(cwd: string | undefined, input: unknown): string | null {
+  if (!cwd) return null;
+  const args = recordFromUnknown(input);
+  const rawPath = pickStringDeep(args, FILE_PATH_KEYS);
+  if (!rawPath || rawPath.startsWith('file://')) return null;
+  const candidate = path.isAbsolute(rawPath) ? rawPath : path.resolve(cwd, rawPath);
+  const relative = path.relative(cwd, candidate);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) return null;
+  return candidate;
+}
+
+function readSmallTextFile(filePath: string): string | null {
+  try {
+    const stat = fs.statSync(filePath);
+    if (!stat.isFile() || stat.size > MAX_SNAPSHOT_BYTES) return null;
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch {
+    return null;
+  }
+}
+
+function injectFileSnapshot(
+  input: unknown,
+  snapshot: { path: string; before: string | null; after: string | null },
+): unknown {
+  const base = recordFromUnknown(input);
+  if (!base) return input;
+  return {
+    ...base,
+    path: pickStringDeep(base, FILE_PATH_KEYS) ?? snapshot.path,
+    ...(snapshot.before !== null ? { before: snapshot.before } : {}),
+    ...(snapshot.after !== null ? { after: snapshot.after } : {}),
+  };
+}
+
+function getPartialToolArgs(toolCall: Record<string, unknown>): string | undefined {
+  const partialArgs = toolCall['partialArgs'];
+  return typeof partialArgs === 'string' && partialArgs ? partialArgs : undefined;
+}
+
+function extractMessageToolCall(inner: Record<string, unknown>): Record<string, unknown> | undefined {
+  const direct = asRecord(inner['toolCall']);
+  if (direct) return direct;
+
+  const partial = asRecord(inner['partial']);
+  const content = partial?.['content'];
+  if (!Array.isArray(content)) return undefined;
+
+  const index = typeof inner['contentIndex'] === 'number' ? inner['contentIndex'] : 0;
+  return asRecord(content[index]);
+}
+
 // ─── 纯映射层 ──────────────────────────────────────────────────────────────────
 
-export type PiMapResult = { event?: AgentStreamEvent; signal?: 'agent_end' };
+export type PiMapResult = {
+  event?: AgentStreamEvent;
+  events?: AgentStreamEvent[];
+  signal?: 'agent_end';
+};
 
 /**
  * 把 Pi RPC 的一条原始事件对象映射成 AgentStreamEvent 或控制信号。
@@ -98,6 +247,29 @@ export function mapPiRpcEvent(raw: unknown): PiMapResult {
       if (innerType === 'thinking_end') {
         return { event: { type: 'thinking_end' } };
       }
+      if (
+        innerType === 'toolcall_start' ||
+        innerType === 'toolcall_delta' ||
+        innerType === 'toolcall_end'
+      ) {
+        const toolCall = extractMessageToolCall(inner);
+        if (!toolCall) return {};
+
+        const id = firstString(toolCall['id'], inner['toolCallId']) ?? '';
+        if (!id) return {};
+
+        const name = firstString(toolCall['name'], toolCall['toolName'], inner['toolName']) ?? '';
+        const input = parseToolArgs(toolCall);
+        if (input !== undefined) {
+          return { event: { type: 'tool_use', id, name, input } };
+        }
+
+        const delta = getPartialToolArgs(toolCall);
+        if (delta) {
+          return { event: { type: 'tool_input_delta', id, delta } };
+        }
+        return { event: { type: 'tool_use', id, name, input: null } };
+      }
       if (innerType === 'error') {
         const message =
           (inner['reason'] as string) ||
@@ -123,9 +295,15 @@ export function mapPiRpcEvent(raw: unknown): PiMapResult {
 
     case 'tool_execution_end': {
       const toolUseId = (r['toolCallId'] as string | undefined) ?? '';
+      const name =
+        (r['toolName'] as string | undefined) ??
+        (r['tool_name'] as string | undefined) ??
+        (r['name'] as string | undefined) ??
+        undefined;
+      const input = r['args'] ?? r['input'];
       const content = extractToolContent(r);
       const isError = (r['isError'] as boolean | undefined) ?? false;
-      return { event: { type: 'tool_result', toolUseId, content, isError } };
+      return { event: { type: 'tool_result', toolUseId, content, isError, name, input } };
     }
 
     case 'turn_end': {
@@ -137,9 +315,23 @@ export function mapPiRpcEvent(raw: unknown): PiMapResult {
       const cost = asRecord(usageObj?.['cost']);
       const costUsd = firstNumber(cost?.['total'], cost?.['totalCost'], usageObj?.['costUsd']);
       const durationMs = firstNumber(usageObj?.['durationMs']);
-      return {
-        event: { type: 'usage', inputTokens, outputTokens, costUsd, durationMs },
+      const usageEvent: AgentStreamEvent = {
+        type: 'usage',
+        inputTokens,
+        outputTokens,
+        costUsd,
+        durationMs,
       };
+      const text = extractAssistantText(message);
+      if (text) {
+        return {
+          events: [
+            { type: 'text_delta', delta: text },
+            usageEvent,
+          ],
+        };
+      }
+      return { event: usageEvent };
     }
 
     case 'message_end':
@@ -191,14 +383,20 @@ export interface PiRpcSession {
  * 自动应答 extension_ui_request（否则 pi 阻塞）；signal:'agent_end' 时 emit turn_end。
  */
 export function createPiRpcSession(deps: PiRpcSessionDeps): PiRpcSession {
-  const { child, prompt, parentSession, onEvent } = deps;
+  const { child, prompt, cwd, parentSession, onEvent } = deps;
   const stdin = child.stdin;
 
   let finished = false;
   let stdinOpen = true;
   let nextRpcId = 1;
+  let getStateRpcId: number | null = null;
   let parentSessionRpcId: number | null = null;
   let promptRpcId: number | null = null;
+  let sawStreamingText = false;
+  const streamedToolInputs = new Map<string, unknown>();
+  const streamedToolNames = new Map<string, string>();
+  const emittedToolIds = new Set<string>();
+  const fileSnapshots = new Map<string, { path: string; before: string | null }>();
 
   function sendCommand(type: string, params: Record<string, unknown> = {}): number | null {
     if (!stdinOpen) return null;
@@ -213,6 +411,10 @@ export function createPiRpcSession(deps: PiRpcSessionDeps): PiRpcSession {
 
   function sendPromptCommand(): void {
     promptRpcId = sendCommand('prompt', { message: prompt });
+  }
+
+  function sendGetStateCommand(): void {
+    getStateRpcId = sendCommand('get_state');
   }
 
   /** 自动应答 pi 的扩展 UI 请求，保持 pi 不阻塞。 */
@@ -246,49 +448,146 @@ export function createPiRpcSession(deps: PiRpcSessionDeps): PiRpcSession {
     }
   }
 
-  const lineStream = createJsonLineStream({
-    onJson: (obj) => {
-      const r = asRecord(obj);
-      if (!r) return;
-      if (finished) return;
+  function rememberFileSnapshot(event: Extract<AgentStreamEvent, { type: 'tool_use' }>): void {
+    if (!isFileEditTool(event.name, event.input)) return;
+    const filePath = resolveSnapshotPath(cwd, event.input);
+    if (!filePath) return;
+    const before = readSmallTextFile(filePath);
+    fileSnapshots.set(event.id, { path: path.relative(cwd || '', filePath) || filePath, before });
+  }
 
-      // 扩展 UI 请求：自动应答，避免 pi 阻塞导致整轮卡死。
-      if (r['type'] === 'extension_ui_request') {
-        replyExtensionUi(r);
+  function enrichToolResultInput(
+    event: Extract<AgentStreamEvent, { type: 'tool_result' }>,
+    input: unknown,
+  ): unknown {
+    const snapshot = fileSnapshots.get(event.toolUseId);
+    if (!snapshot) return input;
+    fileSnapshots.delete(event.toolUseId);
+    const filePath = cwd ? path.resolve(cwd, snapshot.path) : snapshot.path;
+    const after = readSmallTextFile(filePath);
+    if (snapshot.before === after) return input;
+    return injectFileSnapshot(input, { ...snapshot, after });
+  }
+
+  function handleJson(obj: unknown): void {
+    const r = asRecord(obj);
+    if (!r) return;
+    if (finished) return;
+    if (r['type'] === 'agent_start' || r['type'] === 'turn_start') {
+      sawStreamingText = false;
+    }
+
+    // 扩展 UI 请求：自动应答，避免 pi 阻塞导致整轮卡死。
+    if (r['type'] === 'extension_ui_request') {
+      replyExtensionUi(r);
+      return;
+    }
+
+    // RPC 命令回执（prompt / new_session 的 ack）：非 agent 事件。
+    if (r['type'] === 'response') {
+      if (r['id'] === getStateRpcId) {
+        const data = asRecord(r['data']);
+        const sessionId = data?.['sessionId'];
+        if (typeof sessionId === 'string' && sessionId) {
+          onEvent({ type: 'status', label: 'connected', sessionId });
+        }
         return;
       }
-
-      // RPC 命令回执（prompt / new_session 的 ack）：非 agent 事件。
-      if (r['type'] === 'response') {
-        if (r['id'] === parentSessionRpcId) {
-          if (r['success'] === false) {
-            finished = true;
-            onEvent({
-              type: 'error',
-              message: `parent session rejected: ${String(r['error'] ?? 'unknown')}`,
-            });
-            return;
-          }
-          // 父会话已加载：现在才发 prompt。
-          sendPromptCommand();
+      if (r['id'] === parentSessionRpcId) {
+        if (r['success'] === false) {
+          finished = true;
+          onEvent({
+            type: 'error',
+            message: `parent session rejected: ${String(r['error'] ?? 'unknown')}`,
+          });
           return;
         }
-        if (r['id'] === promptRpcId && r['success'] === false) {
-          finished = true;
-          onEvent({ type: 'error', message: `prompt rejected: ${String(r['error'] ?? 'unknown')}` });
-        }
+        // 父会话已加载：现在才发 prompt。
+        sendGetStateCommand();
+        sendPromptCommand();
         return;
       }
-
-      const result = mapPiRpcEvent(r);
-      if (result.event) {
-        onEvent(result.event);
-      }
-      if (result.signal === 'agent_end') {
+      if (r['id'] === promptRpcId && r['success'] === false) {
         finished = true;
-        onEvent({ type: 'turn_end' });
+        onEvent({ type: 'error', message: `prompt rejected: ${String(r['error'] ?? 'unknown')}` });
       }
-    },
+      return;
+    }
+
+    const result = mapPiRpcEvent(r);
+    const events = result.events ?? (result.event ? [result.event] : []);
+    for (const event of events) {
+      if (event.type === 'text_delta') {
+        if (result.events && sawStreamingText) {
+          continue;
+        }
+        sawStreamingText = true;
+      }
+      if (event.type === 'tool_use') {
+        if (event.name) {
+          streamedToolNames.set(event.id, event.name);
+        }
+        if (event.input != null) {
+          streamedToolInputs.set(event.id, event.input);
+        }
+        rememberFileSnapshot(event);
+
+        const rawType = r['type'];
+        if (rawType === 'tool_execution_start') {
+          const cachedInput = streamedToolInputs.get(event.id);
+          if (emittedToolIds.has(event.id)) {
+            onEvent({
+              type: 'tool_input_delta',
+              id: event.id,
+              delta: JSON.stringify(event.input ?? cachedInput ?? null),
+            });
+          } else {
+            const cachedName = streamedToolNames.get(event.id);
+            emittedToolIds.add(event.id);
+            onEvent({
+              ...event,
+              name: event.name || cachedName || event.name,
+              input: event.input ?? cachedInput ?? null,
+            });
+          }
+          continue;
+        }
+
+        if (emittedToolIds.has(event.id)) {
+          onEvent({
+            type: 'tool_input_delta',
+            id: event.id,
+            delta: JSON.stringify(event.input ?? streamedToolInputs.get(event.id) ?? null),
+          });
+          continue;
+        }
+
+        emittedToolIds.add(event.id);
+      }
+      if (event.type === 'tool_input_delta') {
+        streamedToolInputs.set(event.id, { partialArgs: event.delta });
+      }
+      if (event.type === 'tool_result') {
+        const cachedInput = streamedToolInputs.get(event.toolUseId);
+        const cachedName = streamedToolNames.get(event.toolUseId);
+        const input = enrichToolResultInput(event, event.input ?? cachedInput);
+        onEvent({
+          ...event,
+          name: event.name || cachedName,
+          input,
+        });
+        continue;
+      }
+      onEvent(event);
+    }
+    if (result.signal === 'agent_end') {
+      finished = true;
+      onEvent({ type: 'turn_end' });
+    }
+  }
+
+  const lineStream = createJsonLineStream({
+    onJson: handleJson,
     onRaw: (_line) => {
       // 非 JSON 行静默忽略（Pi stdout 应全为 JSON）
     },
@@ -308,6 +607,7 @@ export function createPiRpcSession(deps: PiRpcSessionDeps): PiRpcSession {
   if (parentSession) {
     parentSessionRpcId = sendCommand('new_session', { parentSession });
   } else {
+    sendGetStateCommand();
     sendPromptCommand();
   }
 

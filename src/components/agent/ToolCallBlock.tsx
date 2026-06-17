@@ -1,142 +1,241 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, Check, X } from 'lucide-react';
-import { Spinner } from '../../ui/primitives/Spinner';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Search,
+  Terminal,
+  Wrench,
+  X,
+} from 'lucide-react';
+import { describeToolCallBlock, type ToolCallDescriptor, type ToolDetailSection } from './tool-call-descriptor';
+import styles from './AgentTranscript.module.css';
 
 interface ToolCallBlockType {
   type: 'tool_call';
-  toolCallId: string;
-  title: string;
-  kind: string;
-  status: string;
+  toolCallId?: string;
+  title?: string;
+  kind?: string;
+  status?: string;
   rawInput?: string;
   rawOutput?: string;
 }
 
 type StatusKind = 'running' | 'ok' | 'error';
 
-// ACP ToolCallStatus：pending / in_progress / completed / failed。
-// 兼容历史/别名取值（running / done / error），统一映射到三态徽章。
-function classifyStatus(status: string): StatusKind {
-  const s = status.toLowerCase();
+function textValue(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function classifyStatus(status?: string): StatusKind {
+  const s = textValue(status).toLowerCase();
   if (s === 'completed' || s === 'done' || s === 'success' || s === 'ok') return 'ok';
   if (s === 'failed' || s === 'error') return 'error';
-  // pending / in_progress / running 及未知态都按运行中处理。
   return 'running';
 }
 
-/** 状态徽章：24×24 圆角方块。running=系统蓝 spinner / ok=绿 check / error=红 X。 */
-function StatusBadge({ kind }: { kind: StatusKind }) {
-  if (kind === 'running') {
-    return (
-      <span
-        className="flex items-center justify-center w-6 h-6 rounded-md bg-[#0A84FF]/12 flex-shrink-0"
-        title="运行中"
-        aria-label="运行中"
-      >
-        <Spinner size={14} color="#0A84FF" />
-      </span>
-    );
+function statusText(kind: StatusKind, commandLike: boolean): string {
+  if (kind === 'running') return commandLike ? '执行中' : '运行中';
+  if (kind === 'error') return commandLike ? '执行失败' : '调用失败';
+  return commandLike ? '已执行' : '已完成';
+}
+
+function ToolIcon({ descriptor }: { descriptor: ToolCallDescriptor }) {
+  if (descriptor.category === 'command') return <Terminal size={14} strokeWidth={1.8} />;
+  if (descriptor.category === 'edit' || descriptor.category === 'write' || descriptor.category === 'delete') {
+    return <Pencil size={14} strokeWidth={1.8} />;
   }
-  if (kind === 'ok') {
-    return (
-      <span
-        className="flex items-center justify-center w-6 h-6 rounded-md bg-[#30D158]/15 text-[#30D158] flex-shrink-0"
-        title="已完成"
-        aria-label="已完成"
-      >
-        <Check size={14} strokeWidth={2.5} />
-      </span>
-    );
+  if (descriptor.category === 'read' || descriptor.category === 'search') {
+    return <Search size={14} strokeWidth={1.8} />;
   }
+  return <Wrench size={14} strokeWidth={1.8} />;
+}
+
+function StatusIcon({ kind }: { kind: StatusKind }) {
+  if (kind === 'ok') return <Check size={14} strokeWidth={2} aria-label="已完成" />;
+  if (kind === 'error') return <X size={14} strokeWidth={2} aria-label="失败" />;
+  return <span aria-label="运行中" className="inline-block h-2 w-2 rounded-full bg-mac-blue animate-pulse" />;
+}
+
+interface DiffLine {
+  kind: 'same' | 'add' | 'remove';
+  oldLine: number | null;
+  newLine: number | null;
+  text: string;
+}
+
+function diffFileName(diff: string): string {
+  for (const line of diff.split('\n')) {
+    const match = /^\+\+\+ b\/(.+)$/.exec(line) || /^\+\+\+\s+(.+)$/.exec(line);
+    if (match?.[1] && match[1] !== '/dev/null') return match[1];
+  }
+  return '文件';
+}
+
+function diffLineCount(diff: string): { added: number; removed: number } {
+  let added = 0;
+  let removed = 0;
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('+++') || line.startsWith('---')) continue;
+    if (line.startsWith('+')) added += 1;
+    if (line.startsWith('-')) removed += 1;
+  }
+  return { added, removed };
+}
+
+function parseDiff(diff: string): DiffLine[] {
+  const rows: DiffLine[] = [];
+  let oldLine = 0;
+  let newLine = 0;
+  for (const rawLine of diff.split('\n')) {
+    const hunk = /^@@ -(\d+)?(?:,\d+)? \+(\d+)?(?:,\d+)? @@/.exec(rawLine);
+    if (hunk) {
+      oldLine = Number(hunk[1] || 0);
+      newLine = Number(hunk[2] || 0);
+      continue;
+    }
+    if (rawLine.startsWith('+++') || rawLine.startsWith('---') || rawLine.startsWith('diff ')) continue;
+    if (!rawLine) continue;
+    const marker = rawLine[0];
+    const text = rawLine.slice(1);
+    if (marker === '+') {
+      rows.push({ kind: 'add', oldLine: null, newLine: newLine || null, text });
+      if (newLine) newLine += 1;
+    } else if (marker === '-') {
+      rows.push({ kind: 'remove', oldLine: oldLine || null, newLine: null, text });
+      if (oldLine) oldLine += 1;
+    } else if (marker === ' ') {
+      rows.push({ kind: 'same', oldLine: oldLine || null, newLine: newLine || null, text });
+      if (oldLine) oldLine += 1;
+      if (newLine) newLine += 1;
+    }
+  }
+  return rows.slice(0, 160);
+}
+
+function DiffSection({ diff }: { diff: string }) {
+  const rows = parseDiff(diff);
+  const count = diffLineCount(diff);
   return (
-    <span
-      className="flex items-center justify-center w-6 h-6 rounded-md bg-[#FF453A]/15 text-[#FF453A] flex-shrink-0"
-      title="失败"
-      aria-label="失败"
-    >
-      <X size={14} strokeWidth={2.5} />
-    </span>
+    <div className={styles.diffCard}>
+      <div className={styles.diffHeader}>
+        <span className={styles.diffFileName}>{diffFileName(diff)}</span>
+        <span className={styles.plus}>+{count.added}</span>
+        <span className={styles.minus}>-{count.removed}</span>
+      </div>
+      {rows.length === 0 ? (
+        <div className={styles.emptyDiff}>文件内容无可展示差异</div>
+      ) : (
+        <table className={styles.diffTable}>
+          <tbody>
+            {rows.map((line, index) => {
+              const isAdd = line.kind === 'add';
+              const isRemove = line.kind === 'remove';
+              return (
+                <tr
+                  key={`${line.kind}-${line.oldLine ?? line.newLine ?? index}-${index}`}
+                  className={isAdd ? styles.diffRowAdd : isRemove ? styles.diffRowRemove : ''}
+                >
+                  <td className={`${styles.lineNo} ${isAdd ? styles.lineNoAdd : isRemove ? styles.lineNoRemove : ''}`}>
+                    {line.oldLine ?? line.newLine ?? ''}
+                  </td>
+                  <td className={styles.lineCode}>{line.text || ' '}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
   );
 }
 
-export function ToolCallBlock({ block }: { block: ToolCallBlockType }) {
+function DetailSection({ section }: { section: ToolDetailSection }) {
+  if (section.kind === 'diff') {
+    return <DiffSection diff={section.content} />;
+  }
+
+  const preClassName =
+    section.kind === 'shell'
+        ? `${styles.detailPre} ${styles.detailShell}`
+      : section.kind === 'text'
+        ? `${styles.detailPre} ${styles.detailText}`
+        : styles.detailPre;
+  return (
+    <div className={styles.detailSection}>
+      <div className={styles.detailLabel}>{section.label}</div>
+      <pre className={preClassName}>{section.content}</pre>
+    </div>
+  );
+}
+
+export function ToolCallBlock({
+  block,
+  defaultExpanded,
+}: {
+  block: ToolCallBlockType;
+  defaultExpanded?: boolean;
+}) {
   const statusKind = classifyStatus(block.status);
-  const isRunning = statusKind === 'running';
-  const hasDetail = Boolean(block.rawInput || block.rawOutput);
-  // 默认折叠；失败态默认展开以暴露错误细节。
-  const [expanded, setExpanded] = useState(statusKind === 'error');
+  const descriptor = describeToolCallBlock(block);
+  const hasDetail = descriptor.sections.length > 0;
+  const commandLike = descriptor.category === 'command';
+  const title = descriptor.label;
+  const status = statusText(statusKind, commandLike);
+  const rawTitle = textValue(block.title);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? statusKind === 'error');
+  const statusClass =
+    statusKind === 'error'
+      ? styles.eventStatusError
+      : statusKind === 'ok'
+        ? styles.eventStatusOk
+        : '';
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-white/[0.06] bg-mac-elevated transition-colors">
-      {/* 左侧 accent 条：运行中点亮系统蓝（与 ThinkingBlock 同款）。 */}
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-[2px] transition-colors ${
-          isRunning ? 'bg-[#0A84FF]' : 'bg-white/10'
-        }`}
-      />
-
+    <div className={styles.event}>
       <button
         type="button"
-        onClick={() => hasDetail && setExpanded((e) => !e)}
+        onClick={() => hasDetail && setExpanded((value) => !value)}
         disabled={!hasDetail}
-        className={`flex items-center gap-2 w-full text-left pl-2.5 pr-3 py-2 bg-transparent border-none transition-colors ${
-          hasDetail ? 'cursor-pointer hover:bg-white/[0.03]' : 'cursor-default'
-        }`}
+        className={`${styles.eventHeader} ${hasDetail ? styles.eventHeaderInteractive : ''}`}
+        aria-expanded={hasDetail ? expanded : undefined}
       >
-        <StatusBadge kind={statusKind} />
-        <span
-          className={`text-xs font-semibold text-foreground flex-1 truncate ${
-            isRunning && !block.rawOutput ? 'shimmer-text' : ''
-          }`}
-        >
-          {block.title}
+        <span className={styles.eventIcon}>
+          <ToolIcon descriptor={descriptor} />
         </span>
-        {block.kind ? (
-          <span className="text-[10px] text-mac-text-sec/70 tracking-wide flex-shrink-0">
-            {block.kind}
-          </span>
-        ) : null}
+        <span className={styles.eventLabel}>{title}</span>
+        <span className={`${styles.eventStatus} ${statusClass}`}>
+          <StatusIcon kind={statusKind} /> {status}
+        </span>
+        <span className={styles.eventTitle}>{descriptor.subject}</span>
+        {descriptor.meta.map((item) => (
+          <span key={item} className={styles.eventStatus}>{item}</span>
+        ))}
+        {rawTitle ? <span className={styles.eventStatus}>{rawTitle}</span> : null}
         {hasDetail ? (
-          <span className="text-mac-text-sec flex-shrink-0" aria-hidden>
-            {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          <span className={styles.eventChevron} aria-hidden>
+            {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
           </span>
         ) : null}
       </button>
 
+      {descriptor.subject && !expanded ? (
+        <div className={`${styles.toolPreview} ${commandLike ? styles.commandPreview : ''}`}>
+          <div className={styles.toolPreviewLine}>
+            <span className={styles.toolPreviewLabel}>{descriptor.previewLabel}</span>
+            <code className={commandLike ? styles.commandCode : styles.inlineCode}>
+              {descriptor.subject}
+            </code>
+          </div>
+        </div>
+      ) : null}
+
       {hasDetail && expanded ? (
-        <div className="border-t border-white/[0.06]">
-          {block.rawInput ? (
-            <div>
-              <div className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-mac-text-sec/70 uppercase">
-                Input
-              </div>
-              <pre
-                className="px-3 pb-2 m-0 text-[11px] text-mac-text-sec whitespace-pre-wrap break-all max-h-[200px] overflow-auto"
-                style={{
-                  fontFamily:
-                    "'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'PingFang SC', monospace",
-                }}
-              >
-                {block.rawInput}
-              </pre>
-            </div>
-          ) : null}
-          {block.rawOutput ? (
-            <div>
-              <div className="px-3 pt-2 pb-1 text-[10px] font-medium tracking-wide text-mac-text-sec/70 uppercase">
-                Output
-              </div>
-              <pre
-                className="px-3 py-2 m-0 text-[11px] text-mac-text-sec whitespace-pre-wrap break-all max-h-[300px] overflow-auto bg-[#1A1A1C]"
-                style={{
-                  fontFamily:
-                    "'SF Mono', 'JetBrains Mono', Menlo, Consolas, 'PingFang SC', monospace",
-                }}
-              >
-                {block.rawOutput}
-              </pre>
-            </div>
-          ) : null}
+        <div className={styles.toolDetails}>
+          {descriptor.sections.map((section) => (
+            <DetailSection key={`${section.label}:${section.content.slice(0, 24)}`} section={section} />
+          ))}
         </div>
       ) : null}
     </div>

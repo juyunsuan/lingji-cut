@@ -19,7 +19,6 @@ import {
   Image as ImageIcon,
   ChevronDown,
 } from 'lucide-react';
-import { Button } from '../../ui';
 import type {
   AcpConfigOption,
   AgentMode,
@@ -643,19 +642,42 @@ export function MessageInput({
             <span className="mr-1 text-[10px] text-mac-text-muted/30 select-none hidden sm:inline">
               {projectDir ? '@ 提及文件 · / 命令 · ' : ''}Enter 发送
             </span>
-            {isPrompting && onCancel ? (
-              <Button variant="outline" size="sm" onClick={onCancel}>
-                <Square size={12} />
-                停止
-              </Button>
-            ) : null}
-            <button
-              type="button" onClick={handleSend} disabled={!canSend}
-              className="flex h-7 items-center gap-1.5 rounded-[6px] bg-mac-blue px-3 text-[12px] font-medium text-white transition-all hover:bg-mac-blue/90 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
-            >
-              <Send size={12} />
-              发送
-            </button>
+            <div className="relative h-7 w-7">
+              <AnimatePresence mode="wait" initial={false}>
+                {isPrompting && onCancel ? (
+                  <m.button
+                    key="stop"
+                    type="button"
+                    onClick={onCancel}
+                    title="停止生成"
+                    aria-label="停止生成"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12, ease: 'easeOut' }}
+                    className="absolute inset-0 flex items-center justify-center rounded-[6px] border border-mac-border bg-mac-elevated text-mac-red transition-colors hover:bg-mac-red/10 hover:border-mac-red/40 active:scale-[0.95]"
+                  >
+                    <Square size={12} fill="currentColor" />
+                  </m.button>
+                ) : (
+                  <m.button
+                    key="send"
+                    type="button"
+                    onClick={handleSend}
+                    disabled={!canSend}
+                    title="发送 (Enter)"
+                    aria-label="发送"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.12, ease: 'easeOut' }}
+                    className="absolute inset-0 flex items-center justify-center rounded-[6px] bg-mac-blue text-white transition-colors hover:bg-mac-blue/90 active:scale-[0.95] disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    <Send size={14} />
+                  </m.button>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 

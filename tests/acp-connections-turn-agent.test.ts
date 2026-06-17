@@ -62,4 +62,15 @@ describe('buildAssistantTurnInput', () => {
     expect(input.agentId).toBe('unknown-agent');
     expect(input.agentName).toBe('Claude Code');
   });
+
+  it('可用会话 agentType 兜底覆盖默认 claude，避免 Pi turn 被持久化成 Claude Code', () => {
+    const connection = buildConnection('claude');
+    const input = buildAssistantTurnInput(connection, {
+      stopReason: 'end_turn',
+      fallbackAgentType: 'pi',
+    });
+
+    expect(input.agentId).toBe('pi');
+    expect(input.agentName).toBe('Pi');
+  });
 });

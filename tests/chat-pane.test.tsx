@@ -196,6 +196,8 @@ describe('ChatPane 连接状态', () => {
     connectionState.status = 'prompting';
     const html = renderChatPane({ projectDir: "/tmp/project-a", explicitActivated: true });
     expect(html).toContain('思考中...');
+    expect(html).toContain('aria-label="停止生成"');
+    expect(html).toContain('Agent 正在思考中');
     // explicitActivated=true 时不显示自动连接提示
     expect(html).not.toContain('发送消息后自动建立 ACP 连接');
   });

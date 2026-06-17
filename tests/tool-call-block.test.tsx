@@ -49,13 +49,12 @@ function makeBlock(overrides: Partial<Block> = {}): Block {
 }
 
 describe('ToolCallBlock 状态徽章', () => {
-  it('running 状态渲染运行中徽章（spinner）', () => {
+  it('running 状态渲染运行中状态', () => {
     const html = renderToStaticMarkup(
       <ToolCallBlock block={makeBlock({ status: 'in_progress' })} />,
     );
     expect(html).toContain('aria-label="运行中"');
-    // Spinner 使用 SVG（animateTransform 旋转）。
-    expect(html).toContain('animateTransform');
+    expect(html).toContain('运行中');
   });
 
   it('pending 状态也按运行中处理', () => {
@@ -65,21 +64,20 @@ describe('ToolCallBlock 状态徽章', () => {
     expect(html).toContain('aria-label="运行中"');
   });
 
-  it('completed 状态渲染已完成（绿 check）徽章', () => {
+  it('completed 状态渲染已完成状态', () => {
     const html = renderToStaticMarkup(
       <ToolCallBlock block={makeBlock({ status: 'completed' })} />,
     );
     expect(html).toContain('aria-label="已完成"');
-    // 绿色语义色。
-    expect(html).toContain('#30D158');
+    expect(html).toContain('已完成');
   });
 
-  it('failed/error 状态渲染失败（红 X）徽章', () => {
+  it('failed/error 状态渲染失败状态', () => {
     const failed = renderToStaticMarkup(
       <ToolCallBlock block={makeBlock({ status: 'failed' })} />,
     );
     expect(failed).toContain('aria-label="失败"');
-    expect(failed).toContain('#FF453A');
+    expect(failed).toContain('调用失败');
 
     const error = renderToStaticMarkup(
       <ToolCallBlock block={makeBlock({ status: 'error' })} />,
@@ -91,14 +89,81 @@ describe('ToolCallBlock 状态徽章', () => {
 describe('ToolCallBlock 标题与元信息', () => {
   it('渲染工具名（title）', () => {
     const html = renderToStaticMarkup(<ToolCallBlock block={makeBlock()} />);
+    expect(html).toContain('读取文件');
     expect(html).toContain('read_text_file');
+  });
+
+  it('运行时缺少 title/kind/status 时不崩溃并渲染兜底文案', () => {
+    const block = makeBlock({
+      title: undefined,
+      kind: undefined,
+      status: undefined,
+    } as Partial<Block>);
+
+    const html = renderToStaticMarkup(<ToolCallBlock block={block as Block} />);
+
+    expect(html).toContain('工具调用');
+    expect(html).toContain('运行中');
   });
 
   it('渲染 kind 作为 meta', () => {
     const html = renderToStaticMarkup(
-      <ToolCallBlock block={makeBlock({ kind: 'write' })} />,
+      <ToolCallBlock block={makeBlock({ title: 'write', kind: 'edit', rawInput: '{"path":"a.md","content":"x"}' })} />,
     );
-    expect(html).toContain('write');
+    expect(html).toContain('写入文件');
+    expect(html).toContain('a.md');
+  });
+
+  it('Bash 工具渲染为命令执行摘要', () => {
+    const html = renderToStaticMarkup(
+      <ToolCallBlock
+        block={makeBlock({
+          title: 'Bash',
+          kind: 'execute',
+          rawInput: '{"command":"npm test"}',
+        })}
+      />,
+    );
+    expect(html).toContain('执行命令');
+    expect(html).toContain('已执行');
+    expect(html).toContain('npm test');
+  });
+
+  it('PI edit 工具渲染为文件编辑摘要和 diff 统计', () => {
+    const html = renderToStaticMarkup(
+      <ToolCallBlock
+        block={makeBlock({
+          title: 'edit',
+          kind: 'edit',
+          rawInput: '{"path":"src/foo.ts","oldString":"old","newString":"new"}',
+          rawOutput: '--- a/src/foo.ts\n+++ b/src/foo.ts\n-old\n+new\n+extra',
+        })}
+      />,
+    );
+
+    expect(html).toContain('编辑文件');
+    expect(html).toContain('src/foo.ts');
+    expect(html).toContain('+1 / -1');
+  });
+
+  it('展开 PI edit 时展示 old/new diff，不展示 Target 和成功提示当作 diff', () => {
+    const html = renderToStaticMarkup(
+      <ToolCallBlock
+        block={makeBlock({
+          title: 'edit',
+          kind: 'edit',
+          status: 'failed',
+          rawInput: '{"path":"original.md","oldString":"原稿","newString":"你好，原稿"}',
+          rawOutput: 'Successfully replaced 1 block(s) in original.md.',
+        })}
+      />,
+    );
+
+    expect(html).toContain('original.md');
+    expect(html).toContain('原稿');
+    expect(html).toContain('你好，原稿');
+    expect(html).not.toContain('Target');
+    expect(html).not.toContain('Successfully replaced');
   });
 });
 
@@ -113,10 +178,31 @@ describe('ToolCallBlock 折叠展开', () => {
         })}
       />,
     );
-    expect(html).toContain('Input');
-    expect(html).toContain('{&quot;path&quot;:&quot;a.md&quot;}');
+    expect(html).toContain('Target');
+    expect(html).toContain('a.md');
     expect(html).toContain('Output');
     expect(html).toContain('permission denied');
+  });
+
+  it('展开 PI bash 工具时显示 Shell 块而不是裸 Input JSON 或 Command/Output 分组', () => {
+    const html = renderToStaticMarkup(
+      <ToolCallBlock
+        block={makeBlock({
+          title: 'bash',
+          kind: 'execute',
+          status: 'failed',
+          rawInput: '{"command":"npm run build"}',
+          rawOutput: 'build failed',
+        })}
+      />,
+    );
+
+    expect(html).toContain('Shell');
+    expect(html).toContain('$ npm run build');
+    expect(html).toContain('npm run build');
+    expect(html).not.toContain('Command');
+    expect(html).not.toContain('Output');
+    expect(html).not.toContain('{&quot;command&quot;:&quot;npm run build&quot;}');
   });
 
   it('completed 默认折叠，点击卡头展开后可见 rawInput', () => {
@@ -134,8 +220,9 @@ describe('ToolCallBlock 折叠展开', () => {
       );
     });
 
-    // 默认折叠：input 内容不可见。
-    expect(container.textContent).not.toContain('b.md');
+    // 默认折叠：详情区不可见，但目标预览会露出。
+    expect(container.textContent).toContain('目标');
+    expect(container.textContent).not.toContain('Input');
 
     const head = container.querySelector('button')!;
     expect(head).toBeTruthy();

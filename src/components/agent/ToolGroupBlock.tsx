@@ -1,140 +1,163 @@
-/**
- * ToolGroupBlock — 连续同名工具调用的聚合卡（open-design ToolGroupCard 风格）。
- *
- * AssistantMessage 在 block 分发层把**连续的**同名 `tool_call` 归为一组：
- *  - 组内仅 1 个 → 直接渲染单卡 <ToolCallBlock>（不包 group，由 AssistantMessage 处理）。
- *  - 组内 ≥2 个同名 → 渲染本组件：可折叠卡头显示 summary（`{title} ×{n}` + 整体状态），
- *    展开后列出各 <ToolCallBlock>。
- *
- * 视觉对齐 T3 的 op-card / ThinkingBlock：系统蓝 accent、状态色语义、复用单卡渲染。
- */
-
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, Check, X } from 'lucide-react';
-import { Spinner } from '../../ui/primitives/Spinner';
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Pencil,
+  Search,
+  Terminal,
+  Wrench,
+  X,
+} from 'lucide-react';
 import { ToolCallBlock } from './ToolCallBlock';
+import { describeToolCallBlock, type ToolCallDescriptor } from './tool-call-descriptor';
+import styles from './AgentTranscript.module.css';
 
 interface ToolCallBlockType {
   type: 'tool_call';
-  toolCallId: string;
-  title: string;
-  kind: string;
-  status: string;
+  toolCallId?: string;
+  title?: string;
+  kind?: string;
+  status?: string;
   rawInput?: string;
   rawOutput?: string;
 }
 
 type GroupStatusKind = 'running' | 'ok' | 'error';
 
-// 与 ToolCallBlock.classifyStatus 同语义：pending / in_progress / running → running；
-// failed / error → error；completed / done / success / ok → ok。
-function classifyStatus(status: string): GroupStatusKind {
-  const s = status.toLowerCase();
+function textValue(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
+function classifyStatus(status?: string): GroupStatusKind {
+  const s = textValue(status).toLowerCase();
   if (s === 'completed' || s === 'done' || s === 'success' || s === 'ok') return 'ok';
   if (s === 'failed' || s === 'error') return 'error';
   return 'running';
 }
 
-/**
- * 整体状态聚合：组内任一 running/pending → running；任一 failed/error → error；全 completed → ok。
- * 优先级：running > error > ok（运行中优先表达，避免提前下结论；其次暴露失败）。
- */
 export function aggregateStatus(blocks: ToolCallBlockType[]): GroupStatusKind {
   let hasError = false;
-  for (const b of blocks) {
-    const k = classifyStatus(b.status);
-    if (k === 'running') return 'running';
-    if (k === 'error') hasError = true;
+  for (const block of blocks) {
+    const kind = classifyStatus(block.status);
+    if (kind === 'running') return 'running';
+    if (kind === 'error') hasError = true;
   }
   return hasError ? 'error' : 'ok';
 }
 
-/** summary 状态文案：running=Running / ok=Done / error=Error。 */
-function summaryLabel(kind: GroupStatusKind): string {
-  if (kind === 'running') return 'Running';
-  if (kind === 'error') return 'Error';
-  return 'Done';
+function isCommandGroup(blocks: ToolCallBlockType[]): boolean {
+  return blocks.some((block) => describeToolCallBlock(block).category === 'command');
 }
 
-/** 组徽章：24×24 圆角方块。running=系统蓝 spinner / ok=绿 check / error=红 X。 */
-function GroupStatusBadge({ kind }: { kind: GroupStatusKind }) {
-  if (kind === 'running') {
-    return (
-      <span
-        className="flex items-center justify-center w-6 h-6 rounded-md bg-[#0A84FF]/12 flex-shrink-0"
-        title="运行中"
-        aria-label="运行中"
-      >
-        <Spinner size={14} color="#0A84FF" />
-      </span>
-    );
+function groupTitle(blocks: ToolCallBlockType[]): string {
+  const first = blocks[0];
+  if (!first) return '工具调用';
+  return describeToolCallBlock(first).label;
+}
+
+function groupStatusLabel(kind: GroupStatusKind, commandLike: boolean): string {
+  if (kind === 'running') return commandLike ? '执行中' : '运行中';
+  if (kind === 'error') return commandLike ? '执行失败' : '调用失败';
+  return commandLike ? '已执行' : '已完成';
+}
+
+function commandGroupLabel(kind: GroupStatusKind, count: number): string {
+  if (kind === 'running') return `正在运行 ${count} 条命令`;
+  if (kind === 'error') return `${count} 条命令执行失败`;
+  return `已运行 ${count} 条命令`;
+}
+
+function GroupIcon({ descriptor }: { descriptor: ToolCallDescriptor | null }) {
+  if (!descriptor) return <Wrench size={14} strokeWidth={1.8} />;
+  if (descriptor.category === 'command') return <Terminal size={14} strokeWidth={1.8} />;
+  if (descriptor.category === 'edit' || descriptor.category === 'write' || descriptor.category === 'delete') {
+    return <Pencil size={14} strokeWidth={1.8} />;
   }
-  if (kind === 'ok') {
-    return (
-      <span
-        className="flex items-center justify-center w-6 h-6 rounded-md bg-[#30D158]/15 text-[#30D158] flex-shrink-0"
-        title="已完成"
-        aria-label="已完成"
-      >
-        <Check size={14} strokeWidth={2.5} />
-      </span>
-    );
+  if (descriptor.category === 'read' || descriptor.category === 'search') {
+    return <Search size={14} strokeWidth={1.8} />;
   }
+  return <Wrench size={14} strokeWidth={1.8} />;
+}
+
+function GroupStatusIcon({ kind }: { kind: GroupStatusKind }) {
+  if (kind === 'ok') return <Check size={14} strokeWidth={2} aria-label="已完成" />;
+  if (kind === 'error') return <X size={14} strokeWidth={2} aria-label="失败" />;
+  return <span aria-label="运行中" className="inline-block h-2 w-2 rounded-full bg-mac-blue animate-pulse" />;
+}
+
+function shellText(block: ToolCallBlockType): string {
+  const descriptor = describeToolCallBlock(block);
+  const command = descriptor.category === 'command' ? descriptor.subject : '';
+  const output = block.rawOutput?.trimEnd() || '(no output)';
+  return command ? `$ ${command}\n${output}` : output;
+}
+
+function CommandGroupDetails({ blocks }: { blocks: ToolCallBlockType[] }) {
+  const shell = blocks.map(shellText).join('\n\n');
   return (
-    <span
-      className="flex items-center justify-center w-6 h-6 rounded-md bg-[#FF453A]/15 text-[#FF453A] flex-shrink-0"
-      title="失败"
-      aria-label="失败"
-    >
-      <X size={14} strokeWidth={2.5} />
-    </span>
+    <div className={styles.commandGroupDetails}>
+      <div className={styles.detailLabel}>Shell</div>
+      <pre className={`${styles.detailPre} ${styles.detailShell} ${styles.commandGroupShell}`}>{shell}</pre>
+    </div>
   );
 }
 
 export function ToolGroupBlock({ blocks }: { blocks: ToolCallBlockType[] }) {
   const statusKind = aggregateStatus(blocks);
-  const isRunning = statusKind === 'running';
-  const title = blocks[0]?.title ?? '工具调用';
-  // 默认折叠；失败态默认展开以暴露错误细节（与 ToolCallBlock 一致）。
+  const commandLike = isCommandGroup(blocks);
+  const firstDescriptor = blocks[0] ? describeToolCallBlock(blocks[0]) : null;
+  const title = groupTitle(blocks);
   const [expanded, setExpanded] = useState(statusKind === 'error');
+  const statusClass =
+    statusKind === 'error'
+      ? styles.eventStatusError
+      : statusKind === 'ok'
+        ? styles.eventStatusOk
+        : '';
 
   return (
-    <div className="relative rounded-lg overflow-hidden border border-white/[0.06] bg-mac-elevated transition-colors">
-      {/* 左侧 accent 条：运行中点亮系统蓝（与 ToolCallBlock / ThinkingBlock 同款）。 */}
-      <div
-        className={`absolute left-0 top-0 bottom-0 w-[2px] transition-colors ${
-          isRunning ? 'bg-[#0A84FF]' : 'bg-white/10'
-        }`}
-      />
-
+    <div className={styles.event}>
       <button
         type="button"
-        onClick={() => setExpanded((e) => !e)}
-        className="flex items-center gap-2 w-full text-left pl-2.5 pr-3 py-2 bg-transparent border-none cursor-pointer hover:bg-white/[0.03] transition-colors"
+        onClick={() => setExpanded((value) => !value)}
+        className={`${styles.eventHeader} ${styles.eventHeaderInteractive}`}
         aria-expanded={expanded}
       >
-        <GroupStatusBadge kind={statusKind} />
-        <span
-          className={`text-xs font-semibold text-foreground flex-1 truncate ${
-            isRunning ? 'shimmer-text' : ''
-          }`}
-        >
-          {title} ×{blocks.length}
+        <span className={styles.eventIcon}>
+          <GroupIcon descriptor={firstDescriptor} />
         </span>
-        <span className="text-[10px] text-mac-text-sec/70 tracking-wide flex-shrink-0">
-          {summaryLabel(statusKind)}
-        </span>
-        <span className="text-mac-text-sec flex-shrink-0" aria-hidden>
-          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        {commandLike ? (
+          <span className={`${styles.eventLabel} ${statusClass}`}>
+            {commandGroupLabel(statusKind, blocks.length)}
+          </span>
+        ) : (
+          <>
+            <span className={styles.eventLabel}>{title}</span>
+            <span className={`${styles.eventStatus} ${statusClass}`}>
+              <GroupStatusIcon kind={statusKind} /> {groupStatusLabel(statusKind, commandLike)}
+            </span>
+            <span className={styles.eventTitle}>{blocks.length} 次调用</span>
+          </>
+        )}
+        <span className={styles.eventChevron} aria-hidden>
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </span>
       </button>
 
       {expanded ? (
-        <div className="border-t border-white/[0.06] flex flex-col gap-1.5 p-1.5">
-          {blocks.map((block, index) => (
-            <ToolCallBlock key={block.toolCallId || index} block={block} />
-          ))}
-        </div>
+        commandLike ? (
+          <CommandGroupDetails blocks={blocks} />
+        ) : (
+          <div className={styles.groupChildren}>
+            {blocks.map((block, index) => (
+              <ToolCallBlock
+                key={block.toolCallId || index}
+                block={block}
+              />
+            ))}
+          </div>
+        )
       ) : null}
     </div>
   );

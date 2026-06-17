@@ -73,6 +73,14 @@ describe('ToolGroupBlock aggregateStatus', () => {
       ]),
     ).toBe('running');
   });
+
+  it('运行时缺少 status 时按 running 兜底', () => {
+    expect(
+      aggregateStatus([
+        { type: 'tool_call', toolCallId: 'a', title: 'Edit', kind: '', status: undefined },
+      ] as unknown as Parameters<typeof aggregateStatus>[0]),
+    ).toBe('running');
+  });
 });
 
 describe('AssistantMessage 同名工具调用聚合', () => {
@@ -83,8 +91,26 @@ describe('AssistantMessage 同名工具调用聚合', () => {
       toolCall('Edit', 'completed', 'e3', '{"path":"c.ts"}'),
     ]);
     const html = renderToStaticMarkup(<AssistantMessage turn={turn} />);
-    expect(html).toContain('Edit ×3');
-    expect(html).toContain('Done');
+    expect(html).toContain('编辑');
+    expect(html).toContain('3 次调用');
+    expect(html).toContain('已完成');
+  });
+
+  it('聚合卡遇到缺 title/kind/status 的历史工具调用时不崩溃', () => {
+    const brokenTool = {
+      type: 'tool_call',
+      toolCallId: 'broken',
+      title: undefined,
+      kind: undefined,
+      status: undefined,
+    } as unknown as ConversationBlock;
+    const turn = makeTurn([brokenTool, brokenTool]);
+
+    const html = renderToStaticMarkup(<AssistantMessage turn={turn} />);
+
+    expect(html).toContain('工具调用');
+    expect(html).toContain('2 次调用');
+    expect(html).toContain('运行中');
   });
 
   it('展开聚合卡后列出各个工具卡（input 细节）', () => {
@@ -102,7 +128,7 @@ describe('AssistantMessage 同名工具调用聚合', () => {
 
     // 聚合卡头按钮（aria-expanded）。
     const groupHeader = Array.from(container.querySelectorAll('button')).find((el) =>
-      el.textContent?.includes('Edit ×3'),
+      el.textContent?.includes('3 次调用'),
     )!;
     expect(groupHeader).toBeTruthy();
     act(() => {
@@ -112,11 +138,41 @@ describe('AssistantMessage 同名工具调用聚合', () => {
     // 展开后内部应含 3 个单工具卡：组头 1 个 + 3 个单卡头 = 4 个按钮。
     const buttons = Array.from(container.querySelectorAll('button'));
     expect(buttons.length).toBe(4);
-    // 3 个单卡标题（组头是 "Edit ×3"，单卡是纯 "Edit"）。
-    const singleCardHeaders = buttons.filter(
-      (el) => el.textContent?.includes('Edit') && !el.textContent.includes('×'),
-    );
-    expect(singleCardHeaders.length).toBe(3);
+    // 单卡展开后会展示每个工具的目标预览。
+    expect(container.textContent).toContain('a.ts');
+    expect(container.textContent).toContain('b.ts');
+    expect(container.textContent).toContain('c.ts');
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('命令聚合展开后直接显示 shell 卡片，不再嵌套单个工具卡和 Command/Output 分组', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const turn = makeTurn([
+      { type: 'tool_call', toolCallId: 'c1', title: 'bash', kind: 'execute', status: 'completed', rawInput: '{"command":"wc -l original.md"}', rawOutput: '110 original.md' },
+      { type: 'tool_call', toolCallId: 'c2', title: 'bash', kind: 'execute', status: 'completed', rawInput: '{"command":"rm .lingji/edit-lock.json"}', rawOutput: '' },
+    ]);
+    act(() => {
+      root.render(<AssistantMessage turn={turn} />);
+    });
+
+    const groupHeader = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已运行 2 条命令'),
+    )!;
+    act(() => {
+      groupHeader.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('$ wc -l original.md');
+    expect(container.textContent).toContain('110 original.md');
+    expect(container.textContent).toContain('$ rm .lingji/edit-lock.json');
+    expect(container.textContent).toContain('(no output)');
+    expect(container.textContent).not.toContain('Command');
+    expect(container.textContent).not.toContain('Output');
+    expect(container.querySelectorAll('button')).toHaveLength(1);
 
     act(() => root.unmount());
     container.remove();
@@ -137,9 +193,8 @@ describe('AssistantMessage 同名工具调用聚合', () => {
   it('单个 tool_call 不包 group', () => {
     const turn = makeTurn([toolCall('Edit', 'completed', 'e1')]);
     const html = renderToStaticMarkup(<AssistantMessage turn={turn} />);
-    expect(html).toContain('Edit');
-    expect(html).not.toContain('×1');
-    expect(html).not.toContain('Done');
+    expect(html).toContain('编辑');
+    expect(html).not.toContain('1 次调用');
   });
 
   it('整体状态：组内有 failed → 组徽章 error（aria-label=失败）', () => {
@@ -149,8 +204,8 @@ describe('AssistantMessage 同名工具调用聚合', () => {
       toolCall('Edit', 'completed', 'e3'),
     ]);
     const html = renderToStaticMarkup(<AssistantMessage turn={turn} />);
-    expect(html).toContain('Edit ×3');
-    expect(html).toContain('Error');
+    expect(html).toContain('3 次调用');
+    expect(html).toContain('调用失败');
     expect(html).toContain('aria-label="失败"');
   });
 

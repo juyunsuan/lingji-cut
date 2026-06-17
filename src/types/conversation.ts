@@ -51,6 +51,8 @@ export type ConversationBlock =
       path: string;
       before: string | null;
       after: string;
+      diff?: string;
+      operation?: 'edit' | 'create' | 'delete';
     };
 
 export interface ConversationDetail extends ConversationSummary {

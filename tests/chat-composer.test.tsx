@@ -62,7 +62,7 @@ describe('ChatComposer', () => {
 
     expect(container.querySelector('textarea')).not.toBeNull();
     // 发送按钮也属于 MessageInput 核心。
-    expect((container.textContent ?? '')).toContain('发送');
+    expect(container.querySelector('button[aria-label="发送"]')).not.toBeNull();
 
     act(() => root.unmount());
     container.remove();

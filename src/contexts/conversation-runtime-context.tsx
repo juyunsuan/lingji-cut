@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import type { ConversationTurn } from '../types/conversation';
 import { useAcpConnections } from './acp-connections-context';
 import { useConversationWorkspace } from './conversation-workspace-context';
+import { getAgentPresentation } from '../lib/agent-presentation';
 
 export interface ConversationRuntimeSnapshot {
   conversationId: number;
@@ -42,6 +43,8 @@ export function ConversationRuntimeProvider({ children }: ConversationRuntimePro
     const detail = workspace.getDetail(conversationId);
     const connection = connections.getConnection(conversationId);
     const persistedTurns = detail?.turns ?? [];
+    const agentId = detail?.agentType || connection.agentType;
+    const agentName = agentId ? getAgentPresentation(agentId).displayName : undefined;
 
     const liveTurn: ConversationTurn[] = connection.liveMessage
       ? [
@@ -49,6 +52,8 @@ export function ConversationRuntimeProvider({ children }: ConversationRuntimePro
             id: `live-${conversationId}`,
             conversationId,
             role: connection.liveMessage.role,
+            agentId,
+            agentName,
             blocks: connection.liveMessage.content.map((block) => {
               if (block.type === 'tool_call') {
                 return {
