@@ -17,6 +17,7 @@ import { spawn as nodeSpawn } from 'node:child_process';
 import { detectAgent, createDetectionDeps } from './detection';
 import type { RuntimeAgentDef } from './types';
 import type { AgentStreamEvent } from './event-model';
+import type { ResolvedAgentSkill } from '../acp/types';
 import { createClaudeStreamParser } from './parsers/claude-stream';
 import { createCodexParser } from './parsers/codex-json-event';
 import { createPiRpcSession } from './parsers/pi-rpc';
@@ -67,6 +68,8 @@ export interface AgentSessionStartInput {
   /** resume 已存在会话（透传给 buildArgs） */
   resumeSessionId?: string | null;
   isResuming?: boolean;
+  /** 连接期解析出的启用 skills（透传给 buildArgs）。 */
+  skills?: ResolvedAgentSkill[];
   onEvent: (ev: AgentStreamEvent) => void;
 }
 
@@ -144,6 +147,7 @@ export class AgentSession {
       reasoning: input.reasoning ?? def.defaultReasoning,
       resumeSessionId: input.resumeSessionId ?? null,
       isResuming: input.isResuming ?? false,
+      skills: input.skills,
     });
 
     // 3) spawn

@@ -32,6 +32,7 @@ import type { AgentStreamEvent } from './event-model';
 import { toRuntimeEvent } from './event-model';
 import { getAgentDef } from './registry';
 import type { RuntimeAgentDef } from './types';
+import type { ResolvedAgentSkill } from '../acp/types';
 
 // ─── 状态与事件 payload（对齐旧 connection-registry） ────────────────────────
 
@@ -51,6 +52,8 @@ export interface RuntimeConnectInput {
   sessionId?: string | null;
   env?: Record<string, string>;
   permissionPolicy?: string;
+  /** 连接期解析出的启用 skills。 */
+  skills?: ResolvedAgentSkill[];
 }
 
 export interface RuntimeSnapshot {
@@ -85,6 +88,8 @@ interface RuntimeContextEntry {
   /** 思考程度（reasoning effort）；每轮可热切，沿用至后续轮。 */
   reasoning?: string;
   env?: Record<string, string>;
+  /** 连接期解析出的启用 skills（每轮透传给 session.start）。 */
+  skills?: ResolvedAgentSkill[];
   /** 当前活跃的轮会话（仅在 prompting 期间存在） */
   activeSession: AgentSessionLike | null;
 }
@@ -154,6 +159,7 @@ export class RuntimeRegistry extends EventEmitter {
       def,
       model: input.model,
       env: input.env,
+      skills: input.skills,
       activeSession: null,
     };
     this.contexts.set(input.conversationId, entry);
@@ -225,6 +231,7 @@ export class RuntimeRegistry extends EventEmitter {
         model: entry.model ?? entry.def.defaultModel,
         reasoning: entry.reasoning ?? entry.def.defaultReasoning,
         env: entry.env,
+        skills: entry.skills,
         // resume：pi 经 parentSession，claude/codex 经 resumeSessionId。
         // TODO(A10+): 区分协议传递 resume；首版统一透传已记录 sessionId。
         parentSession: entry.snapshot.sessionId,
