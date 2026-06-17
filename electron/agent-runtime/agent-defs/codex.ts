@@ -97,6 +97,10 @@ export const codexAgentDef = {
     ...(ctx.reasoning && ctx.reasoning !== 'default'
       ? ['-c', `model_reasoning_effort="${ctx.reasoning}"`]
       : []),
+    // 启用的内置 skill：codex 无 --skill，改用 --add-dir 让其可访问目录
+    ...(ctx.skills ?? [])
+      .filter((s) => s.enabled && s.status === 'available')
+      .flatMap((s) => ['--add-dir', s.rootPath]),
     ctx.prompt,
   ],
 } satisfies RuntimeAgentDef;

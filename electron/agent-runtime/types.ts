@@ -1,3 +1,5 @@
+import type { ResolvedAgentSkill } from '../acp/types';
+
 export type StreamFormat = 'claude-stream-json' | 'codex-json-event' | 'pi-rpc';
 
 export interface BuildArgsCtx {
@@ -8,6 +10,8 @@ export interface BuildArgsCtx {
   reasoning?: string;
   resumeSessionId?: string | null;
   isResuming?: boolean;
+  /** 连接期解析出的启用 skills（pi --skill / codex --add-dir 用）。 */
+  skills?: ResolvedAgentSkill[];
 }
 
 export interface AgentModel {

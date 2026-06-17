@@ -93,6 +93,12 @@ export const piAgentDef = {
     if (ctx.reasoning && ctx.reasoning !== 'default') {
       args.push('--thinking', ctx.reasoning);
     }
+    // 启用的内置 skill：pi 原生 --skill <path>（可重复）
+    for (const skill of ctx.skills ?? []) {
+      if (skill.enabled && skill.status === 'available') {
+        args.push('--skill', skill.rootPath);
+      }
+    }
     return args;
   },
 } satisfies RuntimeAgentDef;
