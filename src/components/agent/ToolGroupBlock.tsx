@@ -99,6 +99,12 @@ function shellText(block: ToolCallBlockType): string {
   return `$ ${command}\n${output}`;
 }
 
+function commandRowLabel(kind: GroupStatusKind): string {
+  if (kind === 'running') return '正在运行';
+  if (kind === 'error') return '执行失败';
+  return '已运行';
+}
+
 /**
  * 命令组紧凑列表 —— 每条命令一行，行内单独展开 / 收起 shell 输出。
  * 折叠态下用户即可扫读所有已执行命令；不需要先点开整组才能看到。
@@ -135,7 +141,7 @@ function CommandList({ blocks }: { blocks: ToolCallBlockType[] }) {
               onClick={() => toggle(key)}
               aria-expanded={opened}
             >
-              <span className={styles.commandRowLabel}>已运行</span>
+              <span className={styles.commandRowLabel}>{commandRowLabel(status)}</span>
               <code className={styles.commandRowText}>{command}</code>
               <span className={styles.commandRowChevron} aria-hidden>
                 {opened ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
@@ -146,7 +152,7 @@ function CommandList({ blocks }: { blocks: ToolCallBlockType[] }) {
                 <pre className={`${styles.detailPre} ${styles.detailShell} ${styles.commandGroupShell}`}>
                   {shellText(block)}
                 </pre>
-                <div className={styles.commandRowStatusLine}>
+                <div className={`${styles.commandRowStatusLine} ${rowStatusClass}`}>
                   <GroupStatusIcon kind={status} />
                   <span>{status === 'error' ? '失败' : status === 'ok' ? '成功' : '运行中'}</span>
                 </div>
@@ -164,8 +170,8 @@ export function ToolGroupBlock({ blocks }: { blocks: ToolCallBlockType[] }) {
   const commandLike = isCommandGroup(blocks);
   const firstDescriptor = blocks[0] ? describeToolCallBlock(blocks[0]) : null;
   const title = groupTitle(blocks);
-  // 命令组默认就把命令列表展开（信息密度优先）；非命令组保持原行为（出错才默认展开）。
-  const [expanded, setExpanded] = useState(commandLike ? true : statusKind === 'error');
+  // 命令组默认收起，只露出总数；用户点开后再看每条命令摘要和输出。
+  const [expanded, setExpanded] = useState(commandLike ? false : statusKind === 'error');
   const statusClass =
     statusKind === 'error'
       ? styles.eventStatusError

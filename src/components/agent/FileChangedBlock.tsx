@@ -20,9 +20,10 @@ interface DiffLine {
   text: string;
 }
 
-function fileName(path: string): string {
-  const parts = path.split(/[\\/]/);
-  return parts[parts.length - 1] || path;
+function fileActionLabel(file: FileChangedBlockData): string {
+  if (file.operation === 'create') return '新增';
+  if (file.operation === 'delete') return '删除';
+  return '编辑';
 }
 
 function changedLineCount(file: FileChangedBlockData): { added: number; removed: number } {
@@ -145,22 +146,9 @@ function parseUnifiedDiff(diff: string): DiffLine[] {
 
 function DiffPreview({ file }: { file: FileChangedBlockData }) {
   const diff = useMemo(() => simpleDiff(file), [file]);
-  const count = changedLineCount(file);
 
   return (
     <div className={styles.diffCard}>
-      <div className={styles.diffHeader}>
-        <span className={styles.diffFileName} title={file.path}>
-          {fileName(file.path)}
-        </span>
-        {/* 0 行变更不渲染，避免 "+0 / -0" 这种没意义的视觉噪声。 */}
-        {count.added > 0 ? (
-          <span className={styles.plus}>+<RollingNumber value={count.added} prefix="+" /></span>
-        ) : null}
-        {count.removed > 0 ? (
-          <span className={styles.minus}>-<RollingNumber value={count.removed} prefix="-" /></span>
-        ) : null}
-      </div>
       {diff.length === 0 ? (
         <div className={styles.emptyDiff}>文件内容无可展示差异</div>
       ) : (
@@ -189,6 +177,39 @@ function DiffPreview({ file }: { file: FileChangedBlockData }) {
         </table>
       )}
     </div>
+  );
+}
+
+function FileSummaryRow({ file }: { file: FileChangedBlockData }) {
+  const [expanded, setExpanded] = useState(false);
+  const count = changedLineCount(file);
+
+  return (
+    <li className={styles.fileSummaryItem}>
+      <button
+        type="button"
+        className={styles.fileSummaryButton}
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+      >
+        <span className={styles.fileSummaryAction}>{fileActionLabel(file)}</span>
+        <span className={styles.fileSummaryPath} title={file.path}>{file.path}</span>
+        {count.added > 0 ? (
+          <span className={styles.plus}>+<RollingNumber value={count.added} prefix="+" /></span>
+        ) : null}
+        {count.removed > 0 ? (
+          <span className={styles.minus}>-<RollingNumber value={count.removed} prefix="-" /></span>
+        ) : null}
+        <span className={styles.fileSummaryChevron} aria-hidden>
+          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </span>
+      </button>
+      {expanded ? (
+        <div className={styles.fileSummaryDetail}>
+          <DiffPreview file={file} />
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -239,11 +260,11 @@ export function FileChangedBlock({ files }: { files: FileChangedBlockData[] }) {
 
       {expanded ? (
         <div className={styles.fileGroupBody}>
-          <div className={styles.fileDiffList}>
+          <ul className={styles.fileSummaryList}>
             {files.map((file) => (
-              <DiffPreview key={file.path} file={file} />
+              <FileSummaryRow key={file.path} file={file} />
             ))}
-          </div>
+          </ul>
         </div>
       ) : null}
     </div>

@@ -199,7 +199,7 @@ describe('describeToolCallBlock', () => {
     expect(plusLines.some((line) => line.includes('// header'))).toBe(true);
     expect(minusLines).toHaveLength(0); // 没有任何行被删除
     expect(plusLines).toHaveLength(1); // 只新增 1 行
-    expect(descriptor.meta).toContain('+1 / -0');
+    expect(descriptor.meta).toContain('+1');
   });
 
   it('文件中部修改一行：hunk 大小远小于文件总行数', () => {

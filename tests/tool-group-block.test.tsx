@@ -147,7 +147,7 @@ describe('AssistantMessage 同名工具调用聚合', () => {
     container.remove();
   });
 
-  it('命令聚合默认就紧凑列出每条命令；点击单条行展开它的 shell，互不影响', () => {
+  it('命令聚合默认收起；点击组头后列出命令，再点击单条行展开 shell', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -159,10 +159,21 @@ describe('AssistantMessage 同名工具调用聚合', () => {
       root.render(<AssistantMessage turn={turn} />);
     });
 
-    // 折叠/默认展开态下两条命令文本都直接可见，不需要先点开整组。
+    // 默认只显示命令组摘要，不直接露出命令行。
+    expect(container.textContent).toContain('已运行 2 条命令');
+    expect(container.textContent).not.toContain('wc -l original.md');
+    expect(container.textContent).not.toContain('rm .lingji/edit-lock.json');
+
+    const groupHeader = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已运行 2 条命令'),
+    )!;
+    act(() => {
+      groupHeader.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    // 展开组头后，两条命令文本可见；shell 输出仍然保持折叠。
     expect(container.textContent).toContain('wc -l original.md');
     expect(container.textContent).toContain('rm .lingji/edit-lock.json');
-    // 默认每条 shell 输出还没渲染，避免一次性铺满。
     expect(container.textContent).not.toContain('$ wc -l original.md');
     expect(container.textContent).not.toContain('110 original.md');
 

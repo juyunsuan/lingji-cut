@@ -147,62 +147,120 @@ describe('ToolCallBlock 标题与元信息', () => {
   });
 
   it('展开 PI edit 时展示 old/new diff，不展示 Target 和成功提示当作 diff', () => {
-    const html = renderToStaticMarkup(
-      <ToolCallBlock
-        block={makeBlock({
-          title: 'edit',
-          kind: 'edit',
-          status: 'failed',
-          rawInput: '{"path":"original.md","oldString":"原稿","newString":"你好，原稿"}',
-          rawOutput: 'Successfully replaced 1 block(s) in original.md.',
-        })}
-      />,
-    );
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ToolCallBlock
+          block={makeBlock({
+            title: 'edit',
+            kind: 'edit',
+            status: 'failed',
+            rawInput: '{"path":"original.md","oldString":"原稿","newString":"你好，原稿"}',
+            rawOutput: 'Successfully replaced 1 block(s) in original.md.',
+          })}
+        />,
+      );
+    });
 
-    expect(html).toContain('original.md');
-    expect(html).toContain('原稿');
-    expect(html).toContain('你好，原稿');
-    expect(html).not.toContain('Target');
-    expect(html).not.toContain('Successfully replaced');
+    expect(container.textContent).toContain('original.md');
+    expect(container.textContent).not.toContain('原稿');
+    expect(container.textContent).not.toContain('你好，原稿');
+
+    const detailRow = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已编辑'),
+    )!;
+    act(() => {
+      detailRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('原稿');
+    expect(container.textContent).toContain('你好，原稿');
+    expect(container.textContent).not.toContain('Target');
+    expect(container.textContent).not.toContain('Diff');
+    expect(container.textContent).not.toContain('Successfully replaced');
+
+    act(() => root.unmount());
+    container.remove();
   });
 });
 
 describe('ToolCallBlock 折叠展开', () => {
-  it('failed 默认展开，rawInput/rawOutput 可见', () => {
-    const html = renderToStaticMarkup(
-      <ToolCallBlock
-        block={makeBlock({
-          status: 'failed',
-          rawInput: '{"path":"a.md"}',
-          rawOutput: 'permission denied',
-        })}
-      />,
-    );
-    expect(html).toContain('Target');
-    expect(html).toContain('a.md');
-    expect(html).toContain('Output');
-    expect(html).toContain('permission denied');
+  it('failed 默认展开到详情行，但二级点击前不展示 rawOutput', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ToolCallBlock
+          block={makeBlock({
+            status: 'failed',
+            rawInput: '{"path":"a.md"}',
+            rawOutput: 'permission denied',
+          })}
+        />,
+      );
+    });
+
+    expect(container.textContent).toContain('a.md');
+    expect(container.textContent).toContain('已读取');
+    expect(container.textContent).not.toContain('permission denied');
+
+    const detailRow = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已读取'),
+    )!;
+    act(() => {
+      detailRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).not.toContain('Target');
+    expect(container.textContent).not.toContain('Output');
+    expect(container.textContent).toContain('permission denied');
+
+    act(() => root.unmount());
+    container.remove();
   });
 
   it('展开 PI bash 工具时显示 Shell 块而不是裸 Input JSON 或 Command/Output 分组', () => {
-    const html = renderToStaticMarkup(
-      <ToolCallBlock
-        block={makeBlock({
-          title: 'bash',
-          kind: 'execute',
-          status: 'failed',
-          rawInput: '{"command":"npm run build"}',
-          rawOutput: 'build failed',
-        })}
-      />,
-    );
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ToolCallBlock
+          block={makeBlock({
+            title: 'bash',
+            kind: 'execute',
+            status: 'failed',
+            rawInput: '{"command":"npm run build"}',
+            rawOutput: 'build failed',
+          })}
+        />,
+      );
+    });
 
-    expect(html).toContain('Shell');
-    expect(html).toContain('$ npm run build');
-    expect(html).toContain('npm run build');
-    expect(html).not.toContain('Command');
-    expect(html).not.toContain('Output');
-    expect(html).not.toContain('{&quot;command&quot;:&quot;npm run build&quot;}');
+    expect(container.textContent).toContain('已运行');
+    expect(container.textContent).toContain('npm run build');
+    expect(container.textContent).not.toContain('Shell');
+    expect(container.textContent).not.toContain('$ npm run build');
+
+    const detailRow = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已运行'),
+    )!;
+    act(() => {
+      detailRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).not.toContain('Shell');
+    expect(container.textContent).toContain('$ npm run build');
+    expect(container.textContent).toContain('build failed');
+    expect(container.textContent).not.toContain('Command');
+    expect(container.textContent).not.toContain('Output');
+    expect(container.textContent).not.toContain('{"command":"npm run build"}');
+
+    act(() => root.unmount());
+    container.remove();
   });
 
   it('completed 默认折叠，点击卡头展开后可见 rawInput', () => {
@@ -231,8 +289,52 @@ describe('ToolCallBlock 折叠展开', () => {
       head.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    // 展开后 input 可见。
+    // 一级展开后只看到二级详情行，读取内容仍不直接铺开。
     expect(container.textContent).toContain('b.md');
+    expect(container.textContent).toContain('已读取');
+    expect(container.textContent).not.toContain('Input');
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it('读取文件内容需要二级点击才展示', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    act(() => {
+      root.render(
+        <ToolCallBlock
+          block={makeBlock({
+            title: 'read',
+            kind: 'read',
+            status: 'completed',
+            rawInput: '{"path":"script.md","offset":1,"limit":2}',
+            rawOutput: '第一行内容\n第二行内容',
+          })}
+        />,
+      );
+    });
+
+    expect(container.textContent).toContain('script.md:1-2');
+    expect(container.textContent).not.toContain('第一行内容');
+
+    const header = container.querySelector('button')!;
+    act(() => {
+      header.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(container.textContent).toContain('已读取');
+    expect(container.textContent).not.toContain('第一行内容');
+
+    const detailRow = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('已读取'),
+    )!;
+    act(() => {
+      detailRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toContain('第一行内容');
+    expect(container.textContent).toContain('第二行内容');
 
     act(() => root.unmount());
     container.remove();

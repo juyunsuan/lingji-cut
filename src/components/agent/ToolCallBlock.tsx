@@ -58,30 +58,17 @@ function StatusIcon({ kind }: { kind: StatusKind }) {
   return <span aria-label="运行中" className="inline-block h-2 w-2 rounded-full bg-mac-blue animate-pulse" />;
 }
 
+function statusClassName(kind: StatusKind): string {
+  if (kind === 'error') return styles.eventStatusError;
+  if (kind === 'ok') return styles.eventStatusOk;
+  return '';
+}
+
 interface DiffLine {
   kind: 'same' | 'add' | 'remove';
   oldLine: number | null;
   newLine: number | null;
   text: string;
-}
-
-function diffFileName(diff: string): string {
-  for (const line of diff.split('\n')) {
-    const match = /^\+\+\+ b\/(.+)$/.exec(line) || /^\+\+\+\s+(.+)$/.exec(line);
-    if (match?.[1] && match[1] !== '/dev/null') return match[1];
-  }
-  return '文件';
-}
-
-function diffLineCount(diff: string): { added: number; removed: number } {
-  let added = 0;
-  let removed = 0;
-  for (const line of diff.split('\n')) {
-    if (line.startsWith('+++') || line.startsWith('---')) continue;
-    if (line.startsWith('+')) added += 1;
-    if (line.startsWith('-')) removed += 1;
-  }
-  return { added, removed };
 }
 
 function parseDiff(diff: string): DiffLine[] {
@@ -116,14 +103,8 @@ function parseDiff(diff: string): DiffLine[] {
 
 function DiffSection({ diff }: { diff: string }) {
   const rows = parseDiff(diff);
-  const count = diffLineCount(diff);
   return (
     <div className={styles.diffCard}>
-      <div className={styles.diffHeader}>
-        <span className={styles.diffFileName}>{diffFileName(diff)}</span>
-        <span className={styles.plus}>+{count.added}</span>
-        <span className={styles.minus}>-{count.removed}</span>
-      </div>
       {rows.length === 0 ? (
         <div className={styles.emptyDiff}>文件内容无可展示差异</div>
       ) : (
@@ -151,6 +132,21 @@ function DiffSection({ diff }: { diff: string }) {
   );
 }
 
+function detailSummary(descriptor: ToolCallDescriptor, sections: ToolDetailSection[]): string {
+  const fallback = sections[0]?.label ?? '详情';
+  return descriptor.subject || fallback;
+}
+
+function detailRowLabel(descriptor: ToolCallDescriptor): string {
+  if (descriptor.category === 'read') return '已读取';
+  if (descriptor.category === 'search') return '已搜索';
+  if (descriptor.category === 'edit') return '已编辑';
+  if (descriptor.category === 'write') return '已写入';
+  if (descriptor.category === 'delete') return '已删除';
+  if (descriptor.category === 'command') return '已运行';
+  return '详情';
+}
+
 function DetailSection({ section }: { section: ToolDetailSection }) {
   if (section.kind === 'diff') {
     return <DiffSection diff={section.content} />;
@@ -164,9 +160,57 @@ function DetailSection({ section }: { section: ToolDetailSection }) {
         : styles.detailPre;
   return (
     <div className={styles.detailSection}>
-      <div className={styles.detailLabel}>{section.label}</div>
       <pre className={preClassName}>{section.content}</pre>
     </div>
+  );
+}
+
+function detailContentSections(
+  sections: ToolDetailSection[],
+  descriptor: ToolCallDescriptor,
+): ToolDetailSection[] {
+  const visible = sections.filter((section) => {
+    if (section.label === 'Target' && section.content === descriptor.subject) return false;
+    return true;
+  });
+  return visible.length > 0 ? visible : sections;
+}
+
+function DetailRow({
+  sections,
+  descriptor,
+}: {
+  sections: ToolDetailSection[];
+  descriptor: ToolCallDescriptor;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasShell = sections.some((section) => section.kind === 'shell');
+  const contentSections = detailContentSections(sections, descriptor);
+
+  return (
+    <li className={styles.detailRow}>
+      <button
+        type="button"
+        className={styles.detailRowHead}
+        onClick={() => setExpanded((value) => !value)}
+        aria-expanded={expanded}
+      >
+        <span className={styles.detailRowLabel}>{detailRowLabel(descriptor)}</span>
+        <span className={hasShell ? styles.detailRowMono : styles.detailRowText} title={detailSummary(descriptor, sections)}>
+          {detailSummary(descriptor, sections)}
+        </span>
+        <span className={styles.detailRowChevron} aria-hidden>
+          {expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+        </span>
+      </button>
+      {expanded ? (
+        <div className={styles.detailRowBody}>
+          {contentSections.map((section) => (
+            <DetailSection key={`${section.label}:${section.content.slice(0, 24)}`} section={section} />
+          ))}
+        </div>
+      ) : null}
+    </li>
   );
 }
 
@@ -184,12 +228,7 @@ export function ToolCallBlock({
   const title = descriptor.label;
   const status = statusText(statusKind, commandLike);
   const [expanded, setExpanded] = useState(defaultExpanded ?? statusKind === 'error');
-  const statusClass =
-    statusKind === 'error'
-      ? styles.eventStatusError
-      : statusKind === 'ok'
-        ? styles.eventStatusOk
-        : '';
+  const statusClass = statusClassName(statusKind);
 
   return (
     <div className={styles.event}>
@@ -231,9 +270,12 @@ export function ToolCallBlock({
 
       {hasDetail && expanded ? (
         <div className={styles.toolDetails}>
-          {descriptor.sections.map((section) => (
-            <DetailSection key={`${section.label}:${section.content.slice(0, 24)}`} section={section} />
-          ))}
+          <ul className={styles.detailRowList}>
+            <DetailRow
+              sections={descriptor.sections}
+              descriptor={descriptor}
+            />
+          </ul>
         </div>
       ) : null}
     </div>

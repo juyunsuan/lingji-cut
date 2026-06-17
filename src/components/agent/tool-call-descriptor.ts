@@ -199,7 +199,10 @@ function diffStats(diff: string): string | null {
     if (line.startsWith('+')) additions += 1;
     if (line.startsWith('-')) removals += 1;
   }
-  return additions || removals ? `+${additions} / -${removals}` : null;
+  const parts: string[] = [];
+  if (additions > 0) parts.push(`+${additions}`);
+  if (removals > 0) parts.push(`-${removals}`);
+  return parts.length > 0 ? parts.join(' / ') : null;
 }
 
 function makeReplacementDiff(path: string, before: string, after: string): string {

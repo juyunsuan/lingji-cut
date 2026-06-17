@@ -108,6 +108,23 @@ export function renderBlocks(
       continue;
     }
 
+    const firstDescriptor = describeToolCallBlock(toToolCallProps(block));
+
+    if (firstDescriptor.category === 'command') {
+      const group: ToolCallBlockData[] = [];
+      let j = i;
+      while (j < blocks.length && blocks[j].type === 'tool_call') {
+        const item = blocks[j] as ToolCallBlockData;
+        const descriptor = describeToolCallBlock(toToolCallProps(item));
+        if (descriptor.category !== 'command') break;
+        group.push(item);
+        j += 1;
+      }
+      out.push(<ToolGroupBlock key={`commands-${i}`} blocks={group.map(toToolCallProps)} />);
+      i = j;
+      continue;
+    }
+
     // 连续的 edit/write/delete 工具调用在最外层提升为文件变更块，避免埋在普通工具调用里。
     const group: ToolCallBlockData[] = [];
     let j = i;

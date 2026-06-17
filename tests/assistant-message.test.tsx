@@ -102,7 +102,7 @@ describe('AssistantMessage block 分发', () => {
     expect(html).toContain('aria-label="-2"');
   });
 
-  it('点击 file_changed 头按钮后展开 diff 详情可见', () => {
+  it('点击 file_changed 头按钮后先展示文件行，点击文件行才展示 diff 详情', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -135,6 +135,17 @@ describe('AssistantMessage block 分发', () => {
     });
 
     expect(container.textContent).toContain('index.js');
+    expect(container.textContent).not.toContain('const b = 2;');
+    expect(container.textContent).not.toContain('const b = 3;');
+
+    const fileRow = Array.from(container.querySelectorAll('button')).find((el) =>
+      el.textContent?.includes('src/index.js'),
+    )!;
+    expect(fileRow).toBeTruthy();
+    act(() => {
+      fileRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
     expect(container.textContent).toContain('const b = 2;');
     expect(container.textContent).toContain('const b = 3;');
 
@@ -215,6 +226,31 @@ describe('AssistantMessage block 分发', () => {
     );
 
     expect(html).toContain('已运行 2 条命令');
+  });
+
+  it('renders a single command tool call with the same two-level command layout', () => {
+    const html = renderToStaticMarkup(
+      <AssistantMessage
+        turn={makeTurn({
+          blocks: [
+            {
+              type: 'tool_call',
+              toolCallId: 'cmd-1',
+              title: 'bash',
+              kind: 'execute',
+              status: 'completed',
+              rawInput: '{"command":"git status --short"}',
+              rawOutput: 'M src/App.tsx',
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(html).toContain('已运行 1 条命令');
+    expect(html).not.toContain('git status --short');
+    expect(html).not.toContain('$ git status --short');
+    expect(html).not.toContain('M src/App.tsx');
   });
 
   it('promotes apply_patch style tool calls into a file change block', () => {
