@@ -2,7 +2,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const STAGED_PROJECT_ROOTS = new Set(['dist', 'dist-electron', 'resources', 'src']);
-const RENDER_RUNTIME_ASAR_UNPACK_DIRS = '{vendor/ffmpeg,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static}';
+const RENDER_RUNTIME_ASAR_UNPACK_DIRS = '{vendor/ffmpeg,resources/pi,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static}';
 
 // 仅在 renderer（Vite bundle）中使用、主进程从不 require 的包可在此排除，
 // 以减小 .app 体积。漏排不会导致启动崩溃，只会让 app 变大。
