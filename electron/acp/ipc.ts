@@ -1,16 +1,19 @@
 import { ipcMain, app, type BrowserWindow } from 'electron';
 import fs from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { AgentConfig, normalizeAgentId } from './config';
 import { BinaryManager } from './binary-manager';
 import { RuntimeRegistry } from '../agent-runtime/runtime-registry';
+import { AgentSession } from '../agent-runtime/session';
+import { resolveBundledEntry } from '../agent-runtime/bundled-runtime';
 import { getAgentDef } from '../agent-runtime/registry';
 import { listAgentModels } from '../agent-runtime/detection';
-import { fetchAgentApiModels } from './fetch-agent-api-models';
 import { runPreflight } from './preflight';
-import { McpConfigManager } from '../mcp/config-manager';
-import { getMcpServerStatus } from '../mcp/server';
+import { writePiConfig } from '../agent-runtime/pi-config-seed';
+import { loadFullHeadlessAISettings } from '../pipeline/headless-settings';
+import type { AISettings } from '../../src/types/ai';
 import type { PermissionPolicy, PromptInputBlock, ResolvedAgentSkill } from './types';
 import { ensureProjectAgentContracts } from './contract-sync';
 import { SkillRegistry } from '../agent-skills/registry';
@@ -19,11 +22,34 @@ import { buildInjectionText } from '../agent-skills/inject';
 
 const CONFIG_PATH = path.join(os.homedir(), '.lingji', 'agent-config.json');
 
+/** 解析内置 pi 入口路径的统一助手，供 createSession 和 list-models 复用。 */
+function resolvePiEntry(rel: string): string | null {
+  return resolveBundledEntry(rel, {
+    appPath: app.getAppPath(),
+    resourcesPath: process.resourcesPath,
+    cwd: process.cwd(),
+  });
+}
+
 const config = new AgentConfig(CONFIG_PATH);
 const binaryManager = new BinaryManager();
 // binaryManager 必须注入：AgentSession 依赖它做 detection / ensureNodeInPath，
 // 否则 sendPrompt 会报 'AgentSession: missing binaryManager'。
-const runtimeRegistry = new RuntimeRegistry({ binaryManager });
+// 自定义 createSession：注入 execPath + resolveBundledEntry，使内置 pi 入口
+// （resources/pi/dist/cli.js）能被 Electron 自带 Node 以 ELECTRON_RUN_AS_NODE 跑起来。
+const runtimeRegistry = new RuntimeRegistry({
+  binaryManager,
+  createSession: () =>
+    new AgentSession({
+      binaryManager,
+      execPath: process.execPath,
+      resolveBundledEntry: resolvePiEntry,
+    }),
+});
+
+// pi 配置目录：投影后的 provider settings/models 写到这里，并通过
+// PI_CODING_AGENT_DIR 指向它；prompt-templates 也复制到此目录供 pi 自动发现。
+const PI_CONFIG_DIR = path.join(os.homedir(), '.lingji', 'pi-agent');
 
 // 内置 skill：种子在应用资源 resources/agent-skills，运行时复制到 ~/.lingji/agent-skills。
 // app.getAppPath() 在 dev 指向仓库根，在打包指向 app.asar（fs 读 asar 可用）。
@@ -54,29 +80,44 @@ export function registerAgentIpc(getMainWindow: () => BrowserWindow | null): voi
     const agentEntry = configData.agents[agentId];
     const policy = configData.permissionPolicy ?? 'tiered';
 
-    // 仅 Claude 注册 MCP server + 写 CLAUDE.md MCP 引导；所有 agent 都写 file-first 契约
-    if (agentId === 'claude') {
-      const mcpConfigMgr = new McpConfigManager();
-      const mcpStatus = getMcpServerStatus();
-      if (mcpStatus.running) {
-        await mcpConfigMgr.registerToApp('claude_code', mcpStatus.port);
-      }
-      // 在项目目录写入 CLAUDE.md，引导 Claude Code 使用 MCP 工具
-      await ensureProjectClaudeMd(payload.projectDir);
-    }
-
-    // 同步 file-first 编辑契约要点到 CLAUDE/AGENTS/GEMINI.md（多 agent 通用，独立 marker）
+    // pi 走 file-first：直接编辑 script.md/original.md/project.json，无 MCP。
+    // 同步 file-first 编辑契约要点到 CLAUDE/AGENTS/GEMINI.md（独立 marker），pi 据此操作编辑器。
     await ensureProjectAgentContracts(payload.projectDir);
 
-    // 构建 env：
-    //   - custom_api 凭证仅对 claude 注入 ANTHROPIC_API_KEY / ANTHROPIC_BASE_URL；
-    //     codex/pi 不代管凭证，仅透传用户 envText。
+    // 构建 env：pi 不代管凭证（凭证经 provider 投影写入 pi 配置目录），仅透传用户 envText。
     const env: Record<string, string> = {};
-    if (agentId === 'claude' && agentEntry?.authMode === 'custom_api') {
-      const apiKey = await config.getApiKey(agentId);
-      if (apiKey) env.ANTHROPIC_API_KEY = apiKey;
-      if (agentEntry.apiBaseUrl) env.ANTHROPIC_BASE_URL = agentEntry.apiBaseUrl;
+
+    // pi：投影 App AISettings → pi 配置目录（settings.json + models.json），
+    // 并把 prompt-templates 复制进去供 pi 自动发现；最后用 PI_CODING_AGENT_DIR 指向它。
+    if (agentId === 'pi') {
+      try {
+        const ai = await loadFullHeadlessAISettings(app.getPath('userData'));
+        await writePiConfig(PI_CONFIG_DIR, ai);
+      } catch (err) {
+        console.warn('[pi] 写配置失败，使用空 provider:', err);
+        try {
+          await writePiConfig(PI_CONFIG_DIR, {
+            llmProviders: [],
+            defaultProviderId: null,
+            defaultModel: null,
+          } as AISettings);
+        } catch {
+          // 仍失败则 pi 无 provider 配置运行
+        }
+      }
+      // 首次安装时种子 prompt-templates；已存在则跳过，不覆盖用户改动。
+      const destTemplates = path.join(PI_CONFIG_DIR, 'prompt-templates');
+      try {
+        if (!existsSync(destTemplates)) {
+          const srcTemplates = path.join(app.getAppPath(), 'resources', 'pi-config', 'prompt-templates');
+          await fs.cp(srcTemplates, destTemplates, { recursive: true });
+        }
+      } catch (err) {
+        console.warn('[pi] 种子 prompt-templates 失败:', err);
+      }
+      env.PI_CODING_AGENT_DIR = PI_CONFIG_DIR;
     }
+
     // 解析 envText（所有 agent 通用）
     if (agentEntry?.envText) {
       for (const line of agentEntry.envText.split('\n')) {
@@ -187,26 +228,19 @@ export function registerAgentIpc(getMainWindow: () => BrowserWindow | null): voi
 
   // 预检与安装
   ipcMain.handle('agent:run-preflight', (_e, agentId?: string) =>
-    runPreflight(binaryManager, config, agentId ?? 'claude'),
+    runPreflight(binaryManager, config, agentId ?? 'pi'),
   );
 
-  // 动态模型列表：解析 agent CLI 的可选模型（pi 走 `pi --list-models`），
+  // 动态模型列表：解析 agent CLI 的可选模型（pi 走内置入口 `cli.js --list-models`），
   // 拉不到 / 未安装 / 非动态 agent 时返回兜底列表（source:'fallback'）。
   ipcMain.handle('agent:list-models', async (_e, agentId?: string) => {
-    const id = normalizeAgentId(agentId ?? 'claude');
+    const id = normalizeAgentId(agentId ?? 'pi');
     const def = getAgentDef(id);
     if (!def) return { models: [], source: 'fallback' as const };
-    // claude CLI 无「列模型」命令；自定义 API 模式下从配置的 /v1/models 拉真实模型。
-    if (id === 'claude') {
-      const cfg = await config.load();
-      const entry = cfg.agents[id];
-      if (entry?.authMode === 'custom_api' && entry.apiBaseUrl?.trim()) {
-        const apiKey = await config.getApiKey(id);
-        const models = await fetchAgentApiModels(entry.apiBaseUrl, apiKey);
-        if (models && models.length > 0) return { models, source: 'live' as const };
-      }
-    }
-    return listAgentModels(binaryManager, def);
+    return listAgentModels(binaryManager, def, {
+      resolveBundledEntry: resolvePiEntry,
+      execPath: process.execPath,
+    });
   });
   ipcMain.handle('agent:install', async (_event, version: string) => binaryManager.install(version));
   ipcMain.handle('agent:uninstall', () => binaryManager.uninstall());
@@ -214,7 +248,7 @@ export function registerAgentIpc(getMainWindow: () => BrowserWindow | null): voi
 
   // 列出某 agent 的内置 skills（renderer 设置页 / composer 补全用）
   ipcMain.handle('agent:list-skills', async (_e, agentId?: string) => {
-    const id = normalizeAgentId(agentId ?? 'claude');
+    const id = normalizeAgentId(agentId ?? 'pi');
     try {
       const cfg = await config.load();
       const entry = cfg.agents[id];
@@ -225,85 +259,6 @@ export function registerAgentIpc(getMainWindow: () => BrowserWindow | null): voi
     }
   });
 }
-
-// ─── MCP 工具引导指令 ──────────────────────────────────────
-
-const MCP_INSTRUCTIONS_MARKER = '<!-- lingji-mcp-instructions -->';
-
-const MCP_INSTRUCTIONS = `
-${MCP_INSTRUCTIONS_MARKER}
-## 灵几编辑器 MCP 工具使用规范（强制）
-
-你正在灵几视频脚本编辑器中工作。你**必须且只能使用 lingji_* MCP 工具**来操作脚本。
-
-### ⛔ 禁止事项
-
-- **禁止**使用内置 Read 工具读取 original.md、script.md 等脚本文件 → 改用 \`lingji_read_script\`
-- **禁止**使用内置 Write/Edit 工具修改脚本文件 → 改用 \`lingji_update_script\`
-- **禁止**自己直接输出脚本内容给用户 → 必须通过 MCP 工具写入编辑器
-
-### 📋 用户说"写稿"时的完整步骤
-
-1. 调用 \`lingji_get_project_context\` → 获取项目状态、当前选中模板及其写作指令（selectedTemplatePrompt）
-2. 调用 \`lingji_read_script\` 读取 original.md（filePath 传 "original.md"）→ 获取原始素材
-3. **你自己按照模板的 systemPrompt 写作指令来撰写口播稿**
-4. 调用 \`lingji_update_script\` → 将你写好的稿件写入 script.md（filePath 传 "script.md"）
-5. 编辑器会即时显示并高亮变更
-
-> 备选方案：如果用户明确要求使用"内置模板生成"，可调用 \`lingji_write_script\`（需要编辑器内部 AI 已配置）。
-
-### 📋 用户说"审稿"/"审阅"/"检查"时的完整步骤
-
-1. 调用 \`lingji_read_script\` → 获取当前脚本全文
-2. 分析脚本，找出问题（事实错误、表述不清、口语化不足、逻辑跳跃等）
-3. **必须**调用 \`lingji_review_script\` 提交批注，编辑器会在对应位置显示批注卡片
-4. 完成。不要仅用文字回复，**必须调用工具**。
-
-**批注格式要求（重要）：**
-- 使用 \`quotedText\` 精确定位：传入脚本中能精确匹配的原文子串
-- 提供 \`suggestion\`：替换 quotedText 的完整文本，用户可一键采纳
-- \`severity\` 仅支持三个值：\`error\`（事实错误）、\`warning\`（表达问题）、\`info\`（优化建议）
-
-示例：
-\`\`\`json
-{
-  "annotations": [
-    {
-      "quotedText": "据统计有100万人参与",
-      "text": "数据缺少来源，需要补充出处",
-      "suggestion": "据工信部统计，约有100万人参与",
-      "severity": "warning"
-    },
-    {
-      "quotedText": "这个技术非常的先进和领先",
-      "text": "表述冗余，'先进'和'领先'语义重复",
-      "suggestion": "这项技术处于行业领先水平",
-      "severity": "info"
-    }
-  ]
-}
-\`\`\`
-
-### 📋 用户说"修改"/"润色"/"改一下"时的完整步骤
-
-1. 调用 \`lingji_read_script\` → 获取当前内容
-2. 修改内容
-3. 调用 \`lingji_update_script\` → 写入修改后的完整内容
-4. 编辑器会即时更新并高亮变更行
-
-### 可用 MCP 工具速查
-
-| 场景 | 工具 | 关键参数 |
-|------|------|----------|
-| 写稿（推荐） | 读 context → 自己写 → \`lingji_update_script\` | content, filePath |
-| 写稿（内置AI） | \`lingji_write_script\` | templateCode, rawText |
-| 审稿 | \`lingji_review_script\` | annotations[{quotedText, text, suggestion, severity}] |
-| 修改 / 润色 | \`lingji_update_script\` | content, filePath? |
-| 读取 | \`lingji_read_script\` | filePath? |
-| 查项目/模板 | \`lingji_get_project_context\` | — |
-| 查编辑器状态 | \`lingji_get_editor_state\` | — |
-| 查文件列表 | \`lingji_list_project_files\` | directory? |
-`;
 
 /**
  * 若本轮带 skillIds：main 二次校验（当前 agent 已启用 + skill 存在），
@@ -357,33 +312,4 @@ async function maybeInjectSkills(
   const nonText = blocks.filter((b) => !b || (b as { type?: string }).type !== 'text');
   const injectedText = buildInjectionText(injected, userText);
   return [{ type: 'text', text: injectedText } as PromptInputBlock, ...nonText];
-}
-
-/**
- * 确保脚本项目目录有 CLAUDE.md 且包含 MCP 工具引导指令
- */
-async function ensureProjectClaudeMd(projectDir: string): Promise<void> {
-  const filePath = path.join(projectDir, 'CLAUDE.md');
-  try {
-    let content = '';
-    try {
-      content = await fs.readFile(filePath, 'utf-8');
-    } catch {
-      // 文件不存在，创建新文件
-    }
-
-    if (content.includes(MCP_INSTRUCTIONS_MARKER)) {
-      // 已有 MCP 指令 → 替换为最新版本
-      const markerIdx = content.indexOf(MCP_INSTRUCTIONS_MARKER);
-      const before = content.slice(0, markerIdx).trimEnd();
-      const newContent = before ? before + '\n' + MCP_INSTRUCTIONS : MCP_INSTRUCTIONS.trimStart();
-      await fs.writeFile(filePath, newContent, 'utf-8');
-    } else {
-      // 首次添加 MCP 指令
-      const newContent = content ? content.trimEnd() + '\n' + MCP_INSTRUCTIONS : MCP_INSTRUCTIONS.trimStart();
-      await fs.writeFile(filePath, newContent, 'utf-8');
-    }
-  } catch (err) {
-    console.warn('[ACP] 写入 CLAUDE.md 失败:', err);
-  }
 }
