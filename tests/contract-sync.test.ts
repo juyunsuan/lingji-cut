@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { ensureProjectAgentContracts, FILE_FIRST_MARKER } from '../electron/acp/contract-sync';
+import { ensureProjectAgentContracts, FILE_FIRST_MARKER, buildFileFirstContractBlock } from '../electron/acp/contract-sync';
 
 let dir: string;
 beforeEach(async () => { dir = await fs.mkdtemp(path.join(os.tmpdir(), 'lingji-contract-')); });
@@ -29,5 +29,10 @@ describe('ensureProjectAgentContracts', () => {
     const txt = await fs.readFile(path.join(dir, 'CLAUDE.md'), 'utf-8');
     expect(txt).toContain('保留我');
     expect(txt).toContain(FILE_FIRST_MARKER);
+  });
+  it('契约块含内置工作流引导段落', () => {
+    const block = buildFileFirstContractBlock();
+    expect(block).toContain('可用内置工作流');
+    expect(block).toContain('$lingji-video-workflow');
   });
 });

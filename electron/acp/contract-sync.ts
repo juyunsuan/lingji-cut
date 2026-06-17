@@ -74,7 +74,11 @@ export function buildFileFirstContractBlock(): string {
 - 总纲见 \`docs/ai-contract/README.md\`。
 
 ### 边界
-- 仅做纯编辑。**不要**触发重新生成、重新导出、TTS 配音或 AI 画图。`;
+- 仅做纯编辑。**不要**触发重新生成、重新导出、TTS 配音或 AI 画图。
+
+### 可用内置工作流
+
+本应用提供内置 \`$lingji-video-workflow\`。当用户希望从稿件推进到灵机剪影视频，或需要协调文稿、生成、时间线、Motion Card 精修时，优先使用该 workflow。用户也可以在对话中显式输入 \`$lingji-video-workflow\`。`;
 }
 
 /**
