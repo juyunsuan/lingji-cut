@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Upload, Film, Image as ImageIcon, Tag, Clock, Check, X, Loader2 } from 'lucide-react';
+import { Upload, Film, Image as ImageIcon, Tag, Clock, Check, X, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { Button, Field, Input } from '../../ui';
 import { Spinner } from '../../ui/primitives/Spinner';
 import { usePublishStore } from '../../store/publish';
-import type { PublishAccount } from '../../lib/electron-api';
+import type { PublishAccount, PublishTarget } from '../../lib/electron-api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,6 +124,140 @@ function ResultRow({
   );
 }
 
+// ─── Per-account override panel ────────────────────────────────────────────────
+
+interface AccountOverride {
+  title: string;
+  desc: string;
+  tagsInput: string;
+}
+
+function AccountOverridePanel({
+  accountId,
+  override,
+  expanded,
+  onToggle,
+  onChange,
+}: {
+  accountId: string;
+  override: AccountOverride;
+  expanded: boolean;
+  onToggle: () => void;
+  onChange: (next: AccountOverride) => void;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        borderRadius: 6,
+        border: '1px solid var(--color-border-subtle, rgba(0,0,0,0.08))',
+        overflow: 'hidden',
+        background: 'var(--color-bg-elevated)',
+      }}
+    >
+      {/* Toggle header */}
+      <button
+        type="button"
+        onClick={onToggle}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          width: '100%',
+          padding: '6px 10px',
+          fontSize: 12,
+          color: 'var(--color-text-secondary)',
+          background: 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          textAlign: 'left',
+        }}
+      >
+        {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        文案覆盖
+        {(override.title || override.desc || override.tagsInput) && (
+          <span
+            style={{
+              fontSize: 10,
+              padding: '1px 5px',
+              borderRadius: 3,
+              background: 'color-mix(in srgb, var(--color-system-blue) 15%, transparent)',
+              color: 'var(--color-system-blue)',
+              fontWeight: 500,
+            }}
+          >
+            已设置
+          </span>
+        )}
+      </button>
+
+      {/* Override fields */}
+      {expanded && (
+        <div
+          style={{
+            padding: '8px 10px 10px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            borderTop: '1px solid var(--color-border-subtle, rgba(0,0,0,0.06))',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 3 }}>
+              标题（留空则用共享标题）
+            </div>
+            <Input
+              value={override.title}
+              onChange={(e) => onChange({ ...override, title: e.target.value })}
+              placeholder="覆盖标题…"
+              style={{ fontSize: 12 }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 3 }}>
+              描述（留空则用共享描述）
+            </div>
+            <textarea
+              value={override.desc}
+              onChange={(e) => onChange({ ...override, desc: e.target.value })}
+              placeholder="覆盖描述…"
+              rows={2}
+              style={{
+                width: '100%',
+                resize: 'vertical',
+                padding: '6px 8px',
+                fontSize: 12,
+                border: '1px solid var(--color-border, rgba(0,0,0,0.15))',
+                borderRadius: 6,
+                background: 'var(--color-input-bg, var(--color-bg-elevated))',
+                color: 'var(--color-text-primary)',
+                fontFamily: 'inherit',
+                outline: 'none',
+                boxSizing: 'border-box',
+              }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', marginBottom: 3 }}>
+              标签（留空则用共享标签）
+            </div>
+            <Input
+              value={override.tagsInput}
+              onChange={(e) => onChange({ ...override, tagsInput: e.target.value })}
+              placeholder="标签1, 标签2…"
+              leftIcon={<Tag size={12} />}
+              style={{ fontSize: 12 }}
+            />
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontStyle: 'italic' }}>
+            账号 ID：{accountId}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function PublishWorkbench({ projectDir }: { projectDir: string | null }) {
@@ -137,7 +271,13 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
   const [tagsInput, setTagsInput] = useState('');
   const [scheduleType, setScheduleType] = useState<'immediate' | 'scheduled'>('immediate');
   const [scheduleAt, setScheduleAt] = useState('');
-  const [selectedAccountId, setSelectedAccountId] = useState('');
+
+  // Multi-select: set of checked account IDs
+  const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
+
+  // Per-account override state
+  const [accountOverrides, setAccountOverrides] = useState<Record<string, AccountOverride>>({});
+  const [expandedOverrides, setExpandedOverrides] = useState<Record<string, boolean>>({});
 
   // Derive publishing state from store job — no local state needed
   const isPublishing = !!job;
@@ -146,13 +286,22 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
     void loadAccounts();
   }, [loadAccounts]);
 
-  // Auto-select the first valid account
-  useEffect(() => {
-    if (!selectedAccountId && accounts.length > 0) {
-      const first = accounts.find((a) => a.status === 'valid') ?? accounts[0];
-      setSelectedAccountId(first.id);
-    }
-  }, [accounts, selectedAccountId]);
+  const toggleAccount = (accId: string) => {
+    setSelectedAccountIds((prev) =>
+      prev.includes(accId) ? prev.filter((id) => id !== accId) : [...prev, accId],
+    );
+  };
+
+  const toggleOverrideExpanded = (accId: string) => {
+    setExpandedOverrides((prev) => ({ ...prev, [accId]: !prev[accId] }));
+  };
+
+  const updateOverride = (accId: string, next: AccountOverride) => {
+    setAccountOverrides((prev) => ({ ...prev, [accId]: next }));
+  };
+
+  const getOverride = (accId: string): AccountOverride =>
+    accountOverrides[accId] ?? { title: '', desc: '', tagsInput: '' };
 
   const handlePickFile = async () => {
     const path = await window.electronAPI.selectMediaFile('video');
@@ -166,9 +315,9 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
 
   const handlePublish = async () => {
     if (!filePath) return;
-    if (!selectedAccountId) return;
+    if (selectedAccountIds.length === 0) return;
 
-    const tags = tagsInput
+    const sharedTags = tagsInput
       .split(/[,，]/)
       .map((t) => t.trim())
       .filter(Boolean);
@@ -176,7 +325,7 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
     const shared = {
       title,
       desc,
-      tags,
+      tags: sharedTags,
       thumbnail: thumbnail || undefined,
       scheduleAt:
         scheduleType === 'scheduled' && scheduleAt
@@ -184,8 +333,25 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
           : undefined,
     };
 
+    // Build targets — only include overrides for filled fields
+    const targets: PublishTarget[] = selectedAccountIds.map((accountId) => {
+      const ov = getOverride(accountId);
+      const overrideTags = ov.tagsInput
+        .split(/[,，]/)
+        .map((t) => t.trim())
+        .filter(Boolean);
+
+      const overrides: PublishTarget['overrides'] = {};
+      if (ov.title.trim()) overrides.title = ov.title.trim();
+      if (ov.desc.trim()) overrides.desc = ov.desc.trim();
+      if (overrideTags.length > 0) overrides.tags = overrideTags;
+
+      const hasOverrides = Object.keys(overrides).length > 0;
+      return { accountId, ...(hasOverrides ? { overrides } : {}) };
+    });
+
     try {
-      await startPublish(filePath, shared, [{ accountId: selectedAccountId }], true);
+      await startPublish(filePath, shared, targets, true);
     } catch {
       // errors are handled in the store (failTask)
     }
@@ -194,6 +360,7 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
   // Show results from last run (store clears job on completion but keeps results)
   const jobResults = results;
   const hasResults = Object.keys(jobResults).length > 0;
+  const targetCount = selectedAccountIds.length;
 
   return (
     <div
@@ -265,20 +432,20 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
         </Field>
 
         {/* Title */}
-        <Field label="标题" required>
+        <Field label="共享标题" required>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="视频标题"
+            placeholder="视频标题（各账号共用，可在下方单独覆盖）"
           />
         </Field>
 
         {/* Description */}
-        <Field label="描述">
+        <Field label="共享描述">
           <textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder="视频描述（可选）"
+            placeholder="视频描述（可选，可在下方单独覆盖）"
             rows={3}
             style={{
               width: '100%',
@@ -297,7 +464,7 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
         </Field>
 
         {/* Tags */}
-        <Field label="标签" hint="用逗号分隔多个标签">
+        <Field label="共享标签" hint="用逗号分隔多个标签，可在下方单独覆盖">
           <Input
             value={tagsInput}
             onChange={(e) => setTagsInput(e.target.value)}
@@ -341,7 +508,7 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
           </div>
         </Field>
 
-        {/* Account selection */}
+        {/* Account multi-select */}
         <Field label="发布到" required>
           {accounts.length === 0 ? (
             <div
@@ -364,50 +531,71 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
                 overflow: 'hidden',
               }}
             >
-              {accounts.map((acc) => (
-                <label
-                  key={acc.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 10,
-                    padding: '10px 14px',
-                    cursor: acc.status === 'valid' ? 'pointer' : 'not-allowed',
-                    background:
-                      selectedAccountId === acc.id
-                        ? 'color-mix(in srgb, var(--color-system-blue) 8%, transparent)'
+              {accounts.map((acc, idx) => {
+                const isChecked = selectedAccountIds.includes(acc.id);
+                const isValid = acc.status === 'valid';
+                const isLast = idx === accounts.length - 1;
+                return (
+                  <div
+                    key={acc.id}
+                    style={{
+                      borderBottom: isLast ? 'none' : '1px solid var(--color-border-subtle, rgba(0,0,0,0.06))',
+                      background: isChecked
+                        ? 'color-mix(in srgb, var(--color-system-blue) 6%, transparent)'
                         : 'transparent',
-                    borderBottom: '1px solid var(--color-border-subtle, rgba(0,0,0,0.06))',
-                    opacity: acc.status !== 'valid' ? 0.5 : 1,
-                  }}
-                >
-                  <input
-                    type="radio"
-                    name="account"
-                    value={acc.id}
-                    checked={selectedAccountId === acc.id}
-                    disabled={acc.status !== 'valid'}
-                    onChange={() => setSelectedAccountId(acc.id)}
-                    style={{ accentColor: 'var(--color-system-blue)' }}
-                  />
-                  <span style={{ flex: 1, fontSize: 13 }}>
-                    <span style={{ fontWeight: 500 }}>
-                      {PLATFORM_LABEL[acc.platform] ?? acc.platform}
-                    </span>
-                    {' '}
-                    <span style={{ color: 'var(--color-text-secondary)' }}>{acc.accountName}</span>
-                  </span>
-                  <AccountStatusBadge status={acc.status} />
-                  {acc.status !== 'valid' && (
-                    <span
-                      style={{ fontSize: 11, color: 'var(--color-system-blue)', cursor: 'pointer' }}
-                      title="前往设置重新登录"
+                      opacity: !isValid ? 0.55 : 1,
+                    }}
+                  >
+                    {/* Account row */}
+                    <label
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '10px 14px',
+                        cursor: isValid ? 'pointer' : 'not-allowed',
+                      }}
                     >
-                      去设置
-                    </span>
-                  )}
-                </label>
-              ))}
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={!isValid}
+                        onChange={() => toggleAccount(acc.id)}
+                        style={{ accentColor: 'var(--color-system-blue)', width: 14, height: 14 }}
+                      />
+                      <span style={{ flex: 1, fontSize: 13 }}>
+                        <span style={{ fontWeight: 500 }}>
+                          {PLATFORM_LABEL[acc.platform] ?? acc.platform}
+                        </span>
+                        {' '}
+                        <span style={{ color: 'var(--color-text-secondary)' }}>{acc.accountName}</span>
+                      </span>
+                      <AccountStatusBadge status={acc.status} />
+                      {!isValid && (
+                        <span
+                          style={{ fontSize: 11, color: 'var(--color-system-blue)', cursor: 'pointer' }}
+                          title="前往设置重新登录"
+                        >
+                          去设置
+                        </span>
+                      )}
+                    </label>
+
+                    {/* Per-account override panel — only visible when checked */}
+                    {isChecked && (
+                      <div style={{ padding: '0 14px 10px' }}>
+                        <AccountOverridePanel
+                          accountId={acc.id}
+                          override={getOverride(acc.id)}
+                          expanded={!!expandedOverrides[acc.id]}
+                          onToggle={() => toggleOverrideExpanded(acc.id)}
+                          onChange={(next) => updateOverride(acc.id, next)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </Field>
@@ -417,8 +605,8 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
           <Button
             variant="primary"
             onClick={handlePublish}
-            disabled={isPublishing || !filePath || !selectedAccountId}
-            style={{ minWidth: 120 }}
+            disabled={isPublishing || !filePath || targetCount === 0}
+            style={{ minWidth: 140 }}
           >
             {isPublishing ? (
               <>
@@ -428,7 +616,7 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
             ) : (
               <>
                 <Upload size={14} style={{ marginRight: 6 }} />
-                一键发布
+                一键发布{targetCount > 0 ? ` (${targetCount} 个目标)` : ''}
               </>
             )}
           </Button>
@@ -437,9 +625,14 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
               取消
             </Button>
           )}
+          {targetCount === 0 && !isPublishing && (
+            <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
+              请勾选至少一个账号
+            </span>
+          )}
         </div>
 
-        {/* Progress rows */}
+        {/* Per-target progress rows */}
         {hasResults && (
           <div
             style={{
