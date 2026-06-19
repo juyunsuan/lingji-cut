@@ -591,12 +591,46 @@ import './agent-api';
 
 // ─── PublishAPI ───────────────────────────────────────────
 
+export interface PublishProgressPayload {
+  jobId: string;
+  accountId: string;
+  state: string;
+  percent?: number;
+  message?: string;
+}
+
+export interface PublishShared {
+  title: string;
+  desc: string;
+  tags: string[];
+  thumbnail?: string;
+  scheduleAt?: number;
+}
+
+export interface PublishTarget {
+  accountId: string;
+  overrides?: { title?: string; desc?: string; tags?: string[] };
+  bilibili?: { tid: number };
+}
+
+export interface PublishJobInput {
+  id: string;
+  filePath: string;
+  shared: PublishShared;
+  targets: PublishTarget[];
+  results: Record<string, { state: string; percent?: number; message?: string }>;
+}
+
 export interface PublishAPI {
   listAccounts(): Promise<PublishAccount[]>;
   deleteAccount(id: string): Promise<void>;
   login(platform: PublishPlatform, accountName: string): Promise<{ success: boolean; message: string }>;
   check(id: string): Promise<boolean>;
+  run(job: PublishJobInput, headless?: boolean): Promise<void>;
+  cancel(): Promise<void>;
   onQrcode(cb: (p: { platform: string; accountName: string; png: string }) => void): () => void;
+  onProgress(cb: (payload: PublishProgressPayload) => void): () => void;
+  onPipelineTaskUpdate(cb: (payload: unknown) => void): () => void;
 }
 
 declare global {

@@ -10,7 +10,8 @@ export type TaskCategory =
   | 'export'
   | 'tts'
   | 'cover'
-  | 'io';
+  | 'io'
+  | 'publish';
 
 export interface TaskCompletionAction {
   label: string;

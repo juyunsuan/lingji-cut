@@ -668,10 +668,40 @@ contextBridge.exposeInMainWorld('publishAPI', {
   login: (platform: string, accountName: string) =>
     ipcRenderer.invoke('publish:login', platform, accountName),
   check: (id: string) => ipcRenderer.invoke('publish:check', id),
+  run: (job: import('../src/lib/electron-api').PublishJobInput, headless?: boolean) =>
+    ipcRenderer.invoke('publish:run', job, headless),
+  cancel: () => ipcRenderer.invoke('publish:cancel'),
   onQrcode: (cb: (payload: { platform: string; accountName: string; png: string }) => void) => {
     const handler = (_e: unknown, payload: { platform: string; accountName: string; png: string }) =>
       cb(payload);
     ipcRenderer.on('publish:qrcode', handler);
     return () => ipcRenderer.removeListener('publish:qrcode', handler);
+  },
+  onProgress: (
+    cb: (payload: {
+      jobId: string;
+      accountId: string;
+      state: string;
+      percent?: number;
+      message?: string;
+    }) => void,
+  ) => {
+    const handler = (
+      _e: unknown,
+      payload: {
+        jobId: string;
+        accountId: string;
+        state: string;
+        percent?: number;
+        message?: string;
+      },
+    ) => cb(payload);
+    ipcRenderer.on('publish:progress', handler);
+    return () => ipcRenderer.removeListener('publish:progress', handler);
+  },
+  onPipelineTaskUpdate: (cb: (payload: unknown) => void) => {
+    const handler = (_e: unknown, payload: unknown) => cb(payload);
+    ipcRenderer.on('pipeline:task-update', handler);
+    return () => ipcRenderer.removeListener('pipeline:task-update', handler);
   },
 });
