@@ -23,10 +23,10 @@ const KUAISHOU_MANAGE_URL_PATTERN = '**/article/manage/video?status=2&from=publi
 
 // ─── Cookie-invalidity selector ───────────────────────────────────────────────
 // port of KUAISHOU_COOKIE_INVALID_SELECTOR = "div.names div.container div.name:text('机构服务')"
-// (:text() exact → :has-text() substring, safe equivalent for this value)
+// 保持 :text() 精确匹配（Node Playwright 支持）；:has-text() 子串匹配会误报 cookie 失效
 
 const KUAISHOU_COOKIE_INVALID_SELECTOR =
-  "div.names div.container div.name:has-text('机构服务')";
+  "div.names div.container div.name:text('机构服务')";
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
@@ -265,7 +265,7 @@ export async function uploadKuaishouVideo(page: Page, opts: UploadVideoOptions):
   await sleep(2000);
 
   // 3. Dismiss "我知道了" tutorial button if present
-  const knowButton = page.locator('button[type="button"] span:has-text("我知道了")').first();
+  const knowButton = page.locator('button[type="button"] span:text("我知道了")').first();
   try {
     if ((await knowButton.count()) && (await knowButton.isVisible())) {
       await knowButton.click();
