@@ -45,4 +45,30 @@ describe('AccountStore', () => {
     expect(existsSync(acc.storageStatePath)).toBe(true);
     expect(store.list()).toHaveLength(1);
   });
+
+  it('upsert 更新已存在账号：不重复且保留旧字段', () => {
+    store.upsert({ platform: 'douyin', accountName: 'a', status: 'unknown', lastCheckedAt: 111 });
+    const updated = store.upsert({ platform: 'douyin', accountName: 'a', status: 'valid' });
+    const list = store.list();
+    expect(list).toHaveLength(1);                  // 未重复
+    expect(list[0].status).toBe('valid');          // 新状态生效
+    expect(list[0].lastCheckedAt).toBe(111);       // 旧字段保留
+    expect(updated.status).toBe('valid');          // 返回值反映合并结果
+    expect(updated.lastCheckedAt).toBe(111);       // 返回值保留旧字段（Fix 1 回归）
+  });
+
+  it('setStatus 更新状态与 lastCheckedAt', () => {
+    store.upsert({ platform: 'douyin', accountName: 'a', status: 'unknown' });
+    store.setStatus('douyin_a', 'valid', 999);
+    const acc = store.list()[0];
+    expect(acc.status).toBe('valid');
+    expect(acc.lastCheckedAt).toBe(999);
+  });
+
+  it('setStatus 对未知 id 不报错也不改动', () => {
+    store.upsert({ platform: 'douyin', accountName: 'a', status: 'valid' });
+    expect(() => store.setStatus('douyin_missing', 'expired')).not.toThrow();
+    expect(store.list()).toHaveLength(1);
+    expect(store.list()[0].status).toBe('valid');
+  });
 });

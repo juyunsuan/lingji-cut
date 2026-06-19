@@ -56,10 +56,11 @@ export class AccountStore {
     const entries = this.readRegistry();
     const id = buildAccountId(entry.platform, entry.accountName);
     const idx = entries.findIndex((e) => buildAccountId(e.platform, e.accountName) === id);
-    if (idx >= 0) entries[idx] = { ...entries[idx], ...entry };
-    else entries.push(entry);
+    const merged: RegistryEntry = idx >= 0 ? { ...entries[idx], ...entry } : entry;
+    if (idx >= 0) entries[idx] = merged;
+    else entries.push(merged);
     this.writeRegistry(entries);
-    return this.toAccount(entry);
+    return this.toAccount(merged);
   }
 
   setStatus(id: string, status: PublishAccount['status'], lastCheckedAt?: number): void {
