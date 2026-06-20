@@ -14,6 +14,10 @@ const dynamicRuntimeMarkers = [
   'new Function(',
 ];
 
+// 跳过混淆的文件名（精确匹配 basename）。
+// stealth.min.js 是第三方反检测脚本，混淆会破坏其运行时规避逻辑，且没有意义。
+const SKIP_OBFUSCATION_BASENAMES = new Set(['stealth.min.js']);
+
 const obfuscationOptions = {
   compact: true,
   controlFlowFlattening: false,
@@ -48,7 +52,11 @@ function collectJavaScriptFiles(directoryPath) {
       continue;
     }
 
-    if (entry.isFile() && supportedExtensions.has(path.extname(entry.name))) {
+    if (
+      entry.isFile() &&
+      supportedExtensions.has(path.extname(entry.name)) &&
+      !SKIP_OBFUSCATION_BASENAMES.has(entry.name)
+    ) {
       files.push(entryPath);
     }
   }

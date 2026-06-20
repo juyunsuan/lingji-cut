@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { packager } = require('@electron/packager');
 const {
   RENDER_RUNTIME_ASAR_UNPACK_DIRS,
@@ -8,6 +9,7 @@ const {
   buildReleaseManifest,
   shouldStageProjectPath,
 } = require('./package-mac-helpers.cjs');
+const { fetchBiliup } = require('./fetch-biliup.cjs');
 
 const rootDir = path.resolve(__dirname, '..');
 const packageJsonPath = path.join(rootDir, 'package.json');
@@ -124,6 +126,21 @@ async function createStageDirectory(stageDir) {
   await stageNodeModules(stageDir);
 }
 
+/**
+ * 将 Playwright Chromium 浏览器安装到 stageDir/playwright-browsers。
+ * 打包后该目录经 asar.unpackDir 解包到 app.asar.unpacked/playwright-browsers，
+ * 运行时通过 PLAYWRIGHT_BROWSERS_PATH 指向该位置。
+ */
+function installPlaywrightChromium(stageDir) {
+  const browsersDir = path.join(stageDir, 'playwright-browsers');
+  const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
+  console.log(`安装 Playwright Chromium 浏览器到随包目录...`);
+  execFileSync(playwrightBin, ['install', 'chromium'], {
+    env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsersDir },
+    stdio: 'inherit',
+  });
+}
+
 if (!supportedArch.has(arch)) {
   console.error(`不支持的 macOS 打包架构：${arch}`);
   console.error('请使用 ARCH=arm64 npm run package:mac 或 ARCH=x64 npm run package:mac');
@@ -148,6 +165,12 @@ async function main() {
   console.log(`准备最小发布目录：${path.relative(rootDir, stageDir)}`);
 
   await createStageDirectory(stageDir);
+  installPlaywrightChromium(stageDir);
+
+  // 下载 biliup 二进制到 stageDir/biliup/<platform-key>/<binary>
+  // 打包后经 asar.unpackDir 解包到 app.asar.unpacked/biliup/...
+  console.log('下载 biliup 二进制到随包目录...');
+  await fetchBiliup(stageDir, { platform: 'darwin', arch });
 
   try {
     const appPaths = await packager({

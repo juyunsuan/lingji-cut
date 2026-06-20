@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
-import { ArrowLeft, Bot, Cpu, DatabaseBackup, Server, Sparkles, Volume2 } from 'lucide-react';
+import { ArrowLeft, Bot, Cpu, DatabaseBackup, Server, Share2, Sparkles, Volume2 } from 'lucide-react';
 import { ConfigBackupTab } from '../components/settings/ConfigBackupTab';
 import { AIConfigTab } from '../components/settings/AIConfigTab';
 import { TTSConfigTab } from '../components/settings/TTSConfigTab';
 import { AgentSettingsTab } from '../components/settings/AgentSettingsTab';
 import { McpSettingsTab } from '../components/settings/McpSettingsTab';
 import { PromptsConfigTab } from '../components/settings/PromptsConfigTab';
+import { PublishAccountsTab } from '../components/settings/PublishAccountsTab';
 import { Button, Tabs, TabsContent } from '../ui';
 import styles from './Settings.module.css';
 import type { SettingsLeaveGuard } from '../components/settings/useSettingsTabGuard';
@@ -16,7 +17,8 @@ export type SettingsTab =
   | 'agent'
   | 'mcp'
   | 'prompts'
-  | 'backup';
+  | 'backup'
+  | 'publish-accounts';
 
 const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'ai-config', label: 'AI 基础配置', icon: Bot },
@@ -25,6 +27,7 @@ const TABS: { id: SettingsTab; label: string; icon: typeof Bot }[] = [
   { id: 'mcp', label: 'MCP 服务', icon: Server },
   { id: 'prompts', label: '提示词配置', icon: Sparkles },
   { id: 'backup', label: '配置备份', icon: DatabaseBackup },
+  { id: 'publish-accounts', label: '发布账号', icon: Share2 },
 ];
 
 interface SettingsProps {
@@ -124,6 +127,9 @@ export function Settings({ onBack, initialTab }: SettingsProps) {
         </TabsContent>
         <TabsContent value="backup" className={styles.contentPanel}>
           <ConfigBackupTab />
+        </TabsContent>
+        <TabsContent value="publish-accounts" className={styles.contentPanel}>
+          <PublishAccountsTab />
         </TabsContent>
       </div>
     </Tabs>

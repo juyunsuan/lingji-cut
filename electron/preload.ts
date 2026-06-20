@@ -175,7 +175,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('get-project-metadata', projectDir) as Promise<ProjectMetadata>,
   selectProjectDirectory: () => ipcRenderer.invoke('select-project-directory'),
   selectSetupFile: (kind: 'audio' | 'srt') => ipcRenderer.invoke('select-setup-file', kind),
-  selectMediaFile: (kind: 'audio' | 'video' | 'srt') => ipcRenderer.invoke('select-media-file', kind),
+  selectMediaFile: (kind: 'audio' | 'video' | 'srt' | 'image') => ipcRenderer.invoke('select-media-file', kind),
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
   addAsset: () => ipcRenderer.invoke('add-asset'),
   scanProjectAssets: (projectDir: string) =>
@@ -681,4 +681,45 @@ contextBridge.exposeInMainWorld('scriptHistoryAPI', {
     ipcRenderer.invoke('script-history:update-label', projectId, versionId, label),
   delete: (projectId: string, versionId: number) =>
     ipcRenderer.invoke('script-history:delete', projectId, versionId),
+});
+
+// ─── Publish API ──────────────────────────────────────────
+
+contextBridge.exposeInMainWorld('publishAPI', {
+  listAccounts: () => ipcRenderer.invoke('publish:list-accounts'),
+  deleteAccount: (id: string) => ipcRenderer.invoke('publish:delete-account', id),
+  login: (platform: string, accountName: string) =>
+    ipcRenderer.invoke('publish:login', platform, accountName),
+  check: (id: string) => ipcRenderer.invoke('publish:check', id),
+  run: (job: import('../src/lib/electron-api').PublishJobInput, headless?: boolean) =>
+    ipcRenderer.invoke('publish:run', job, headless),
+  cancel: () => ipcRenderer.invoke('publish:cancel'),
+  onQrcode: (cb: (payload: { platform: string; accountName: string; png: string }) => void) => {
+    const handler = (_e: unknown, payload: { platform: string; accountName: string; png: string }) =>
+      cb(payload);
+    ipcRenderer.on('publish:qrcode', handler);
+    return () => ipcRenderer.removeListener('publish:qrcode', handler);
+  },
+  onProgress: (
+    cb: (payload: {
+      jobId: string;
+      accountId: string;
+      state: string;
+      percent?: number;
+      message?: string;
+    }) => void,
+  ) => {
+    const handler = (
+      _e: unknown,
+      payload: {
+        jobId: string;
+        accountId: string;
+        state: string;
+        percent?: number;
+        message?: string;
+      },
+    ) => cb(payload);
+    ipcRenderer.on('publish:progress', handler);
+    return () => ipcRenderer.removeListener('publish:progress', handler);
+  },
 });

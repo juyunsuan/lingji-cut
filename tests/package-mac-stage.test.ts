@@ -75,7 +75,7 @@ describe('package mac staging helpers', () => {
 
   it('unpacks runtime artifacts (incl. in-process pi) from app.asar for packaged exports', () => {
     expect(RENDER_RUNTIME_ASAR_UNPACK_DIRS).toBe(
-      '{dist-cli,vendor/ffmpeg,node_modules/@earendil-works,node_modules/@mariozechner,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static}',
+      '{dist-cli,vendor/ffmpeg,node_modules/@earendil-works,node_modules/@mariozechner,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static,node_modules/playwright,node_modules/playwright-core,playwright-browsers,biliup}',
     );
   });
 });

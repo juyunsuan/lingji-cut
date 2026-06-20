@@ -31,8 +31,10 @@ import type {
   UserPromptEntry,
   UserPromptSeed,
 } from './prompts';
+import type { PublishAccount, PublishPlatform } from '../../electron/publish/types';
+export type { PublishAccount, PublishPlatform };
 
-export type AppPage = 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings' | 'auto-run';
+export type AppPage = 'welcome' | 'setup' | 'editor' | 'script-workbench' | 'settings' | 'auto-run' | 'publish';
 
 export interface FileEntry {
   name: string;
@@ -323,7 +325,7 @@ export interface ElectronAPI {
   getProjectMetadata: (projectDir: string) => Promise<ProjectMetadata>;
   selectProjectDirectory: () => Promise<string | null>;
   selectSetupFile: (kind: ImportKind) => Promise<string | null>;
-  selectMediaFile: (kind: 'audio' | 'video' | 'srt') => Promise<string | null>;
+  selectMediaFile: (kind: 'audio' | 'video' | 'srt' | 'image') => Promise<string | null>;
   getPathForFile: (file: File) => string;
   addAsset: () => Promise<{
     path: string;
@@ -600,5 +602,53 @@ declare global {
 
 // 引入 AgentAPI 类型声明
 import './agent-api';
+
+// ─── PublishAPI ───────────────────────────────────────────
+
+export interface PublishProgressPayload {
+  jobId: string;
+  accountId: string;
+  state: string;
+  percent?: number;
+  message?: string;
+}
+
+export interface PublishShared {
+  title: string;
+  desc: string;
+  tags: string[];
+  thumbnail?: string;
+  scheduleAt?: number;
+}
+
+export interface PublishTarget {
+  accountId: string;
+  overrides?: { title?: string; desc?: string; tags?: string[] };
+  bilibili?: { tid: number };
+}
+
+export interface PublishJobInput {
+  id: string;
+  filePath: string;
+  shared: PublishShared;
+  targets: PublishTarget[];
+}
+
+export interface PublishAPI {
+  listAccounts(): Promise<PublishAccount[]>;
+  deleteAccount(id: string): Promise<void>;
+  login(platform: PublishPlatform, accountName: string): Promise<{ success: boolean; message: string }>;
+  check(id: string): Promise<boolean>;
+  run(job: PublishJobInput, headless?: boolean): Promise<void>;
+  cancel(): Promise<void>;
+  onQrcode(cb: (p: { platform: string; accountName: string; png: string }) => void): () => void;
+  onProgress(cb: (payload: PublishProgressPayload) => void): () => void;
+}
+
+declare global {
+  interface Window {
+    publishAPI: PublishAPI;
+  }
+}
 
 export {};
