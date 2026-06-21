@@ -85,6 +85,23 @@ describe('handleSonarRequest', () => {
     expect(await d.store.list()).toHaveLength(1);
   });
 
+  it('POST /sonar/enqueue refresh:true 命中已有项时刷新（duplicate:false, refreshed:true）', async () => {
+    await handleSonarRequest({ method: 'POST', path: '/sonar/enqueue', token: TOKEN, body: validBody() }, d);
+    const res = await handleSonarRequest(
+      {
+        method: 'POST',
+        path: '/sonar/enqueue',
+        token: TOKEN,
+        body: { ...validBody({ title: '刷新后' }), refresh: true },
+      },
+      d,
+    );
+    expect(res.body).toMatchObject({ queued: true, duplicate: false, refreshed: true });
+    const list = await d.store.list();
+    expect(list).toHaveLength(1);
+    expect(list[0]!.title).toBe('刷新后');
+  });
+
   it('POST /sonar/enqueue 缺字段 → 400', async () => {
     const bad = { ...validBody(), awemeId: '' };
     const res = await handleSonarRequest(

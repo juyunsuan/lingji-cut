@@ -42,6 +42,7 @@ export const METHOD_NAMES = [
   'getBridgeSettings',
   'updateBridgeSettings',
   'testBridge',
+  'pushVideoToBridge',
 ] as const;
 
 export type MethodName = (typeof METHOD_NAMES)[number];

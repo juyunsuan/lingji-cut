@@ -19,14 +19,23 @@ export interface PushOnProcessedDeps {
   bridgeClient: Pick<BridgeClient, 'enqueue'>;
 }
 
+export interface PushOptions {
+  /** 命中已有项时刷新为待创作（手动推送）。 */
+  refresh?: boolean;
+  /** 忽略「开启联动」开关，只要端点+token 已配置即推送（手动推送）。 */
+  force?: boolean;
+}
+
 export type PushResult =
   | { pushed: false; reason: 'disabled' | 'no-video' | 'no-payload' }
   | { pushed: true; outcome: EnqueueOutcome };
 
 export function createPushOnProcessed(deps: PushOnProcessedDeps) {
-  return async function pushOnProcessed(videoId: string): Promise<PushResult> {
-    const settings: BridgeConfig = await deps.bridgeSettings.get();
-    if (!settings.enabled) return { pushed: false, reason: 'disabled' };
+  return async function pushOnProcessed(videoId: string, opts?: PushOptions): Promise<PushResult> {
+    const settings = await deps.bridgeSettings.get();
+    // 自动路径尊重开关；手动推送（force）只要配置可用即推送。
+    const config: BridgeConfig = opts?.force ? { ...settings, enabled: true } : settings;
+    if (!config.enabled) return { pushed: false, reason: 'disabled' };
 
     const video = await deps.repo.getVideo(videoId);
     if (!video) return { pushed: false, reason: 'no-video' };
@@ -38,7 +47,7 @@ export function createPushOnProcessed(deps: PushOnProcessedDeps) {
     const payload = buildBridgePayload(video, creator, transcript);
     if (!payload) return { pushed: false, reason: 'no-payload' };
 
-    const outcome = await deps.bridgeClient.enqueue(settings, payload);
+    const outcome = await deps.bridgeClient.enqueue(config, payload, { refresh: opts?.refresh });
     return { pushed: true, outcome };
   };
 }

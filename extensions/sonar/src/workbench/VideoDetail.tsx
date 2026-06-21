@@ -447,6 +447,42 @@ export function VideoDetail({
         >
           <span style={{ fontSize: 14 }}>＋</span> 加入工作流
         </Hover>
+        <Hover
+          base={
+            transcript
+              ? { ...flagBtnBase, border: '.5px solid rgba(10,132,255,.4)', color: '#fff', background: S.accent }
+              : { ...flagBtnBase, border: '.5px solid rgba(255,255,255,.09)', color: S.faint, background: S.btn2, cursor: 'not-allowed' }
+          }
+          hover={transcript ? { filter: 'brightness(1.1)' } : {}}
+          onClick={async () => {
+            if (!transcript) {
+              show('请先转录该视频，再推送二创');
+              return;
+            }
+            try {
+              const r = await client.pushVideoToBridge(video.id);
+              if (!r.pushed) {
+                show(
+                  r.reason === 'disabled'
+                    ? '请先在「设置 → 灵机剪影联动」填入端点与 token'
+                    : r.reason === 'no-payload'
+                      ? '该视频暂无转录，无法推送'
+                      : '推送失败',
+                );
+              } else if (r.outcome.status === 'unauthorized') {
+                show('token 不匹配，请在设置中重新填写');
+              } else if (r.outcome.status === 'queued') {
+                show('灵机剪影未在线，已暂存，稍后自动补推');
+              } else {
+                show('已推送到灵机剪影待创作箱 ✓');
+              }
+            } catch (e) {
+              show(errText(e));
+            }
+          }}
+        >
+          ⇪ 推送二创
+        </Hover>
         <div style={{ flex: 1 }} />
         {flagged && (
           <span style={{ fontSize: 11, fontWeight: 600, color: S.yellow, background: 'rgba(255,214,10,.14)', padding: '4px 9px', borderRadius: 6 }}>

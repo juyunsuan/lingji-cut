@@ -72,6 +72,26 @@ describe('SonarInboxStore', () => {
     expect(list[0].title).toBe('一个视频标题'); // 不被覆盖
   });
 
+  it('enqueue refresh 命中已有项时覆盖刷新并重置为 pending', async () => {
+    const store = mkStore();
+    const { item } = await store.enqueue(sampleInput());
+    await store.markStatus(item.id, 'drafted', { projectPath: '/p/x' });
+    clock = 9000;
+    const res = await store.enqueue(
+      sampleInput({ title: '新标题', transcript: { fullText: '新转录', srtText: 's2', segments: [] } }),
+      { refresh: true },
+    );
+    expect(res.duplicate).toBe(false);
+    expect(res.refreshed).toBe(true);
+    expect(res.item.id).toBe(item.id); // 保留 id
+    expect(res.item.status).toBe('pending'); // 重置
+    expect(res.item.projectPath).toBeUndefined();
+    expect(res.item.title).toBe('新标题'); // 覆盖
+    expect(res.item.receivedAt).toBe(1000); // 保留
+    expect(res.item.updatedAt).toBe(9000);
+    expect(await store.list()).toHaveLength(1); // 不新增
+  });
+
   it('list 按 receivedAt 倒序', async () => {
     const store = mkStore();
     await store.enqueue(sampleInput({ awemeId: 'a1' }));

@@ -31,11 +31,13 @@ import type { Services } from './services';
 import type { BridgeSettingsStore, UpdateBridgeSettingsInput } from '@/bridge/bridge-settings';
 import { toBridgeSettingsView } from '@/bridge/bridge-settings';
 import type { BridgeClient } from '@/bridge/bridge-client';
+import type { PushOptions, PushResult } from '@/bridge/push-on-processed';
 
-/** 桥依赖：设置存储 + 探活客户端（testBridge 用）。 */
+/** 桥依赖：设置存储 + 探活客户端（testBridge）+ 手动推送某视频到待创作箱。 */
 export interface BridgeContext {
   settings: BridgeSettingsStore;
   client: Pick<BridgeClient, 'probe'>;
+  push(videoId: string, opts?: PushOptions): Promise<PushResult>;
 }
 
 export interface HandlerContext {
@@ -267,6 +269,11 @@ export function createHandlers(ctx: HandlerContext): HandlerMap {
     async testBridge() {
       const s = await ctx.bridge.settings.get();
       return ctx.bridge.client.probe(s);
+    },
+
+    async pushVideoToBridge(params) {
+      // 手动推送：force（忽略开关）+ refresh（命中已有则刷新为待创作）。
+      return ctx.bridge.push(requireString(params, 'videoId'), { force: true, refresh: true });
     },
   };
 }

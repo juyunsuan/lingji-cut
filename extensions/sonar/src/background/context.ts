@@ -20,11 +20,12 @@ export interface InMemoryContextOverrides {
   bridge?: BridgeContext;
 }
 
-/** 默认桥依赖：内存设置 + 始终不可达的探活（纯内存、不联网）。 */
+/** 默认桥依赖：内存设置 + 始终不可达的探活 + 未配置的推送（纯内存、不联网）。 */
 function defaultBridge(): BridgeContext {
   return {
     settings: createMemoryBridgeSettingsStore(),
     client: { async probe() { return { ok: false }; } },
+    async push() { return { pushed: false, reason: 'disabled' }; },
   };
 }
 

@@ -56,10 +56,17 @@ export interface SonarStatusPatch {
 export interface SonarEnqueueResult {
   item: SonarInboxItem;
   duplicate: boolean;
+  /** refresh 模式下命中已有项并被覆盖刷新（重置为 pending）。 */
+  refreshed?: boolean;
+}
+
+export interface SonarEnqueueOptions {
+  /** 命中已有 awemeId 时：true=覆盖刷新并重置为 pending（手动推送）；false/缺省=去重（自动监听）。 */
+  refresh?: boolean;
 }
 
 export interface SonarInboxStore {
-  enqueue(input: SonarEnqueueInput): Promise<SonarEnqueueResult>;
+  enqueue(input: SonarEnqueueInput, opts?: SonarEnqueueOptions): Promise<SonarEnqueueResult>;
   list(): Promise<SonarInboxItem[]>;
   get(id: string): Promise<SonarInboxItem | null>;
   getByAweme(awemeId: string): Promise<SonarInboxItem | null>;
@@ -107,10 +114,28 @@ export function createSonarInboxStore(deps: SonarInboxStoreDeps = {}): SonarInbo
   }
 
   return {
-    async enqueue(input) {
+    async enqueue(input, opts) {
       const all = await ensureLoaded();
-      const existing = all.find((i) => i.awemeId === input.awemeId);
-      if (existing) return { item: existing, duplicate: true };
+      const idx = all.findIndex((i) => i.awemeId === input.awemeId);
+      if (idx >= 0) {
+        // 去重（自动监听）：保留原项。
+        if (!opts?.refresh) return { item: all[idx]!, duplicate: true };
+        // 刷新（手动推送）：覆盖元数据/转录，保留 id 与 receivedAt，重置为 pending。
+        const t = now();
+        const refreshed: SonarInboxItem = {
+          ...all[idx]!,
+          ...input,
+          id: all[idx]!.id,
+          status: 'pending',
+          projectPath: undefined,
+          error: undefined,
+          receivedAt: all[idx]!.receivedAt,
+          updatedAt: t,
+        };
+        all[idx] = refreshed;
+        await persist();
+        return { item: refreshed, duplicate: false, refreshed: true };
+      }
       const t = now();
       const item: SonarInboxItem = {
         ...input,

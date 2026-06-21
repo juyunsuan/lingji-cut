@@ -89,6 +89,22 @@ describe('createBridgeClient.enqueue', () => {
     expect(pending.items).toHaveLength(0);
   });
 
+  it('refresh 选项把 refresh:true 写入请求体', async () => {
+    const fetchImpl = vi.fn(async () => okJson({ queued: true, itemId: 'x', duplicate: false, refreshed: true }));
+    const client = createBridgeClient({ fetchImpl, pending: memPending() });
+    await client.enqueue(config, payload(), { refresh: true });
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, { body: string }];
+    expect(JSON.parse(init.body).refresh).toBe(true);
+  });
+
+  it('不传 refresh 时请求体不含 refresh', async () => {
+    const fetchImpl = vi.fn(async () => okJson({ queued: true, itemId: 'x', duplicate: false }));
+    const client = createBridgeClient({ fetchImpl, pending: memPending() });
+    await client.enqueue(config, payload());
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, { body: string }];
+    expect('refresh' in JSON.parse(init.body)).toBe(false);
+  });
+
   it('网络失败 → 入 pending 暂存', async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error('down');

@@ -71,8 +71,9 @@ export async function handleSonarRequest(
     }
     const v = validateEnqueue(req.body);
     if (!v.ok) return { status: 400, body: { error: v.message } };
-    const { item, duplicate } = await deps.store.enqueue(v.input);
-    return { status: 200, body: { queued: true, itemId: item.id, duplicate } };
+    const refresh = (req.body as { refresh?: unknown }).refresh === true;
+    const { item, duplicate, refreshed } = await deps.store.enqueue(v.input, { refresh });
+    return { status: 200, body: { queued: true, itemId: item.id, duplicate, refreshed: refreshed ?? false } };
   }
 
   return { status: 404, body: { error: 'Not Found' } };

@@ -38,6 +38,7 @@ import { createRequest } from '@/protocol/messages';
 import { SonarException } from '@/domain/errors';
 import type { BridgeSettingsView, UpdateBridgeSettingsInput } from '@/bridge/bridge-settings';
 import type { ProbeResult } from '@/bridge/bridge-client';
+import type { PushResult } from '@/bridge/push-on-processed';
 import type { Transport } from './transport';
 
 export interface DouyinClient {
@@ -82,6 +83,8 @@ export interface DouyinClient {
   getBridgeSettings(): Promise<BridgeSettingsView>;
   updateBridgeSettings(input: UpdateBridgeSettingsInput): Promise<void>;
   testBridge(): Promise<ProbeResult>;
+  /** 手动把某视频（须已转录）推送到灵机剪影待创作箱，命中已有则刷新为待创作。 */
+  pushVideoToBridge(videoId: string): Promise<PushResult>;
 }
 
 /**
@@ -138,5 +141,6 @@ export function createDouyinClient(transport: Transport): DouyinClient {
       await call('updateBridgeSettings', input);
     },
     testBridge: () => call('testBridge', undefined),
+    pushVideoToBridge: (videoId) => call('pushVideoToBridge', { videoId }),
   };
 }

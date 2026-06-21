@@ -62,9 +62,14 @@ export interface FlushResult {
   remaining: number;
 }
 
+export interface EnqueueOptions {
+  /** 命中已有 awemeId 时覆盖刷新并重置为待创作（手动推送用）；自动监听不传，保持去重。 */
+  refresh?: boolean;
+}
+
 export interface BridgeClient {
   probe(config: BridgeConfig): Promise<ProbeResult>;
-  enqueue(config: BridgeConfig, payload: BridgePayload): Promise<EnqueueOutcome>;
+  enqueue(config: BridgeConfig, payload: BridgePayload, opts?: EnqueueOptions): Promise<EnqueueOutcome>;
   flushPending(config: BridgeConfig): Promise<FlushResult>;
 }
 
@@ -79,13 +84,17 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
   const pending = deps.pending;
 
   /** 单次 POST 尝试；网络错误/5xx 归为 retryable。 */
-  async function send(config: BridgeConfig, payload: BridgePayload): Promise<SendResult> {
+  async function send(
+    config: BridgeConfig,
+    payload: BridgePayload,
+    opts?: EnqueueOptions,
+  ): Promise<SendResult> {
     let res: Response;
     try {
       res = await fetchImpl(joinUrl(config.endpoint, 'sonar/enqueue'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-sonar-token': config.token },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(opts?.refresh ? { ...payload, refresh: true } : payload),
       });
     } catch {
       return 'retryable';
@@ -120,9 +129,9 @@ export function createBridgeClient(deps: BridgeClientDeps): BridgeClient {
       }
     },
 
-    async enqueue(config, payload) {
+    async enqueue(config, payload, opts) {
       if (!config.enabled) return { status: 'disabled' };
-      const result = await send(config, payload);
+      const result = await send(config, payload, opts);
       switch (result) {
         case 'sent-new':
           return { status: 'sent', duplicate: false };

@@ -160,7 +160,7 @@ export function buildServices(deps: BuildServicesDeps): BuiltServices {
   return {
     services,
     downloadService,
-    bridge: { settings: bridgeSettings, client: bridgeClient },
+    bridge: { settings: bridgeSettings, client: bridgeClient, push: pushOnProcessed },
     async flushBridgePending() {
       await bridgeClient.flushPending(await bridgeSettings.get());
     },
