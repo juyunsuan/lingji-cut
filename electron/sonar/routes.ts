@@ -5,6 +5,7 @@
  * server.ts 写一层薄适配把 IncomingMessage/ServerResponse 接进来。
  * 仅 loopback（由 server 绑定保证）+ x-sonar-token 比对。
  */
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { SonarInboxStore, SonarEnqueueInput } from './inbox-store';
 
 export interface SonarRequest {
@@ -75,4 +76,54 @@ export async function handleSonarRequest(
   }
 
   return { status: 404, body: { error: 'Not Found' } };
+}
+
+/** 读取并解析 JSON 请求体（空体 → undefined，非法 JSON 抛错）。 */
+function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk: Buffer) => chunks.push(chunk));
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf-8');
+      if (!raw) return resolve(undefined);
+      try {
+        resolve(JSON.parse(raw));
+      } catch (err) {
+        reject(err);
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+/**
+ * node http 适配层（server.ts 与集成测试共用，避免 glue 漂移）。
+ * 读取 x-sonar-token 头与 JSON body → handleSonarRequest → 写 status + JSON。
+ */
+export async function handleSonarHttp(
+  req: IncomingMessage,
+  res: ServerResponse,
+  deps: SonarRouteDeps,
+): Promise<void> {
+  const url = new URL(req.url ?? '/', `http://${req.headers.host ?? 'localhost'}`);
+  let body: unknown;
+  try {
+    if (req.method === 'POST') body = await readJsonBody(req);
+  } catch {
+    res.writeHead(400, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Bad Request' }));
+    return;
+  }
+  const tokenHeader = req.headers['x-sonar-token'];
+  const result = await handleSonarRequest(
+    {
+      method: req.method ?? 'GET',
+      path: url.pathname,
+      token: typeof tokenHeader === 'string' ? tokenHeader : undefined,
+      body,
+    },
+    deps,
+  );
+  res.writeHead(result.status, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify(result.body));
 }

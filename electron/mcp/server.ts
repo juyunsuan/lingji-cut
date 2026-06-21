@@ -12,7 +12,7 @@ import { registerTools } from './tools';
 import { writeEndpointFile, removeEndpointFile } from './endpoint-file';
 import { createSonarInboxStore, type SonarInboxStore } from '../sonar/inbox-store';
 import { getOrCreateSonarToken } from '../sonar/token';
-import { handleSonarRequest, isSonarPath } from '../sonar/routes';
+import { handleSonarHttp, isSonarPath } from '../sonar/routes';
 
 // ─── 模块状态 ─────────────────────────────────────────────
 let httpServer: Server | null = null;
@@ -142,23 +142,11 @@ export async function startMcpServer(
     // ── 声呐桥端点（仅 loopback + token）──
     if (isSonarPath(pathname)) {
       try {
-        let body: unknown;
-        if (req.method === 'POST') {
-          body = await parseRequestBody(req);
-        }
-        const result = await handleSonarRequest(
-          {
-            method: req.method ?? 'GET',
-            path: pathname,
-            token: typeof req.headers['x-sonar-token'] === 'string'
-              ? (req.headers['x-sonar-token'] as string)
-              : undefined,
-            body,
-          },
-          { store: sonarStore!, expectedToken: sonarToken, version: '1.0.0' },
-        );
-        res.writeHead(result.status, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify(result.body));
+        await handleSonarHttp(req, res, {
+          store: sonarStore!,
+          expectedToken: sonarToken,
+          version: '1.0.0',
+        });
       } catch (err) {
         console.error('[Sonar] 处理请求出错:', err);
         if (!res.headersSent) {
