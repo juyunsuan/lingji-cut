@@ -182,14 +182,20 @@ export function Setup({
   // 默认用「二创转述」模板（洗稿、换表达），而非常规写稿模板。
   const handleDraftFromInbox = useCallback(
     async (item: SonarInboxItem, parentDir: string) => {
+      const projectName = deriveProjectName(item);
       await onImportScript(
         parentDir,
-        deriveProjectName(item),
+        projectName,
         inboxItemToOriginalMarkdown(item),
         true,
         { ...autoModeOptions.defaults, templateId: 'rewrite-remix' },
         autoModeOptions.defaultModelBinding,
       );
+      // 项目已创建并起飞二创流水线 → 标记待创作箱该项为「已生成」并记录项目路径，
+      // 避免重复创作；后续流水线进度由统一进度系统展示。
+      void window.electronAPI
+        .sonarInboxMarkStatus?.(item.id, 'drafted', { projectPath: `${parentDir}/${projectName}` })
+        .catch(() => {});
     },
     [onImportScript, autoModeOptions],
   );
