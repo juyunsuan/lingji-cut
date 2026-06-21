@@ -36,6 +36,8 @@ import type {
 import type { MethodName } from '@/protocol/methods';
 import { createRequest } from '@/protocol/messages';
 import { SonarException } from '@/domain/errors';
+import type { BridgeSettingsView, UpdateBridgeSettingsInput } from '@/bridge/bridge-settings';
+import type { ProbeResult } from '@/bridge/bridge-client';
 import type { Transport } from './transport';
 
 export interface DouyinClient {
@@ -75,6 +77,11 @@ export interface DouyinClient {
   getAiSettings(): Promise<AiSettingsView>;
   updateAiSettings(input: UpdateAiSettingsInput): Promise<void>;
   testAiProvider(input: TestAiProviderInput): Promise<ProviderTestResult>;
+
+  // 灵机剪影联动（桥）
+  getBridgeSettings(): Promise<BridgeSettingsView>;
+  updateBridgeSettings(input: UpdateBridgeSettingsInput): Promise<void>;
+  testBridge(): Promise<ProbeResult>;
 }
 
 /**
@@ -126,5 +133,10 @@ export function createDouyinClient(transport: Transport): DouyinClient {
       await call('updateAiSettings', input);
     },
     testAiProvider: (input) => call('testAiProvider', input),
+    getBridgeSettings: () => call('getBridgeSettings', undefined),
+    updateBridgeSettings: async (input) => {
+      await call('updateBridgeSettings', input);
+    },
+    testBridge: () => call('testBridge', undefined),
   };
 }

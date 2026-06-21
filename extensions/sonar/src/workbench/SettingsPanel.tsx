@@ -356,6 +356,8 @@ export function SettingsPanel({ client }: { client: DouyinClient }) {
           />
         </Section>
 
+        <BridgeSettingsSection client={client} />
+
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 4 }}>
           <Hover
             base={{
@@ -404,6 +406,105 @@ function Section({ title, ok, children }: { title: string; ok?: boolean; childre
       </div>
       {children}
     </div>
+  );
+}
+
+/** 灵机剪影联动（桥）设置：端点 / token / 开关 / 测试连接。独立加载与保存。 */
+function BridgeSettingsSection({ client }: { client: DouyinClient }) {
+  const [enabled, setEnabled] = useState(false);
+  const [endpoint, setEndpoint] = useState('http://127.0.0.1:19820');
+  const [token, setToken] = useState('');
+  const [hasToken, setHasToken] = useState(false);
+  const [tokenMasked, setTokenMasked] = useState<string | undefined>(undefined);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const load = () =>
+    client.getBridgeSettings().then((v) => {
+      setEnabled(v.enabled);
+      setEndpoint(v.endpoint);
+      setHasToken(v.hasToken);
+      setTokenMasked(v.tokenMasked);
+      setToken('');
+    });
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const save = async () => {
+    try {
+      await client.updateBridgeSettings({ enabled, endpoint, ...(token ? { token } : {}) });
+      await load();
+      setMsg('已保存');
+    } catch (e) {
+      setMsg(e instanceof SonarException ? e.error.message : String(e));
+    }
+  };
+
+  const test = async () => {
+    setMsg('测试连接…（请先保存）');
+    try {
+      const r = await client.testBridge();
+      setMsg(r.ok ? `连通正常${r.version ? `（v${r.version}）` : ''}` : '未连通：请确认灵机剪影已启动');
+    } catch (e) {
+      setMsg(e instanceof SonarException ? e.error.message : String(e));
+    }
+  };
+
+  return (
+    <Section title="灵机剪影联动" ok={enabled && hasToken}>
+      <div style={{ fontSize: 12.5, color: S.c8, lineHeight: 1.7, marginBottom: 12 }}>
+        发现并转录新作品后，自动把转录稿推送到灵机剪影「待创作箱」做二创初稿。
+        端点与 token 在灵机剪影欢迎页「待创作箱 → 桥配置」获取。
+      </div>
+      <Check
+        checked={enabled}
+        onChange={setEnabled}
+        text="开启联动（转录完成后推送到灵机剪影）"
+      />
+      <div style={{ marginBottom: 10 }}>
+        <div style={fieldLabel}>端点</div>
+        <input
+          style={inp}
+          value={endpoint}
+          onChange={(e) => setEndpoint(e.target.value)}
+          placeholder="http://127.0.0.1:19820"
+        />
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={fieldLabel}>
+          Token{hasToken ? `（已保存 ${tokenMasked ?? ''}，留空不变）` : ''}
+        </div>
+        <input
+          style={inp}
+          value={token}
+          onChange={(e) => setToken(e.target.value)}
+          placeholder={hasToken ? '••••（留空沿用既有）' : '从灵机剪影复制 token'}
+        />
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Hover
+          base={{
+            height: 32,
+            padding: '0 15px',
+            background: S.accent,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 8,
+            fontSize: 12.5,
+            fontWeight: 600,
+            cursor: 'pointer',
+            display: 'inline-flex',
+            alignItems: 'center',
+          }}
+          hover={{ filter: 'brightness(1.1)' }}
+          onClick={save}
+        >
+          保存
+        </Hover>
+        <TestButton onClick={test} />
+        {msg && <span style={{ fontSize: 12, color: S.dim }}>{msg}</span>}
+      </div>
+    </Section>
   );
 }
 
