@@ -90,19 +90,6 @@
   color: var(--color-mac-green, green);
 }
 
-.dirRow {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.dirText {
-  font-size: 12px;
-  color: var(--color-mac-text-muted, var(--color-muted-foreground));
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .list {
   display: flex;
   flex-direction: column;
