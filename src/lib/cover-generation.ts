@@ -1,9 +1,16 @@
 import { v4 as uuid } from 'uuid';
-import type { CoverCandidate, ImageProvider } from '../types/ai';
+import type { CoverCandidate, ImageAspectRatio, ImageProvider } from '../types/ai';
 import { ImageGenerationError } from './image-gen/errors';
 import { createNoopContext, toDataUrl } from './image-gen/progress';
 import { getImageProvider } from './image-gen/registry';
 import type { ImageGenerationContext } from './image-gen/types';
+
+/** 封面批量生成选项；缺省保持旧行为（16:9、每条 prompt 4 张候选）。 */
+export interface CoverCandidateOptions {
+  aspectRatio?: ImageAspectRatio;
+  /** 每条 prompt 生成的候选数量 */
+  n?: number;
+}
 
 /**
  * 按 ImageProvider.type 分派到具体的文生图实现。
@@ -14,10 +21,11 @@ export async function generateCoverImage(
   provider: ImageProvider,
   model: string,
   ctx?: ImageGenerationContext,
+  aspectRatio: ImageAspectRatio = '16:9',
 ): Promise<string> {
   const adapter = getImageProvider(provider.type);
   const result = await adapter.generate(
-    { prompt, model, aspectRatio: '16:9', n: 1 },
+    { prompt, model, aspectRatio, n: 1 },
     { baseUrl: provider.baseUrl, apiKey: provider.apiKey, extras: provider.extras },
     ctx ?? createNoopContext(),
   );
@@ -42,7 +50,10 @@ export async function generateCoverCandidates(
   model: string,
   coversDir: string,
   ctx?: ImageGenerationContext,
+  options: CoverCandidateOptions = {},
 ): Promise<CoverCandidate[]> {
+  const aspectRatio: ImageAspectRatio = options.aspectRatio ?? '16:9';
+  const n = options.n ?? 4;
   const path = await import('node:path');
   const adapter = getImageProvider(provider.type);
   const config = {
@@ -65,7 +76,7 @@ export async function generateCoverCandidates(
 
     try {
       const result = await adapter.generate(
-        { prompt, model, aspectRatio: '16:9', n: 4 },
+        { prompt, model, aspectRatio, n },
         config,
         effectiveCtx,
       );
@@ -74,7 +85,7 @@ export async function generateCoverCandidates(
         const outputPath = path.join(coversDir, `cover-${id}.png`);
         const remoteUrl = image.url ?? toDataUrl(image);
         if (!remoteUrl) {
-          candidates.push({ id, prompt, imageUrl: '', selected: false, error: '未获取到图片地址' });
+          candidates.push({ id, prompt, imageUrl: '', selected: false, aspectRatio, error: '未获取到图片地址' });
           continue;
         }
         try {
@@ -83,13 +94,14 @@ export async function generateCoverCandidates(
           } else {
             await downloadToFile(remoteUrl, outputPath);
           }
-          candidates.push({ id, prompt, imageUrl: outputPath, selected: false });
+          candidates.push({ id, prompt, imageUrl: outputPath, selected: false, aspectRatio, createdAt: Date.now() });
         } catch (dlError) {
           candidates.push({
             id,
             prompt,
             imageUrl: '',
             selected: false,
+            aspectRatio,
             error: dlError instanceof Error ? dlError.message : '下载封面失败',
           });
         }
@@ -100,6 +112,7 @@ export async function generateCoverCandidates(
         prompt,
         imageUrl: '',
         selected: false,
+        aspectRatio,
         error: error instanceof Error ? error.message : '封面生成失败',
       });
     }

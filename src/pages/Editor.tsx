@@ -35,6 +35,7 @@ import {
 } from '../lib/utils';
 import { loadAISettings, useAIStore } from '../store/ai';
 import { useTimelineStore } from '../store/timeline';
+import { usePublishStore } from '../store/publish';
 import {
   Alert,
   Button,
@@ -700,6 +701,8 @@ export function Editor({
         label: '在 Finder 中显示',
         handler: () => window.electronAPI.showItemInFolder(savePath),
       });
+      // 联动发布选项卡：记录最近导出的成片路径，供「发布视频」预填视频文件。
+      usePublishStore.getState().setLastExportPath(savePath);
       setExportSuccess({ outputPath: savePath, elapsedMs });
     } catch (error) {
       console.error('导出失败:', error);

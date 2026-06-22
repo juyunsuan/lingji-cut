@@ -169,6 +169,16 @@ export interface CoverCandidate {
   edits?: CoverEditState;
   /** 生成时间戳 */
   createdAt?: number;
+  /**
+   * 画幅比例。编辑器封面默认 16:9；发布选项卡会按 16:9 / 4:3 / 3:4 分组展示。
+   * 旧工程候选无此字段，读取时按 '16:9' 处理（见 coverAspectRatio()）。
+   */
+  aspectRatio?: ImageAspectRatio;
+}
+
+/** 读取封面候选的画幅比例，旧数据缺省按 16:9。 */
+export function coverAspectRatio(candidate: Pick<CoverCandidate, 'aspectRatio'>): ImageAspectRatio {
+  return candidate.aspectRatio ?? '16:9';
 }
 
 export type { CoverEditState, CoverTextOverlay } from '../lib/cover-editor/contracts';

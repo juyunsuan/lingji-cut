@@ -22,6 +22,9 @@ interface PublishState {
   accounts: PublishAccount[];
   job: ActivePublishJob | null;
   results: Record<string, PublishResult>;
+  /** 编辑器最近一次成功导出的 MP4 路径；供发布选项卡联动预填视频文件。 */
+  lastExportPath: string | null;
+  setLastExportPath: (path: string | null) => void;
 
   loadAccounts: () => Promise<void>;
   addAccount: (
@@ -44,6 +47,8 @@ export const usePublishStore = create<PublishState>((set, get) => ({
   accounts: [],
   job: null,
   results: {},
+  lastExportPath: null,
+  setLastExportPath: (path) => set({ lastExportPath: path }),
 
   loadAccounts: async () => {
     const accounts = await window.publishAPI.listAccounts();

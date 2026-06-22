@@ -144,7 +144,8 @@ function isCoverCandidate(value: unknown): value is CoverCandidate {
     typeof value.prompt === 'string' &&
     typeof value.imageUrl === 'string' &&
     typeof value.selected === 'boolean' &&
-    (value.error === undefined || typeof value.error === 'string')
+    (value.error === undefined || typeof value.error === 'string') &&
+    (value.aspectRatio === undefined || typeof value.aspectRatio === 'string')
   );
 }
 

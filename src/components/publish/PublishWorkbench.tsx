@@ -1,9 +1,31 @@
 import { useEffect, useState } from 'react';
-import { Upload, Film, Image as ImageIcon, Tag, Clock, Check, X, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
+import { Upload, Film, Image as ImageIcon, Tag, Check, X, Loader2, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { Button, Field, Input } from '../../ui';
 import { Spinner } from '../../ui/primitives/Spinner';
 import { usePublishStore } from '../../store/publish';
+import { loadAISettings, useAIStore } from '../../store/ai';
+import { useTimelineStore } from '../../store/timeline';
 import type { PublishAccount, PublishTarget } from '../../lib/electron-api';
+import type { AIAnalysisResult } from '../../types/ai';
+import { PublishCoverPanel } from './PublishCoverPanel';
+
+/** 拼接 AI 分析摘要 / 关键词 / 段落，兜底用字幕原文，作为发布文案生成素材。 */
+function buildMetadataSource(analysis: AIAnalysisResult | null, srtText: string): string {
+  const parts: string[] = [];
+  if (analysis?.summary) parts.push(`节目总结：${analysis.summary}`);
+  if (analysis?.keywords?.length) parts.push(`关键词：${analysis.keywords.join('、')}`);
+  if (analysis?.segments?.length) {
+    const segs = analysis.segments
+      .slice(0, 16)
+      .map((s, i) => `${i + 1}. ${s.title}${s.summary ? `：${s.summary}` : ''}`)
+      .join('\n');
+    parts.push(`段落概要：\n${segs}`);
+  }
+  if (parts.length === 0 && srtText.trim()) {
+    parts.push(`字幕内容：${srtText.trim().slice(0, 3000)}`);
+  }
+  return parts.join('\n\n');
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -310,6 +332,7 @@ function AccountOverridePanel({
 
 export function PublishWorkbench({ projectDir }: { projectDir: string | null }) {
   const { accounts, job, results, loadAccounts, startPublish, cancelPublish } = usePublishStore();
+  const lastExportPath = usePublishStore((s) => s.lastExportPath);
 
   // Form state
   const [filePath, setFilePath] = useState('');
@@ -317,8 +340,12 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
   const [title, setTitle] = useState('');
   const [desc, setDesc] = useState('');
   const [tagsInput, setTagsInput] = useState('');
-  const [scheduleType, setScheduleType] = useState<'immediate' | 'scheduled'>('immediate');
-  const [scheduleAt, setScheduleAt] = useState('');
+
+  // AI 文案生成
+  const [isGeneratingMeta, setIsGeneratingMeta] = useState(false);
+  const [metaError, setMetaError] = useState<string | null>(null);
+  // 封面联动面板展开
+  const [showCoverPanel, setShowCoverPanel] = useState(true);
 
   // Multi-select: set of checked account IDs
   const [selectedAccountIds, setSelectedAccountIds] = useState<string[]>([]);
@@ -334,6 +361,68 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
   useEffect(() => {
     void loadAccounts();
   }, [loadAccounts]);
+
+  // ── 联动编辑器：预填视频文件与封面缩略图 ──
+  // 同会话：编辑器导出后写入 store.lastExportPath；跨重启：扫描项目目录最新成片。
+  useEffect(() => {
+    if (lastExportPath) setFilePath((prev) => prev || lastExportPath);
+  }, [lastExportPath]);
+
+  useEffect(() => {
+    if (!projectDir) return;
+    let cancelled = false;
+    void (async () => {
+      // 视频文件兜底
+      const last = usePublishStore.getState().lastExportPath;
+      let resolved: string | null = last;
+      if (!resolved) {
+        resolved = await window.electronAPI.findLatestExport(projectDir).catch(() => null);
+      }
+      if (resolved && !cancelled) setFilePath((prev) => prev || resolved!);
+      // 封面：默认取编辑器选定的封面候选
+      const selectedCover = useAIStore
+        .getState()
+        .coverCandidates.find((c) => c.selected && c.imageUrl);
+      if (selectedCover && !cancelled) setThumbnail((prev) => prev || selectedCover.imageUrl);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [projectDir]);
+
+  const handleGenerateMeta = async () => {
+    setMetaError(null);
+    const settings = await loadAISettings();
+    if (!settings) {
+      setMetaError('请先在「设置 → AI」完成大模型配置');
+      return;
+    }
+    const analysis = useAIStore.getState().analysisResult;
+    const srtText = useTimelineStore
+      .getState()
+      .srtEntries.map((e) => e.text)
+      .join(' ');
+    const sourceText = buildMetadataSource(analysis, srtText);
+    if (!sourceText.trim()) {
+      setMetaError('暂无内容可供生成，请先完成 AI 分析或导入字幕');
+      return;
+    }
+    setIsGeneratingMeta(true);
+    try {
+      const md = await window.electronAPI.generatePublishMetadata({
+        settings,
+        sourceText,
+        currentTitle: title.trim() || undefined,
+      });
+      if (md.title) setTitle(md.title);
+      if (md.desc) setDesc(md.desc);
+      if (md.tags.length) setTagsInput(md.tags.join(', '));
+    } catch (e) {
+      setMetaError(e instanceof Error ? e.message : 'AI 文案生成失败');
+    } finally {
+      setIsGeneratingMeta(false);
+    }
+  };
 
   const toggleAccount = (accId: string) => {
     setSelectedAccountIds((prev) => {
@@ -412,10 +501,6 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
       desc,
       tags: sharedTags,
       thumbnail: thumbnail || undefined,
-      scheduleAt:
-        scheduleType === 'scheduled' && scheduleAt
-          ? new Date(scheduleAt).getTime()
-          : undefined,
     };
 
     // Build targets — only include overrides for filled fields
@@ -511,13 +596,13 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
           </div>
         </Field>
 
-        {/* Thumbnail (optional) */}
-        <Field label="缩略图（可选）">
+        {/* Thumbnail (optional) + 封面联动面板 */}
+        <Field label="封面缩略图" hint="与编辑器封面联动，支持 16:9 / 4:3 / 3:4 三种比例">
           <div style={{ display: 'flex', gap: 8 }}>
             <Input
               value={thumbnail}
               onChange={(e) => setThumbnail(e.target.value)}
-              placeholder="封面图路径（可选）"
+              placeholder="封面图路径（点下方封面或手动选择）"
               leftIcon={<ImageIcon size={14} />}
               style={{ flex: 1 }}
             />
@@ -525,7 +610,63 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
               选择…
             </Button>
           </div>
+          <button
+            type="button"
+            onClick={() => setShowCoverPanel((v) => !v)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              marginTop: 8,
+              fontSize: 12,
+              color: 'var(--color-system-blue)',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              padding: 0,
+            }}
+          >
+            {showCoverPanel ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+            封面比例与生成（16:9 / 4:3 / 3:4）
+          </button>
+          {showCoverPanel && (
+            <div style={{ marginTop: 8 }}>
+              <PublishCoverPanel
+                projectDir={projectDir}
+                selectedThumbnail={thumbnail}
+                onSelectThumbnail={setThumbnail}
+              />
+            </div>
+          )}
         </Field>
+
+        {/* AI 一键生成文案 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Button
+            variant="outline"
+            onClick={() => void handleGenerateMeta()}
+            disabled={isGeneratingMeta}
+            style={{ flexShrink: 0 }}
+          >
+            {isGeneratingMeta ? (
+              <>
+                <Loader2 size={14} style={{ animation: 'spin 1s linear infinite', marginRight: 6 }} />
+                生成中…
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} style={{ marginRight: 6 }} />
+                AI 一键生成标题/描述/标签
+              </>
+            )}
+          </Button>
+          {metaError && (
+            <span style={{ fontSize: 12, color: 'var(--color-error, #ef4444)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <X size={12} />
+              {metaError}
+            </span>
+          )}
+        </div>
 
         {/* Title */}
         <Field label="共享标题" required>
@@ -567,41 +708,6 @@ export function PublishWorkbench({ projectDir }: { projectDir: string | null }) 
             placeholder="标签1, 标签2, 标签3"
             leftIcon={<Tag size={14} />}
           />
-        </Field>
-
-        {/* Schedule */}
-        <Field label="发布时间">
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input
-                type="radio"
-                name="scheduleType"
-                value="immediate"
-                checked={scheduleType === 'immediate'}
-                onChange={() => setScheduleType('immediate')}
-              />
-              立即发布
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-              <input
-                type="radio"
-                name="scheduleType"
-                value="scheduled"
-                checked={scheduleType === 'scheduled'}
-                onChange={() => setScheduleType('scheduled')}
-              />
-              定时发布
-            </label>
-            {scheduleType === 'scheduled' && (
-              <Input
-                type="datetime-local"
-                value={scheduleAt}
-                onChange={(e) => setScheduleAt(e.target.value)}
-                leftIcon={<Clock size={14} />}
-                style={{ flex: 1 }}
-              />
-            )}
-          </div>
         </Field>
 
         {/* Account multi-select */}

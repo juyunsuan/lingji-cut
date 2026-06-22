@@ -15,6 +15,7 @@ import { useTaskProgressStore } from '../store/task-progress';
 import { getProjectDir, useTimelineStore } from '../store/timeline';
 import {
   buildAICardTimelineDraft,
+  coverAspectRatio,
   type AICard,
   type AIAnalysisCardError,
   type AIAnalysisResult,
@@ -1223,7 +1224,8 @@ export function AIPanel({
           <TabsContent value="cover" className={styles.tabContent}>
             <AICoverPanel
               coverPrompts={analysisResult?.coverPrompts ?? []}
-              candidates={coverCandidates}
+              // 编辑器封面面板只展示 16:9（整期封面）；4:3 / 3:4 由「发布视频」选项卡管理。
+              candidates={coverCandidates.filter((c) => coverAspectRatio(c) === '16:9')}
               isGenerating={isGeneratingCovers}
               isRegeneratingPrompt={isRegeneratingCoverPrompt}
               selectedCandidateId={selectedCoverCandidate?.id}
