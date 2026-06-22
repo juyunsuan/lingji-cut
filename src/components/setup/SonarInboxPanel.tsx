@@ -6,7 +6,7 @@
  * 桥配置区展示本机端点 + token，供用户复制进扩展设置。
  */
 import { useCallback, useEffect, useState } from 'react';
-import { Inbox, RefreshCw, Trash2, Sparkles, Copy, FolderOpen, ChevronDown, ChevronRight } from 'lucide-react';
+import { Inbox, RefreshCw, Trash2, Sparkles, Copy, ChevronDown, ChevronRight } from 'lucide-react';
 import { Alert, Button } from '../../ui';
 import {
   canDraftInboxItem,
@@ -15,8 +15,8 @@ import {
 import styles from './SonarInboxPanel.module.css';
 
 interface SonarInboxPanelProps {
-  /** 生成初稿：传入收件项与父目录，上层复用 onImportScript 走 autoMode 流水线。 */
-  onDraft: (item: SonarInboxItem, parentDir: string) => Promise<void>;
+  /** 生成初稿：上报需要创作的收件项，由上层打开预填的「导入文稿」弹窗选目录/模型。 */
+  onRequestDraft: (item: SonarInboxItem) => void;
 }
 
 const STATUS_LABEL: Record<SonarInboxItem['status'], string> = {
@@ -26,13 +26,11 @@ const STATUS_LABEL: Record<SonarInboxItem['status'], string> = {
   failed: '失败',
 };
 
-export function SonarInboxPanel({ onDraft }: SonarInboxPanelProps) {
+export function SonarInboxPanel({ onRequestDraft }: SonarInboxPanelProps) {
   const [items, setItems] = useState<SonarInboxItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [parentDir, setParentDir] = useState<string | null>(null);
   const [bridge, setBridge] = useState<{ port: number; token: string } | null>(null);
   const [showBridge, setShowBridge] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -65,33 +63,12 @@ export function SonarInboxPanel({ onDraft }: SonarInboxPanelProps) {
     return () => off?.();
   }, [refresh, api]);
 
-  const pickDir = useCallback(async () => {
-    const dir = await api?.selectProjectDirectory?.();
-    if (dir) setParentDir(dir);
-  }, [api]);
-
   const handleDraft = useCallback(
-    async (item: SonarInboxItem) => {
-      if (!parentDir) {
-        setError('请先选择保存项目的父目录');
-        return;
-      }
-      setBusyId(item.id);
+    (item: SonarInboxItem) => {
       setError(null);
-      try {
-        await api?.sonarInboxMarkStatus?.(item.id, 'creating');
-        await onDraft(item, parentDir);
-        // onDraft 通常会导航到 auto-run，本组件随欢迎页卸载。
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : '生成初稿失败';
-        setError(msg);
-        await api?.sonarInboxMarkStatus?.(item.id, 'failed', { error: msg }).catch(() => {});
-        void refresh();
-      } finally {
-        setBusyId(null);
-      }
+      onRequestDraft(item);
     },
-    [api, onDraft, parentDir, refresh],
+    [onRequestDraft],
   );
 
   const handleRemove = useCallback(
@@ -157,14 +134,6 @@ export function SonarInboxPanel({ onDraft }: SonarInboxPanelProps) {
         </div>
       ) : null}
 
-      <div className={styles.dirRow}>
-        <Button variant="secondary" size="sm" onClick={() => void pickDir()}>
-          <FolderOpen size={14} />
-          {parentDir ? '更改父目录' : '选择父目录'}
-        </Button>
-        <span className={styles.dirText}>{parentDir ?? '未选择保存位置'}</span>
-      </div>
-
       {error ? <Alert variant="error">{error}</Alert> : null}
 
       <ul className={styles.list}>
@@ -188,11 +157,11 @@ export function SonarInboxPanel({ onDraft }: SonarInboxPanelProps) {
             <div className={styles.itemActions}>
               <Button
                 size="sm"
-                onClick={() => void handleDraft(item)}
-                disabled={busyId === item.id || !canDraftInboxItem(item) || item.status === 'creating'}
+                onClick={() => handleDraft(item)}
+                disabled={!canDraftInboxItem(item) || item.status === 'creating'}
               >
                 <Sparkles size={14} />
-                {busyId === item.id ? '处理中…' : '生成初稿'}
+                生成初稿
               </Button>
               <button className={styles.iconBtn} onClick={() => void handleRemove(item)} title="移除">
                 <Trash2 size={14} />

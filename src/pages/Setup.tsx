@@ -101,6 +101,8 @@ export function Setup({
   const [importScriptOpen, setImportScriptOpen] = useState(false);
   const [importScriptCreating, setImportScriptCreating] = useState(false);
   const [importScriptError, setImportScriptError] = useState<string | null>(null);
+  // ── 待创作箱触发的预填项（非空表示当前弹窗服务于某条 inbox 素材）──
+  const [inboxDraftItem, setInboxDraftItem] = useState<SonarInboxItem | null>(null);
 
   // ── 抖音导入弹窗状态 ──
   const [douyinDialogOpen, setDouyinDialogOpen] = useState(false);
@@ -178,27 +180,14 @@ export function Setup({
     };
   }, [aiSettings, selectedTemplate, selectedRole, voiceIdDefault]);
 
-  // 待创作箱「生成初稿」：转录稿作为 original.md 素材，复用一键 autoMode 流水线做 AI 二创。
-  // 默认用「二创转述」模板（洗稿、换表达），而非常规写稿模板。
-  const handleDraftFromInbox = useCallback(
-    async (item: SonarInboxItem, parentDir: string) => {
-      const projectName = deriveProjectName(item);
-      await onImportScript(
-        parentDir,
-        projectName,
-        inboxItemToOriginalMarkdown(item),
-        true,
-        { ...autoModeOptions.defaults, templateId: 'rewrite-remix' },
-        autoModeOptions.defaultModelBinding,
-      );
-      // 项目已创建并起飞二创流水线 → 标记待创作箱该项为「已生成」并记录项目路径，
-      // 避免重复创作；后续流水线进度由统一进度系统展示。
-      void window.electronAPI
-        .sonarInboxMarkStatus?.(item.id, 'drafted', { projectPath: `${parentDir}/${projectName}` })
-        .catch(() => {});
-    },
-    [onImportScript, autoModeOptions],
-  );
+  // 待创作箱「生成初稿」：打开预填的「导入文稿」弹窗，让用户选目录/写稿模型/角色/音色，
+  // 默认一键模式开 + 二创转述模板；确认后走与普通导入完全相同的 onImportScript。
+  const handleRequestDraftFromInbox = useCallback((item: SonarInboxItem) => {
+    setInboxDraftItem(item);
+    setImportScriptError(null);
+    setImportScriptCreating(false);
+    setImportScriptOpen(true);
+  }, []);
 
   // ── 抖音弹窗的一键成稿状态 ──
   const [douyinAutoMode, setDouyinAutoMode] = useState(false);
@@ -242,6 +231,7 @@ export function Setup({
 
   // ── 导入文稿弹窗操作 ──
   const handleOpenImportScript = useCallback(() => {
+    setInboxDraftItem(null);
     setImportScriptError(null);
     setImportScriptCreating(false);
     setImportScriptOpen(true);
@@ -260,6 +250,15 @@ export function Setup({
       setImportScriptError(null);
       try {
         await onImportScript(parentDir, projectNameInput, content, autoMode, autoParams, modelBinding);
+        // 来自待创作箱：项目已创建并起飞流水线 → 标记该收件项为「已生成」并记录项目路径，避免重复创作。
+        if (inboxDraftItem) {
+          void window.electronAPI
+            .sonarInboxMarkStatus?.(inboxDraftItem.id, 'drafted', {
+              projectPath: `${parentDir}/${projectNameInput}`,
+            })
+            .catch(() => {});
+          setInboxDraftItem(null);
+        }
         setImportScriptOpen(false);
       } catch (err) {
         setImportScriptError(err instanceof Error ? err.message : '创建项目失败');
@@ -267,8 +266,14 @@ export function Setup({
         setImportScriptCreating(false);
       }
     },
-    [onImportScript],
+    [onImportScript, inboxDraftItem],
   );
+
+  // 弹窗关闭（含取消）：清空 inbox 预填，收件项保持 pending。
+  const handleImportScriptOpenChange = useCallback((next: boolean) => {
+    setImportScriptOpen(next);
+    if (!next) setInboxDraftItem(null);
+  }, []);
 
   // ── 抖音导入弹窗操作 ──
   const handleOpenDouyinDialog = useCallback(() => {
@@ -495,7 +500,7 @@ export function Setup({
         </div>
 
         {/* ── 待创作箱（声呐监听推入的二创素材）── */}
-        <SonarInboxPanel onDraft={handleDraftFromInbox} />
+        <SonarInboxPanel onRequestDraft={handleRequestDraftFromInbox} />
 
         {/* ── 本地草稿 ── */}
         <div className={styles.draftsSection}>
@@ -644,9 +649,13 @@ export function Setup({
         open={importScriptOpen}
         busy={importScriptCreating}
         errorMessage={importScriptError}
-        onOpenChange={setImportScriptOpen}
+        onOpenChange={handleImportScriptOpenChange}
         onConfirm={handleConfirmImportScript}
         autoModeOptions={autoModeOptions}
+        initialContent={inboxDraftItem ? inboxItemToOriginalMarkdown(inboxDraftItem) : undefined}
+        initialProjectName={inboxDraftItem ? deriveProjectName(inboxDraftItem) : undefined}
+        initialAutoMode={inboxDraftItem ? true : undefined}
+        templateIdOverride={inboxDraftItem ? 'rewrite-remix' : undefined}
       />
 
       {/* ── 抖音导入弹窗：解析链接 → 选择目录 → 创建项目 ── */}
