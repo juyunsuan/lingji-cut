@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { computeImportDialogSeed } from '../src/components/script/ImportScriptDialog';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { computeImportDialogSeed, ImportScriptDialog } from '../src/components/script/ImportScriptDialog';
 import type { AutoWorkflowParams } from '../src/store/ai';
 
 const defaults: AutoWorkflowParams = {
@@ -37,5 +38,53 @@ describe('computeImportDialogSeed', () => {
     expect(seed.autoParams.roleId).toBe('none');
     expect(seed.autoParams.voiceId).toBe('female-shaonv');
     expect(seed.modelBinding).toEqual({ providerId: 'p1', model: 'gpt' });
+  });
+});
+
+const autoModeOptions = {
+  roles: [{ value: 'none', label: '不指定角色' }],
+  voices: [{ value: 'female-shaonv', label: '少女音' }],
+  models: [{ value: 'p1::gpt', label: 'P1 / gpt' }],
+  defaults,
+  defaultModelBinding: { providerId: 'p1', model: 'gpt' },
+};
+
+describe('ImportScriptDialog 预填渲染 (SSR)', () => {
+  it('给定 initial 入参时，首屏预填转录稿、项目名、目录预览，且一键模式默认展开', () => {
+    const html = renderToStaticMarkup(
+      <ImportScriptDialog
+        open
+        busy={false}
+        errorMessage={null}
+        onOpenChange={() => undefined}
+        onConfirm={() => undefined}
+        autoModeOptions={autoModeOptions}
+        initialContent="这是声呐转录稿"
+        initialProjectName="测试博主-测试标题"
+        initialParentDir="/tmp/out"
+        initialAutoMode
+        templateIdOverride="rewrite-remix"
+      />,
+    );
+    expect(html).toContain('这是声呐转录稿');
+    expect(html).toContain('/tmp/out/测试博主-测试标题');
+    expect(html).toContain('不指定角色');
+    expect(html).toContain('少女音');
+  });
+
+  it('不传 initial 入参时为干净弹窗（普通导入路径，回归保护）', () => {
+    const html = renderToStaticMarkup(
+      <ImportScriptDialog
+        open
+        busy={false}
+        errorMessage={null}
+        onOpenChange={() => undefined}
+        onConfirm={() => undefined}
+        autoModeOptions={autoModeOptions}
+      />,
+    );
+    expect(html).toContain('导入文稿');
+    expect(html).not.toContain('这是声呐转录稿');
+    expect(html).not.toContain('不指定角色');
   });
 });
