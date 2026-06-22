@@ -76,6 +76,8 @@ export interface SonarInboxStore {
     patch?: SonarStatusPatch,
   ): Promise<SonarInboxItem | null>;
   remove(id: string): Promise<boolean>;
+  /** 清空全部收件项，返回删除条数。 */
+  clear(): Promise<number>;
 }
 
 export interface SonarInboxStoreDeps {
@@ -183,6 +185,14 @@ export function createSonarInboxStore(deps: SonarInboxStoreDeps = {}): SonarInbo
       all.splice(idx, 1);
       await persist();
       return true;
+    },
+
+    async clear() {
+      const all = await ensureLoaded();
+      const n = all.length;
+      all.length = 0;
+      await persist();
+      return n;
     },
   };
 }

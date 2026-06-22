@@ -140,6 +140,19 @@ describe('SonarInboxStore', () => {
     expect(await store.remove(item.id)).toBe(false);
   });
 
+  it('clear 清空全部并返回删除条数', async () => {
+    const store = mkStore();
+    await store.enqueue(sampleInput({ awemeId: 'aweme-1' }));
+    await store.enqueue(sampleInput({ awemeId: 'aweme-2' }));
+    expect(await store.list()).toHaveLength(2);
+    expect(await store.clear()).toBe(2);
+    expect(await store.list()).toHaveLength(0);
+    // 清空已持久化：新实例从同一文件读回也是空
+    expect(await createSonarInboxStore({ file }).list()).toHaveLength(0);
+    // 再次清空空箱返回 0
+    expect(await store.clear()).toBe(0);
+  });
+
   it('文件损坏/缺失时降级为空列表', async () => {
     writeFileSync(file, '{ this is not json', 'utf-8');
     const store = createSonarInboxStore({ file });

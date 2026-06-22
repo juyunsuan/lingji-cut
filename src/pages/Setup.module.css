@@ -143,11 +143,22 @@
 
 /* ── 本地草稿 ── */
 
-.draftsSection {
+/* 工作区两栏容器：占满剩余高度，左右各自独立滚动。 */
+.workspaceRow {
   flex: 1;
   min-height: 0;
+  display: flex;
+  gap: 16px;
+  padding: 0 20px 20px;
+  overflow: hidden;
+}
+
+.draftsSection {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow-y: auto;
-  padding: var(--space-2) 20px 20px;
+  padding-top: var(--space-2);
 }
 
 /* ── 导入弹窗内部样式 ── */

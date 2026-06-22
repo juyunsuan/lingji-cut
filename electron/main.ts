@@ -2071,6 +2071,11 @@ ipcMain.handle('sonar-inbox-remove', async (_event, id: string) => {
   return store ? store.remove(id) : false;
 });
 
+ipcMain.handle('sonar-inbox-clear', async () => {
+  const store = getSonarInboxStore();
+  return store ? store.clear() : 0;
+});
+
 ipcMain.handle('sonar-bridge-info', async () => getSonarBridgeInfo());
 
 ipcMain.handle('save-script-state', async (_event, projectDir: string, state: string) => {

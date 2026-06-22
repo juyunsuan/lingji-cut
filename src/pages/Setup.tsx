@@ -499,16 +499,19 @@ export function Setup({
           </button>
         </div>
 
-        {/* ── 待创作箱（声呐监听推入的二创素材）── */}
-        <SonarInboxPanel onRequestDraft={handleRequestDraftFromInbox} />
+        {/* ── 工作区：左侧待创作箱 / 右侧本地草稿，各自独立滚动，互不挤压 ── */}
+        <div className={styles.workspaceRow}>
+          {/* 待创作箱（声呐监听推入的二创素材） */}
+          <SonarInboxPanel onRequestDraft={handleRequestDraftFromInbox} />
 
-        {/* ── 本地草稿 ── */}
-        <div className={styles.draftsSection}>
-          <ProjectList
-            projects={recentProjects}
-            onOpenProject={onOpenRecentProject}
-            onRemoveProject={onRemoveRecentProject}
-          />
+          {/* 本地草稿 */}
+          <div className={styles.draftsSection}>
+            <ProjectList
+              projects={recentProjects}
+              onOpenProject={onOpenRecentProject}
+              onRemoveProject={onRemoveRecentProject}
+            />
+          </div>
         </div>
       </div>
 

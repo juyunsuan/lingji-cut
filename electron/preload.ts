@@ -253,6 +253,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     patch?: { projectPath?: string; error?: string },
   ) => ipcRenderer.invoke('sonar-inbox-mark-status', id, status, patch),
   sonarInboxRemove: (id: string) => ipcRenderer.invoke('sonar-inbox-remove', id),
+  sonarInboxClear: () => ipcRenderer.invoke('sonar-inbox-clear'),
   sonarBridgeInfo: () => ipcRenderer.invoke('sonar-bridge-info'),
   onSonarInboxUpdated: (callback: () => void) => {
     const handler = () => callback();
