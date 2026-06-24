@@ -71,8 +71,12 @@ export function resolvePageTransition({
       contentKey: 'workspace',
       initial: STATIC_STATE,
       animate: STATIC_STATE,
-      exit: STATIC_STATE,
-      transition: { duration: 0, ease: EASE_APPLE },
+      // 工作区内部切换走稳定 key，这份 exit 永不在 tab 互切时触发（元素不卸载）。
+      // 它只在「离开工作区」时被 AnimatePresence 冻结使用（如 publish/editor → settings）。
+      // 必须是真正改变 opacity 的动画：no-op exit（opacity 不变）在 framer-motion v12
+      // mode="wait" 下不触发 onExitComplete，会让目标页（Settings）永不挂载、内容卡空白。
+      exit: { opacity: 0 },
+      transition: { duration: 0.18, ease: EASE_APPLE },
     };
   }
 

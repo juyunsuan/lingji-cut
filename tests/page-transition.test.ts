@@ -60,6 +60,13 @@ describe('resolvePageTransition', () => {
 
     // 稳定的 key 意味着同一棵子树不会因切换 tab 而被 AnimatePresence 重新挂载
     expect(workbenchToPublish.contentKey).toBe(editorToWorkbench.contentKey);
+
+    // 但 exit 必须是「真正会改变 opacity」的动画，而非 no-op。
+    // 离开工作区去 settings 时，AnimatePresence mode="wait" 会用这份冻结的 exit
+    // 退出 'workspace' 子树；若 exit 与 animate 相同（opacity 不变），framer-motion v12
+    // 不会触发 onExitComplete，导致 Settings 永不挂载、内容卡成空白。
+    expect(workbenchToPublish.exit).toMatchObject({ opacity: 0 });
+    expect(workbenchToPublish.animate).toMatchObject({ opacity: 1 });
   });
 
   it('still crossfades when entering or leaving the workspace', () => {
