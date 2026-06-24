@@ -73,6 +73,30 @@ describe('createChatModelFromProvider', () => {
 
     expect(chatGoogleMock).not.toHaveBeenCalled();
     expect(chatOpenAIMock).toHaveBeenCalledTimes(1);
+    const config = chatOpenAIMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(config.useResponsesApi).toBeUndefined();
+  });
+
+  it('enables the Responses API for openai_responses providers', () => {
+    createChatModelFromProvider(
+      makeProvider({
+        type: 'openai_responses',
+        baseUrl: 'https://api.openai.com/v1',
+      }),
+      'gpt-4o-mini',
+    );
+
+    expect(chatGoogleMock).not.toHaveBeenCalled();
+    expect(chatOpenAIMock).toHaveBeenCalledTimes(1);
+    const config = chatOpenAIMock.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(config).toMatchObject({
+      apiKey: 'api-key',
+      model: 'gpt-4o-mini',
+      useResponsesApi: true,
+    });
+    expect((config.configuration as Record<string, unknown>).baseURL).toBe(
+      'https://api.openai.com/v1',
+    );
   });
 
   it('uses LM Studio defaults (localhost endpoint + placeholder key) when fields are blank', () => {

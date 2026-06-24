@@ -36,6 +36,24 @@ describe('resolvePromptBinding', () => {
     expect(r.model).toBe('m1');
   });
 
+  it('未绑定时优先用 Provider 自己的 defaultModel（高于全局 defaultModel）', () => {
+    const s = settings();
+    s.defaultProviderId = 'B';
+    // 全局 defaultModel 'm1' 不在 B 的模型列表里；应回退到 B.defaultModel='n1'
+    s.llmProviders = [llmA, { ...llmB, defaultModel: 'n1' }];
+    const r = resolvePromptBinding('planning.segment', s, null);
+    expect(r.provider.id).toBe('B');
+    expect(r.model).toBe('n1');
+  });
+
+  it('提示词级绑定的 model 覆盖 Provider.defaultModel', () => {
+    const s = settings();
+    s.llmProviders = [{ ...llmA, defaultModel: 'm1' }, llmB];
+    s.promptBindings['planning.segment'] = { providerId: 'A', model: 'm2' };
+    const r = resolvePromptBinding('planning.segment', s, null);
+    expect(r.model).toBe('m2');
+  });
+
   it('全局 binding 命中', () => {
     const s = settings();
     s.promptBindings['planning.segment'] = { providerId: 'B', model: 'n1' };

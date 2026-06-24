@@ -58,13 +58,8 @@ function resolveLlmByKey(
     globalB?.providerId,
     settings.defaultProviderId,
   );
-  const model = pickFirstNonNull(
-    projectB?.model,
-    globalB?.model,
-    settings.defaultModel,
-  );
 
-  if (!providerId || !model) {
+  if (!providerId) {
     throw new PromptBindingError(
       'PROVIDER_MISSING',
       key,
@@ -77,6 +72,20 @@ function resolveLlmByKey(
       'PROVIDER_MISSING',
       key,
       `提示词 ${key} 绑定的 Provider ${providerId} 不存在`,
+    );
+  }
+  // 模型回退链：提示词级绑定 → 全局提示词绑定 → 该 Provider 的默认模型 → 全局默认模型。
+  const model = pickFirstNonNull(
+    projectB?.model,
+    globalB?.model,
+    provider.defaultModel,
+    settings.defaultModel,
+  );
+  if (!model) {
+    throw new PromptBindingError(
+      'PROVIDER_MISSING',
+      key,
+      `提示词 ${key} 未绑定 LLM 且无全局默认 Provider/Model`,
     );
   }
   if (!provider.models.includes(model)) {

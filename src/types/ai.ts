@@ -287,10 +287,23 @@ export interface PiProviderProjectionOptions {
 export interface LLMProvider {
   id: string;
   name: string;
-  type: 'openai_compatible' | 'anthropic' | 'minimax' | 'gemini' | 'lmstudio' | 'claude_code_acp';
+  type:
+    | 'openai_compatible'
+    | 'openai_responses'
+    | 'anthropic'
+    | 'minimax'
+    | 'gemini'
+    | 'lmstudio'
+    | 'claude_code_acp';
   baseUrl: string;
   apiKey: string;
   models: string[];
+  /**
+   * 该 Provider 的默认模型，必须是 models 之一。
+   * 绑定解析时优先级位于全局 AISettings.defaultModel 之前、提示词级绑定之后；
+   * 切换默认 Provider 时也用它回填全局默认模型。缺省 / 不在 models 内时忽略。
+   */
+  defaultModel?: string;
   /** 是否启用模型思考模式；缺省视为 true */
   enableThinking?: boolean;
   /**

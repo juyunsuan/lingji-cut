@@ -59,6 +59,34 @@ describe('ai-config-utils', () => {
     });
   });
 
+  it('prefers the active provider defaultModel over the model-list first item', () => {
+    const primary = createProvider({
+      id: 'primary',
+      models: ['gpt-4.1', 'gpt-4o-mini'],
+      defaultModel: 'gpt-4o-mini',
+    });
+
+    // 调用方偏好缺失时，应回退到 provider.defaultModel 而非列表首项
+    expect(normalizeProviderSelection([primary], 'primary', null)).toEqual({
+      defaultProviderId: 'primary',
+      defaultModel: 'gpt-4o-mini',
+    });
+  });
+
+  it('drops a provider defaultModel that is not in its model list', () => {
+    const normalized = normalizeProviderDrafts([
+      createProvider({ models: ['gpt-4.1'], defaultModel: 'ghost-model' }),
+    ])[0];
+    expect(normalized.defaultModel).toBeUndefined();
+  });
+
+  it('keeps and trims a valid provider defaultModel', () => {
+    const normalized = normalizeProviderDrafts([
+      createProvider({ models: ['gpt-4.1', 'gpt-4o-mini'], defaultModel: ' gpt-4o-mini ' }),
+    ])[0];
+    expect(normalized.defaultModel).toBe('gpt-4o-mini');
+  });
+
   it('detects unsaved AI config changes from normalized snapshots', () => {
     const baseSnapshot = createAIConfigSnapshot({
       providers: [createProvider()],

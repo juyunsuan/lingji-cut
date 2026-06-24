@@ -45,6 +45,8 @@ export function llmTypeToPiApi(type: LLMProvider['type']): PiProviderApi | null 
     case 'openai_compatible':
     case 'lmstudio':
       return 'openai-completions';
+    case 'openai_responses':
+      return 'openai-responses';
     case 'minimax':
     case 'anthropic':
       return 'anthropic-messages';

@@ -79,14 +79,19 @@ export function normalizeProviderDraft(provider: LLMProvider): LLMProvider {
   const withPresetDefaults = preset
     ? applyPiProviderPreset(withNormalizedPi, preset)
     : withNormalizedPi;
+  const models = withPresetDefaults.models
+    .map((model) => model.trim())
+    .filter((model, index, list) => model.length > 0 && list.indexOf(model) === index);
+  const trimmedDefaultModel = withPresetDefaults.defaultModel?.trim();
+  const defaultModel =
+    trimmedDefaultModel && models.includes(trimmedDefaultModel) ? trimmedDefaultModel : undefined;
   return {
     ...withPresetDefaults,
     name: withPresetDefaults.name.trim(),
     baseUrl: withPresetDefaults.baseUrl.trim(),
     apiKey: withPresetDefaults.apiKey.trim(),
-    models: withPresetDefaults.models
-      .map((model) => model.trim())
-      .filter((model, index, list) => model.length > 0 && list.indexOf(model) === index),
+    models,
+    defaultModel,
     enableThinking: withPresetDefaults.enableThinking ?? true,
   };
 }
@@ -142,8 +147,13 @@ export function normalizeProviderSelection(
     normalizedProviders.find((provider) => provider.id === preferredDefaultProviderId) ??
     normalizedProviders[0];
 
+  // 全局默认模型优先级：调用方偏好（若仍在该 Provider 模型列表内）→ 该 Provider 自己的
+  // 默认模型 → 模型列表首项。
   const defaultModel =
     activeProvider.models.find((model) => model === preferredDefaultModel) ??
+    (activeProvider.defaultModel && activeProvider.models.includes(activeProvider.defaultModel)
+      ? activeProvider.defaultModel
+      : undefined) ??
     activeProvider.models[0] ??
     null;
 

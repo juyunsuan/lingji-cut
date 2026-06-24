@@ -44,6 +44,7 @@ function genId(): string {
 
 const PROVIDER_TYPE_OPTIONS: SelectOption[] = [
   { value: 'openai_compatible', label: 'OpenAI Compatible' },
+  { value: 'openai_responses', label: 'OpenAI Responses' },
   { value: 'lmstudio', label: 'LM Studio (本地)' },
   { value: 'anthropic', label: 'Anthropic' },
   { value: 'minimax', label: 'MiniMax (Anthropic 端点)' },
@@ -741,6 +742,26 @@ function ProviderDialog({ initial, isDefault, onSave, onCancel }: DialogProps) {
               </div>
             ) : null}
           </Field>
+
+          {form.models.length > 0 ? (
+            <Field
+              label="默认模型"
+              hint="该 Provider 被设为默认、且提示词未单独绑定模型时使用；留空则用模型列表首项。"
+            >
+              <Select
+                value={
+                  form.defaultModel && form.models.includes(form.defaultModel)
+                    ? form.defaultModel
+                    : ''
+                }
+                options={[
+                  { value: '', label: '自动（模型列表首项）' },
+                  ...form.models.map((m) => ({ value: m, label: m })),
+                ]}
+                onChange={(e) => set('defaultModel', e.target.value || undefined)}
+              />
+            </Field>
+          ) : null}
 
           {!isClaudeCodeAcp ? (
             <Field

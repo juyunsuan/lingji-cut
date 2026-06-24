@@ -12,6 +12,7 @@ import type { LLMProvider, AISettings } from '../../src/types/ai';
 describe('llmTypeToPiApi', () => {
   it('maps known LLM types to pi api strings', () => {
     expect(llmTypeToPiApi('openai_compatible')).toBe('openai-completions');
+    expect(llmTypeToPiApi('openai_responses')).toBe('openai-responses');
     expect(llmTypeToPiApi('lmstudio')).toBe('openai-completions');
     expect(llmTypeToPiApi('minimax')).toBe('anthropic-messages');
     expect(llmTypeToPiApi('anthropic')).toBe('anthropic-messages');

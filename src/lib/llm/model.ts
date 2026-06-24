@@ -149,6 +149,9 @@ export function createChatModelFromProvider(
   const enableThinking = resolveEnableThinking(provider, options);
   // LM Studio 走 OpenAI 兼容端点；apiKey 留空时填充占位值，避免 SDK 抛错
   const isLMStudio = provider.type === 'lmstudio';
+  // openai_responses：走 OpenAI 的 /v1/responses 协议，其余 baseURL/apiKey 处理与
+  // openai_compatible 一致，仅在 ChatOpenAI 上打开 useResponsesApi。
+  const useResponsesApi = provider.type === 'openai_responses';
   const apiKey = provider.apiKey?.trim() || (isLMStudio ? 'lm-studio' : provider.apiKey);
   const baseURL = normalizeBaseUrl(provider.baseUrl?.trim() || (isLMStudio ? LMSTUDIO_DEFAULT_BASE_URL : provider.baseUrl));
 
@@ -161,6 +164,7 @@ export function createChatModelFromProvider(
     apiKey,
     model,
     temperature: 0.3,
+    ...(useResponsesApi ? { useResponsesApi: true } : {}),
     configuration: {
       apiKey,
       baseURL,

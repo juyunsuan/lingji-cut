@@ -139,6 +139,7 @@ export async function fetchProviderModels(provider: LLMProvider): Promise<string
       );
       break;
     case 'openai_compatible':
+    case 'openai_responses':
       if (!baseUrl) throw new Error('请先填写 Base URL');
       models = await fetchOpenAICompatibleModels(baseUrl, apiKey);
       break;
