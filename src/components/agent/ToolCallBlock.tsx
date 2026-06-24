@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import { describeToolCallBlock, type ToolCallDescriptor, type ToolDetailSection } from './tool-call-descriptor';
+import { CopyButton } from './CopyButton';
 import styles from './AgentTranscript.module.css';
 
 interface ToolCallBlockType {
@@ -232,6 +233,7 @@ export function ToolCallBlock({
 
   return (
     <div className={styles.event}>
+      <div className={styles.eventHeaderRow}>
       <button
         type="button"
         onClick={() => hasDetail && setExpanded((value) => !value)}
@@ -267,6 +269,10 @@ export function ToolCallBlock({
           </span>
         ) : null}
       </button>
+        {commandLike && descriptor.subject ? (
+          <CopyButton text={descriptor.subject} className={styles.eventCopyBtn} label="复制命令" />
+        ) : null}
+      </div>
 
       {hasDetail && expanded ? (
         <div className={styles.toolDetails}>

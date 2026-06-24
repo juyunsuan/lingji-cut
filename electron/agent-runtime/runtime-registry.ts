@@ -211,6 +211,15 @@ export class RuntimeRegistry extends EventEmitter {
     };
 
     const onEvent = (ev: AgentStreamEvent) => {
+      // 回写本轮新建/恢复出的 session id：driver 在起轮时上报 { type:'status',
+      // sessionId }（pi-inprocess createAgentSession 后 emit）。把它写回快照，
+      // 后续轮才能以 resumeSessionId 续接同一会话——pi 据此 open 历史会话文件，
+      // 由 buildSessionContext 把完整上下文历史重放给模型。
+      // 不回写则每轮 resumeSessionId 恒为 connect 时的旧值（新建会话为 null），
+      // 导致 pi 每轮新建空会话、丢失上一轮对话记忆。
+      if (ev.type === 'status' && ev.sessionId) {
+        entry.snapshot.sessionId = ev.sessionId;
+      }
       const out = toRuntimeEvent(ev);
       if (out) {
         this.emit('event', {

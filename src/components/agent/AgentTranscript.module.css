@@ -19,6 +19,31 @@
 
 .eventHeader:disabled { cursor: default; }
 
+/* 命令类工具头部与「复制命令」按钮同处一行：header 占满剩余宽度，
+   复制按钮默认隐形，悬停 / 聚焦该行时淡入，保持 macOS 工具的低噪静默态。 */
+.eventHeaderRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+}
+
+.eventHeaderRow .eventHeader { flex: 1 1 auto; min-width: 0; width: auto; }
+
+.eventCopyBtn,
+.commandRowCopyBtn {
+  flex: 0 0 auto;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.eventHeaderRow:hover .eventCopyBtn,
+.eventHeaderRow:focus-within .eventCopyBtn,
+.commandRowHeadRow:hover .commandRowCopyBtn,
+.commandRowHeadRow:focus-within .commandRowCopyBtn {
+  opacity: 1;
+}
+
 .eventIcon,
 .eventChevron {
   display: inline-flex;
@@ -313,6 +338,14 @@
   flex-direction: column;
   gap: 4px;
 }
+
+.commandRowHeadRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.commandRowHeadRow .commandRowHead { flex: 1 1 auto; min-width: 0; }
 
 .commandRowHead {
   display: flex;

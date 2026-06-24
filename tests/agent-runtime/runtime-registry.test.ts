@@ -401,6 +401,34 @@ describe('RuntimeRegistry', () => {
     expect(started.lastInput!.parentSession).toBeNull();
   });
 
+  it('回写每轮上报的 sessionId：新建会话第二轮以第一轮 session 续接（保留上下文历史）', async () => {
+    const { registry, sessions } = makeRegistry();
+    attachListeners(registry);
+
+    // 全新会话：connect 时无 sessionId。
+    await registry.connect({ ...baseConnect });
+    await registry.sendPrompt(1, [{ type: 'text', text: 'turn1' }]);
+
+    const s1 = sessions.find((s) => s.startCalls > 0)!;
+    // 第一轮无 resume id（pi 会新建会话）。
+    expect(s1.lastInput!.resumeSessionId).toBeNull();
+    expect(s1.lastInput!.isResuming).toBe(false);
+
+    // pi-inprocess 在 createAgentSession 后上报新建/恢复出的 session id。
+    s1.emit({ type: 'status', label: 'session', sessionId: 'pi-sess-1' });
+    // 回写后快照应反映该 id。
+    expect(registry.get(1)!.sessionId).toBe('pi-sess-1');
+    s1.emit({ type: 'turn_end', stopReason: 'end_turn' });
+
+    // 第二轮：必须带着第一轮的 session id 去 resume，pi 据此 open 历史会话
+    // 并由 buildSessionContext 把完整历史喂给模型。
+    await registry.sendPrompt(1, [{ type: 'text', text: 'turn2' }]);
+    const s2 = sessions.filter((s) => s.startCalls > 0).at(-1)!;
+    expect(s2).not.toBe(s1);
+    expect(s2.lastInput!.resumeSessionId).toBe('pi-sess-1');
+    expect(s2.lastInput!.isResuming).toBe(true);
+  });
+
   it('兼容方法存在：setPermissionPolicy / setMode / setConfigOption / respondPermission 不抛', async () => {
     const { registry } = makeRegistry();
     await registry.connect({ ...baseConnect });

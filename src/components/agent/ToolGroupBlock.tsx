@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { ToolCallBlock } from './ToolCallBlock';
 import { describeToolCallBlock, type ToolCallDescriptor } from './tool-call-descriptor';
+import { CopyButton } from './CopyButton';
 import styles from './AgentTranscript.module.css';
 
 interface ToolCallBlockType {
@@ -135,18 +136,21 @@ function CommandList({ blocks }: { blocks: ToolCallBlockType[] }) {
               : '';
         return (
           <li key={key} className={styles.commandRow}>
-            <button
-              type="button"
-              className={`${styles.commandRowHead} ${rowStatusClass}`}
-              onClick={() => toggle(key)}
-              aria-expanded={opened}
-            >
-              <span className={styles.commandRowLabel}>{commandRowLabel(status)}</span>
-              <code className={styles.commandRowText}>{command}</code>
-              <span className={styles.commandRowChevron} aria-hidden>
-                {opened ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-              </span>
-            </button>
+            <div className={styles.commandRowHeadRow}>
+              <button
+                type="button"
+                className={`${styles.commandRowHead} ${rowStatusClass}`}
+                onClick={() => toggle(key)}
+                aria-expanded={opened}
+              >
+                <span className={styles.commandRowLabel}>{commandRowLabel(status)}</span>
+                <code className={styles.commandRowText}>{command}</code>
+                <span className={styles.commandRowChevron} aria-hidden>
+                  {opened ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+                </span>
+              </button>
+              <CopyButton text={command} className={styles.commandRowCopyBtn} label="复制命令" />
+            </div>
             {opened ? (
               <div className={styles.commandRowBody}>
                 <pre className={`${styles.detailPre} ${styles.detailShell} ${styles.commandGroupShell}`}>
