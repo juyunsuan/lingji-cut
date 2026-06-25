@@ -7,11 +7,11 @@ const STAGED_PROJECT_ROOTS = new Set(['dist', 'dist-cli', 'dist-electron', 'reso
 // pi（@earendil-works/*）以进程内 SDK 运行；整棵子树需 asar-unpack——其中含
 // 原生 .node（@mariozechner/clipboard-*，嵌套与顶层皆有）与按需读取的包内资源，
 // 这些无法从 asar 内 require/读取，须落在 app.asar.unpacked。
-// playwright（发布视频 4 平台自动化）+ playwright-browsers（随包 Chromium）同理须 asar-unpack，
-// 运行时从 app.asar.unpacked 定位。
+// playwright（发布视频 4 平台自动化）同理须 asar-unpack，运行时从 app.asar.unpacked 定位。
+// Chromium 已改为运行时按需下载到 <userData>/publish/chromium，不再随包，故清单不含 playwright-browsers。
 // node-pty（B 站扫码登录用伪终端）含 .node 预编译产物 + spawn-helper，无法从 asar 内加载/exec，
 // 须 asar-unpack。（biliup 二进制已改为运行时下载到 userData，不再随包，故从清单移除。）
-const RENDER_RUNTIME_ASAR_UNPACK_DIRS = '{dist-cli,vendor/ffmpeg,node_modules/@earendil-works,node_modules/@mariozechner,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static,node_modules/playwright,node_modules/playwright-core,node_modules/node-pty,playwright-browsers}';
+const RENDER_RUNTIME_ASAR_UNPACK_DIRS = '{dist-cli,vendor/ffmpeg,node_modules/@earendil-works,node_modules/@mariozechner,node_modules/@remotion,node_modules/esbuild,node_modules/@esbuild,node_modules/@puppeteer,node_modules/puppeteer-core,node_modules/sharp,node_modules/onnxruntime-node,node_modules/ffmpeg-static,node_modules/ffprobe-static,node_modules/playwright,node_modules/playwright-core,node_modules/node-pty}';
 
 // 仅在 renderer（Vite bundle）中使用、主进程从不 require 的包可在此排除，
 // 以减小 .app 体积。漏排不会导致启动崩溃，只会让 app 变大。

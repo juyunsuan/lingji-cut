@@ -137,21 +137,6 @@ async function createStageDirectory(stageDir) {
   ensureNodePtySpawnHelperExecutable(stageDir);
 }
 
-/**
- * 将 Playwright Chromium 浏览器安装到 stageDir/playwright-browsers。
- * 打包后该目录经 asar.unpackDir 解包到 app.asar.unpacked/playwright-browsers，
- * 运行时通过 PLAYWRIGHT_BROWSERS_PATH 指向该位置。
- */
-function installPlaywrightChromium(stageDir) {
-  const browsersDir = path.join(stageDir, 'playwright-browsers');
-  const playwrightBin = path.join(rootDir, 'node_modules', '.bin', 'playwright');
-  console.log(`安装 Playwright Chromium 浏览器到随包目录...`);
-  execFileSync(playwrightBin, ['install', 'chromium'], {
-    env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsersDir },
-    stdio: 'inherit',
-  });
-}
-
 if (!supportedArch.has(arch)) {
   console.error(`不支持的 macOS 打包架构：${arch}`);
   console.error('请使用 ARCH=arm64 npm run package:mac 或 ARCH=x64 npm run package:mac');
@@ -176,7 +161,6 @@ async function main() {
   console.log(`准备最小发布目录：${path.relative(rootDir, stageDir)}`);
 
   await createStageDirectory(stageDir);
-  installPlaywrightChromium(stageDir);
 
   // biliup 二进制不再随包内置：改为运行时按需下载到 <userData>/publish/biliup/，
   // 由设置页「发布账号」首次选中 B 站时引导下载（electron/publish/biliup-install.ts）。

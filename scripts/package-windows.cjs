@@ -275,23 +275,6 @@ async function stageWindowsFfmpeg(stageDir, arch) {
   await fsp.copyFile(sourcePath, targetPath);
 }
 
-/**
- * 将 Playwright Chromium 浏览器安装到 stageDir/playwright-browsers。
- * 打包后该目录经 asar.unpackDir 解包到 app.asar.unpacked/playwright-browsers，
- * 运行时通过 PLAYWRIGHT_BROWSERS_PATH 指向该位置。
- *
- * 使用 `node .../playwright/cli.js` 而非 `.bin/playwright` shim，
- * 避免 Windows 下符号链接不可执行导致 ENOENT（参见 memory: npm.cmd 规则）。
- */
-async function installPlaywrightChromium(stageDir) {
-  const browsersDir = path.join(stageDir, 'playwright-browsers');
-  const playwrightCliJs = path.join(rootDir, 'node_modules', 'playwright', 'cli.js');
-  console.log('安装 Playwright Chromium 浏览器到随包目录...');
-  await runCommand(process.execPath, [playwrightCliJs, 'install', 'chromium'], {
-    env: { ...process.env, PLAYWRIGHT_BROWSERS_PATH: browsersDir },
-  });
-}
-
 async function stageNodeModules(stageDir) {
   const stageNodeModulesDir = path.join(stageDir, 'node_modules');
   await fsp.mkdir(stageNodeModulesDir, { recursive: true });
@@ -375,7 +358,6 @@ async function packageWindows() {
 
   const resolvedIconPath = await ensureWindowsIcon();
   await createStageDirectory(stageDir, arch);
-  await installPlaywrightChromium(stageDir);
 
   // biliup 二进制不再随包内置：改为运行时按需下载到 <userData>/publish/biliup/，
   // 由设置页「发布账号」首次选中 B 站时引导下载（electron/publish/biliup-install.ts）。
