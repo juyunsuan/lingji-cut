@@ -4,21 +4,34 @@
 
 🌐 **[访问官网](https://yoqu.github.io/lingji-cut-homepage/)** — 在线了解灵剪的功能特性、使用演示和快速上手指南。
 
-**Lingji Cut（灵剪）** 是一个本地优先的开源 AI 视频创作工作台。它把内容创作中分散的环节串在一起：写稿、素材管理、AI 审稿、语音合成、字幕处理、时间线剪辑、视觉卡片、封面生成和视频导出。
+**Lingji Cut（灵剪）** 是一个本地优先的开源 **AI 视频创作工作台**。它把内容创作中分散的环节串成一条完整流水线：从选题采集、写稿、AI 审稿，到语音合成、字幕处理、内容分析、信息卡 / 封面生成、时间线剪辑，再到 Remotion 导出和多平台发布——全部在同一个桌面端、以本地优先的方式完成。
 
 它不是单一的视频播放器或字幕工具，而是面向内容创作者的桌面端创作环境。你可以从一份原始素材开始，逐步生成口播稿、音频、字幕、信息卡和最终视频，也可以直接导入已有音频 / 字幕进入编辑器。
+
+### AI 视频创作全流程
+
+```text
+选题采集             写稿审稿           AI 视频流水线            时间线        导出        发布
+灵机采风 Chrome 扩展 → original.md   →  TTS 语音合成          →  时间线编辑  →  Remotion  →  多平台
+监听抖音博主            script.md        字幕解析 / 内容分析        素材 / 卡片     H.264        B站 / 视频号
+待创作箱               AI 写稿 / 审稿    封面候选 / Motion Card    动画 / 字幕     MP4          抖音 / 快手 / 小红书
+```
+
+每个环节既能由 AI 自动推进，也能在桌面端逐步手动精调；既能从「灵机采风」采集的选题开始，也能直接从已有音频 + 字幕进入编辑器。
 
 ## Highlights
 
 - **AI 写稿工作台**：管理 `original.md` / `script.md`，支持多文件标签、稿件资源、搜索替换、版本历史、AI 生成、AI 审稿和批注采纳。
-- **一站式视频工作台**：在同一个界面里管理素材、预览、Inspector、时间线和导出配置。
-- **自动口播流程**：支持从文稿触发 TTS、字幕解析、内容分析、封面候选和视觉卡片生成。
+- **自动口播流程**：从文稿一键触发 TTS、字幕解析、内容分析、封面候选和视觉卡片生成；AI 卡片增量流式呈现并自动落轨。
 - **专业时间线编辑**：支持音频、字幕、图片、视频、文字、AI 卡片、多视觉轨、多音频轨、拖拽、吸附、拆分、裁剪、复制 / 剪切 / 粘贴和轨道锁定。
-- **多 Provider AI 配置**：支持 OpenAI 兼容模型、Gemini、LM Studio、图片生成 Provider、MiniMax TTS 等配置。
-- **Agent / MCP 集成**：应用内可连接 Claude ACP Runtime，并提供 `lingji_*` MCP 工具给 Claude Code / Codex / Gemini 等客户端操作脚本工作台。
-- **Pipeline / 自动化**：通过 MCP `pipeline.*` 工具集（create_project、open_project、get/cancel/list_task、get_settings 等）把项目创建、状态查询、流程编排开放给外部 Agent。
-- **手动 image/video 卡**：除 AI 生成卡外，可直接通过表单创建 image/video 卡，或导入本地视频 / 音频素材。
-- **HyperFrames 导出**：通过 HyperFrames HTML + GSAP composition 渲染 H.264 MP4，支持编辑器预览、时间线 seek 与导出进度展示。
+- **Motion Card 数据动画**：AI 生成自由 Remotion TSX 卡片（文字 / 数字 / 表格 / 图表），出卡前还会先生成逐拍动画指导；内置风格模板库，预览与导出共用同一份编译产物。
+- **多 Provider AI 配置**：支持 OpenAI 兼容、Gemini、LM Studio 等 LLM Provider，多种图片 / 视频生成 Provider，以及多 Provider TTS 音色体系（MiniMax、Xiaomi MiMo 含克隆音色）。
+- **内置 Pi Agent**：应用内开箱即用的对话 agent（零安装、复用应用 LLM 配置），可直接改稿 / 改视频，编辑器实时热重载。详见 [Agent 使用指南](docs/agent-guide.md)。
+- **外部 Agent / MCP 集成**：`lingji-editor` MCP Server 提供 `lingji_*` 工具给 Claude Code / Codex / Gemini，配合 file-first 契约直接编辑项目文件。
+- **灵机采风 Chrome 扩展**：监听抖音博主、采集公开视频、本地转录，并经联动桥推送到「待创作箱」做二创。详见 [灵机采风插件使用指南](docs/chrome-extension-guide.md)。
+- **多平台发布**：发布选项卡内置多画幅封面工作台（16:9 / 4:3 / 3:4）、发布元数据（标题 / 简介 / 标签）与 B站分区 AI 智能推荐，支持发布到 B站 / 视频号 / 抖音 / 快手 / 小红书。
+- **命令行与自动化**：无头 `lingji` CLI 在终端里驱动音频、字幕分析、卡片、封面、导出等完整流水线。
+- **Remotion 导出**：通过 Remotion 渲染引擎（自带 Chrome Headless Shell + ffmpeg）导出 H.264 MP4，支持编辑器预览、时间线 seek 与导出进度展示。
 - **本地优先**：项目文件保存在用户选择的本地目录，仓库不需要保存任何真实 API Key。
 
 ## Screenshots
@@ -29,12 +42,13 @@
 
 - Electron 41 + electron-vite
 - React 19 + TypeScript 6
-- HyperFrames 0.6
+- Remotion 4（视频渲染引擎，自带 Chrome Headless Shell + ffmpeg）
 - Zustand
 - CodeMirror 6
 - Framer Motion
 - TailwindCSS 4 + 自研 macOS 专业工具 UI 组件
-- MCP SDK + Claude ACP 集成
+- MCP SDK + 内置 Pi Agent / 外部 Agent 集成
+- 灵机采风 Chrome 扩展（Manifest V3 + CRXJS + Vite，独立工程）
 - Vitest
 
 ## Quick Start
@@ -196,9 +210,12 @@ Lingji Cut 主要通过应用内"设置"页面保存 AI 配置，不依赖仓库
 - **视频生成**：管理视频 Provider 配置（与 image/video 卡片表单联动）。
 - **TTS 语音合成**：配置 MiniMax API Key、音色、语速、音量、音调、情绪和模型。
 - **提示词配置**：管理内置 / 全局 / 项目级提示词，并为不同 Prompt Kind 绑定不同 Provider（含 `card.image`、`card.video`）。
-- **AI Agent**：配置 Claude ACP Runtime、权限策略和 Agent API Key。
-- **MCP 服务**：启动本地 MCP Server，并注册到 Claude Code / Codex / Gemini。
+- **AI Agent**：内置 Pi agent 的审批策略、模型与技能配置（复用上面的 LLM Provider 凭证）。
+- **MCP 服务**：启动 `lingji-editor` 本地 MCP Server，并注册到 Claude Code / Codex / Gemini。
+- **发布账号**：管理 B站 / 视频号 / 抖音 / 快手 / 小红书的发布账号登录态。
 - **配置备份**：导出、预览、导入全局设置与 Agent 配置备份。
+
+> 关于内置 Pi 与外部 Agent 的完整用法，见 [Agent 使用指南](docs/agent-guide.md)；关于灵机采风扩展，见 [灵机采风插件使用指南](docs/chrome-extension-guide.md)。
 
 > 请不要把真实 API Key、Session ID、Cookie 或访问令牌提交到源码、测试、文档或截图中。
 
@@ -223,31 +240,38 @@ Lingji Cut 主要通过应用内"设置"页面保存 AI 配置，不依赖仓库
 
 ```text
 electron/
-  acp/                  Claude ACP Runtime、权限策略、Agent 配置
+  agent-runtime/        多协议 Agent runtime（Pi / Claude / Codex）、内置 Pi 进程内 SDK
+  acp/                  Claude ACP、file-first 契约同步、权限策略
   conversations/         Agent 会话数据库与 IPC
-  mcp/                   Lingji MCP Server、工具注册、客户端注册配置
+  mcp/                   lingji-editor MCP Server、工具注册、客户端注册配置
   pipeline/              Pipeline 任务编排、TaskRegistry、HeadlessProjectContext
+  remotion/              卡片编译（esbuild）、bundle、renderMedia 导出
+  ai-edit/               file-first 编辑锁与校验回传
   script-history/        脚本文稿版本历史
   video-import/          视频导入、抽音频、ASR、转录落盘
-  main.ts                Electron 主进程、IPC、HyperFrames 渲染
+  main.ts                Electron 主进程、IPC、Remotion 渲染、TTS、发布
   preload.ts             Renderer 安全桥接
   project-file.ts        project.json 读写与旧工程迁移
 
 src/
   components/            编辑器、时间线、Inspector、AI 面板、Agent UI
   components/script/     脚本工作台文件树、批注、导入预览、版本 UI
-  components/settings/   AI、TTS、Agent、MCP、提示词、备份配置页
+  components/publish/    发布选项卡：多画幅封面工作台、发布元数据、B站分区
+  components/settings/   AI、TTS、Agent、MCP、提示词、发布账号、备份配置页
   hooks/                 AI 视频流水线、连接状态、缩略图等 hooks
-  lib/                   AI、提示词、Motion、字幕、导出、持久化、IPC 客户端
+  lib/                   AI、提示词、Motion、字幕、导出、发布、持久化、IPC 客户端
   pages/                 Setup、Editor、ScriptWorkbench、Settings
-  hyperframes/           HyperFrames composition 生成、素材映射与导出输入
-  store/                 timeline、ai、script、agent、task-progress
+  remotion/              Remotion composition、timeline-to-sequences、overlays、card-host
+  store/                 timeline、ai、script、agent、task-progress、publish
   ui/                    macOS 风格基础组件、patterns、tokens、motion
   types.ts               时间线核心类型
   types/ai.ts            AI 卡片、Provider、提示词绑定类型
 
+extensions/sonar/        灵机采风 Chrome 扩展（独立工程，抖音监听采集 + 联动桥）
+cli/                     无头 lingji CLI 源码
 tests/                   Vitest 单元与组件测试
 docs/assets/             README 与宣传素材
+docs/ai-contract/        file-first 编辑契约（视频 / 文稿 / 锁 / 结果协议）
 docs/superpowers/        设计规格与实施计划沉淀
 ```
 
@@ -256,9 +280,9 @@ docs/superpowers/        设计规格与实施计划沉淀
 - Renderer 不直接使用 Node API。主进程能力通过 `electron/preload.ts` 暴露，并在 `src/lib/electron-api.ts` 声明类型。
 - 新增或修改 IPC 时，通常需要同步 `electron/main.ts`、`electron/preload.ts`、`src/lib/electron-api.ts` 和对应测试。
 - 工程主存储是 `project.json`。新增工程段落前需要评估迁移、并发写锁和旧数据兼容。
-- HyperFrames 导出由 `src/hyperframes/composition.ts` 生成 `index.html`，并由主进程调用 `hyperframes render` 输出 MP4。
+- 渲染引擎为 Remotion：`TimelineData` 经 `buildRenderPlan` 编译为 Remotion 组件树，预览用 `@remotion/player`，导出用 `@remotion/bundler` + `@remotion/renderer`。
 - 导出前会把绝对路径素材映射到临时项目目录，避免 Electron 打包后无法访问本地文件。
-- AI 网页卡片的 `srcDoc` 会落盘到 `ai-cards/`，持久化后优先保存 `src` 路径。
+- AI Motion Card 是 LLM 生成的自由 Remotion TSX（`ai-cards/<id>/motionCard.tsx`），主进程用 esbuild 编译为 CJS 注入，预览与导出共用同一份编译产物。
 - 所有耗时操作应接入 `src/store/task-progress.ts` 和底部 `AppStatusBar` 统一进度系统。
 - UI 新实现应遵循 `DESIGN.md` 的 macOS 专业创作工具规范。
 - Agent / MCP 操作脚本文稿时，应优先通过 `lingji_*` MCP 工具进入编辑器状态。
@@ -266,12 +290,13 @@ docs/superpowers/        设计规格与实施计划沉淀
 ## 开发建议
 
 - 修改时间线结构前，先看 `src/types.ts`、`src/store/timeline.ts`、`src/lib/timeline-tracks.ts`、`src/lib/timeline-placement.ts`。
-- 修改 AI 卡片结构前，先看 `src/types/ai.ts`、`src/types/motion.ts`、`src/lib/ai-persistence.ts`、`src/store/ai.ts`、`src/hyperframes/`。
+- 修改 AI 卡片结构前，先看 `src/types/ai.ts`、`src/types/motion.ts`、`src/lib/ai-persistence.ts`、`src/store/ai.ts`、`src/remotion/`。
 - 修改脚本工作台前，先看 `src/pages/ScriptWorkbench.tsx`、`src/store/script.ts`、`src/lib/script-persistence.ts`。
 - 修改提示词前，先看 `src/lib/prompts/`、`electron/prompts-io.ts`、`electron/prompt-bindings-io.ts`。
-- 修改 Agent / MCP 前，先看 `electron/acp/`、`electron/mcp/`、`src/components/agent/`。
+- 修改 Agent / MCP 前，先看 `electron/agent-runtime/`、`electron/acp/`、`electron/mcp/`、`src/components/agent/`。
 - 修改 Pipeline 前，先看 `electron/pipeline/` 与 `electron/mcp/tools.ts` 中的 `pipeline.*` 注册。
-- 修改导出链路前，先看 `electron/main.ts`、`src/hyperframes/assets.ts`、`src/hyperframes/composition.ts`。
+- 修改发布链路前，先看 `src/components/publish/`、`src/store/publish.ts`、`src/lib/publish/`。
+- 修改导出链路前，先看 `electron/main.ts`、`electron/remotion/`、`src/remotion/`。
 
 ## Security
 
@@ -289,7 +314,7 @@ docs/superpowers/        设计规格与实施计划沉淀
 
 ## Contributing
 
-欢迎提交 issue、建议和 PR。建议在较大改动前先说明你想修改的模块和目标，尤其是时间线、工程存储、IPC、HyperFrames 导出和 AI Provider 相关改动。
+欢迎提交 issue、建议和 PR。建议在较大改动前先说明你想修改的模块和目标，尤其是时间线、工程存储、IPC、Remotion 导出和 AI Provider 相关改动。
 
 ## 友情链接
 
